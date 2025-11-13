@@ -1,0 +1,18 @@
+Tutorial Setup Project Laravel (ttd_surat_digital)
+
+0. Jalankan perintah "composer install" di terminal dan tunggu sampai berhasil.
+1. Buka pgAdmin dan buat database baru dengan nama "ttd_surat_digital".
+2. Buat file bernama ".env" di folder utama project, lalu samakan isinya dengan file .env utama (nanti akan dibagikan di grup).
+3. Jika port PostgreSQL kamu berbeda, ubah bagian "DB_PORT" di file .env agar sesuai dengan port yang digunakan di pgAdmin.
+4. Jalankan perintah "php artisan tinker" di terminal.
+5. Setelah masuk ke Tinker, ketik "DB::connection()->getPdo();" dan tekan Enter.
+   Jika muncul teks berwarna biru dan hijau, berarti koneksi ke database sudah berhasil.
+   Ketik "exit" untuk keluar dari Tinker.
+6. Pastikan ekstensi PHP berikut sudah aktif di file php.ini (hapus tanda titik koma jika ada):
+   extension=pdo_pgsql
+   extension=pgsql
+7. Jalankan perintah "php artisan migrate" untuk membuat tabel-tabel di database.
+8. Jalankan perintah "php artisan db:seed" untuk mengisi data awal pada tabel.
+9. Kembali ke pgAdmin, klik kanan pada database "ttd_surat_digital" lalu pilih "Refresh" untuk melihat apakah tabel dan data sudah masuk.
+10. Terakhir, jalankan perintah "php artisan serve" untuk menyalakan server Laravel, lalu buka alamat [http://127.0.0.1:8000](http://127.0.0.1:8000) di browser.
+
