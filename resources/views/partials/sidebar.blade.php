@@ -34,13 +34,12 @@
 
       <!-- Menu untuk Kaprodi D3 & Kaprodi D4 -->
       @if(in_array(Auth::user()->role_id, [2, 3]))
-        <a href="#" class="{{ Request::is('review') ? 'active' : '' }}">
-          <i class="fa-solid fa-magnifying-glass fa-fw"></i><span>Review Surat</span>
-        </a>
-
-        <a href="#" class="{{ Request::is('paraf') ? 'active' : '' }}">
-          <i class="fa-solid fa-pen-nib fa-fw"></i><span>Paraf Surat</span>
-        </a>
+          <a href="{{ route('kaprodi.review') }}" class="{{ Request::is('review-surat') ? 'active' : '' }}">
+              <i class="fa-regular fa-file-lines"></i> Review Surat
+          </a>
+          <a href="{{ route('kaprodi.paraf') }}" class="{{ Request::is('paraf-surat') ? 'active' : '' }}">
+              <i class="fa-solid fa-stamp"></i> Paraf Surat
+          </a>
       @endif
 
       <!-- Menu untuk Kajur & Sekjur -->
@@ -55,13 +54,13 @@
 
   <!-- Bagian footer sidebar: tombol logout -->
   <div class="sb-foot">
-    <form method="POST" action="{{ route('logout') }}">
+      <form method="POST" action="{{ route('logout') }}">
       @csrf
 
       <!-- Tombol logout -->
-      <button type="submit">
+      <button type="submit" class="logout-btn">
         <i class="fa-solid fa-arrow-right-from-bracket fa-fw"></i><span>Logout</span>
       </button>
-    </form>
-  </div>
-</aside>
+      </form> <!-- Menutup tag form logout -->
+  </div> <!-- Menutup div sb-foot -->
+</aside> <!-- Menutup tag aside -->

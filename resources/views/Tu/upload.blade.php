@@ -96,7 +96,6 @@
     <div id="submit-button-wrapper" style="text-align: center; margin-top: 32px; display: none;">
         <button type="submit" class="upload-btn" style="cursor: pointer;">Unggah</button>
     </div>
-
 </form>
 
 @endsection

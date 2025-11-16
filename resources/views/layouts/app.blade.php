@@ -1,21 +1,24 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <!-- Memuat file CSS utama untuk styling dashboard -->
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
-
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-
-    <!-- Judul halaman (dapat dioverride oleh view lain) -->
     <title>@yield('title', 'Dashboard')</title>
 
-    <!-- Ikon FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
-
-    <!-- Font utama (Inter) -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
+    <link rel="stylesheet" href="{{ asset('css/dashboard/base.css') }}">
+    
+    <link rel="stylesheet" href="{{ asset('css/dashboard/layout.css') }}">
+    
+    <link rel="stylesheet" href="{{ asset('css/dashboard/sidebar.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/dashboard/topbar.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/dashboard/content.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/dashboard/cards.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/dashboard/tables.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/dashboard/popup.css') }}">
+    @stack('styles')
 </head>
 
 <body>
@@ -28,6 +31,8 @@
     <main class="main">
       <!-- Topbar navigasi -->
       @include('partials.topbar')
+
+      @yield('page-header')
 
       <section class="content">
         <div class="inner">
