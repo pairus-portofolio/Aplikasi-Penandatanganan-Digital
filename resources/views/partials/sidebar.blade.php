@@ -15,7 +15,7 @@
 
       <!-- {{-- Role TU --}} -->
       @if(Auth::user()->role_id == 1)
-        <a href="#" class="{{ Request::is('unggah') ? 'active' : '' }}">
+        <a href="/Tu/upload" class="{{ Request::is('Tu/upload*') ? 'active' : '' }}">
           <i class="fa-solid fa-upload fa-fw"></i><span>Unggah Surat</span>
         </a>
         <a href="#" class="{{ Request::is('finalisasi') ? 'active' : '' }}">

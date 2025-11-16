@@ -55,5 +55,6 @@
       cancelBtn.addEventListener('click', () => popup.classList.remove('show'));
     })();
   </script>
+  @stack('scripts')
 </body>
 </html>
