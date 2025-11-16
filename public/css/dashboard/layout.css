@@ -1,0 +1,32 @@
+/* public/css/dashboard/layout.css */
+.wrap {
+  display:flex;
+  min-height:100vh;
+  transition:all var(--transition-speed) ease;
+}
+
+.main {
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  margin-left:var(--sidebar-w);
+  transition:margin-left var(--transition-speed) ease;
+  min-height:100vh;
+}
+
+/* COLLAPSED SIDEBAR */
+html.collapsed .sidebar {transform:translateX(-100%);}
+html.collapsed .main {margin-left:0;}
+
+/* RESPONSIVE */
+@media (max-width:992px){
+  .sidebar {transform:translateX(-100%);position:fixed;height:100%;}
+  body.show-sb .sidebar{transform:translateX(0);}
+  #overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:900;}
+  body.show-sb #overlay{display:block;}
+  .main {margin-left:0;}
+  .content {padding:28px 20px;overflow-y: auto;}
+  .content.no-scroll {overflow-y: hidden;}
+  .topbar {padding:12px 20px;}
+  .tleft h2 {font-size:18px;}
+}
