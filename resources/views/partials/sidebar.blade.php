@@ -24,13 +24,13 @@
       @endif
 
       <!-- {{-- Role Kaprodi D3 & D4 --}} -->
-      @if(in_array(Auth::user()->role_id, [2, 3]))
-        <a href="#" class="{{ Request::is('review') ? 'active' : '' }}">
-          <i class="fa-solid fa-magnifying-glass fa-fw"></i><span>Review Surat</span>
-        </a>
-        <a href="#" class="{{ Request::is('paraf') ? 'active' : '' }}">
-          <i class="fa-solid fa-pen-nib fa-fw"></i><span>Paraf Surat</span>
-        </a>
+      @if (Auth::check() && in_array(Auth::user()->role->nama_role, ['Kaprodi D3', 'Kaprodi D4']))
+          <a href="{{ route('kaprodi.review') }}" class="{{ Request::is('review-surat') ? 'active' : '' }}">
+              <i class="fa-regular fa-file-lines"></i> Review Surat
+          </a>
+          <a href="{{ route('kaprodi.paraf') }}" class="{{ Request::is('paraf-surat') ? 'active' : '' }}">
+              <i class="fa-solid fa-stamp"></i> Paraf Surat
+          </a>
       @endif
 
       <!-- {{-- Role Kajur & Sekjur --}} -->
@@ -43,11 +43,8 @@
   </div>
 
   <div class="sb-foot">
-    <form method="POST" action="{{ route('logout') }}">
-      @csrf
-      <button type="submit">
+      <button type="button" id="logoutBtn">
         <i class="fa-solid fa-arrow-right-from-bracket fa-fw"></i><span>Logout</span>
       </button>
-    </form>
-  </div>
+    </div>
 </aside>

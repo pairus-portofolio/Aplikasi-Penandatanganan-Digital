@@ -1,0 +1,45 @@
+/* Panel bawah (zoom dan tombol) */
+.pv-controls {
+    position: fixed;
+    bottom: 0;
+    left: 240px;
+    right: 0;
+    width: calc(100% - 240px);
+    padding: 16px 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #ffffff;
+    color: #1f2937;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+    border-top: 1px solid #e5e7eb;
+    z-index: 999;
+    gap: 24px;
+    transition: left 0.3s ease, width 0.3s ease;
+}
+
+/* Wrapper untuk tombol tengah (posisi absolut di dalam panel bawah) */
+.pv-controls > .pv-primary-btn {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
+}
+
+/* Responsive dla panel bawah */
+html.collapsed .pv-controls {
+  left: 0;
+  width: 100%;
+}
+@media (max-width: 992px) {
+  .pv-controls {
+    left: 0;
+    width: 100%;
+    padding-left: 22px;
+  }
+  body.show-sb .pv-controls {
+    left: 240px;
+    width: calc(100% - 240px);
+    padding-left: 30px;
+  }
+}

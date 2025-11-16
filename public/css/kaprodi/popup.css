@@ -1,0 +1,99 @@
+/* --- POPUP NOTIFIKASI & REVISI --- */
+
+/* Kontainer konten popup (kotak putih) untuk kedua popup */
+#revisiPopup .popup-content,
+#parafNotifPopup .popup-content {
+    max-width: 480px;
+    text-align: left;
+    padding: 24px 30px;
+}
+
+/* Judul popup (tengah) */
+#revisiPopup h3,
+#parafNotifPopup h3 {
+    font-size: 20px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* Grup form (label + input) */
+#revisiPopup .form-group,
+#parafNotifPopup .form-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 15px;
+}
+
+#revisiPopup .form-group label,
+#parafNotifPopup .form-group label {
+    font-size: 14px;
+    color: #4b5563;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+/* Input / textarea styling yang sama untuk kedua popup */
+#revisiPopup .form-input,
+#revisiPopup .form-textarea,
+#parafNotifPopup .form-input,
+#parafNotifPopup .form-textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 15px;
+    color: #374151;
+    background-color: #f9fafb;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-sizing: border-box;
+    font-family: "Inter", system-ui, sans-serif;
+}
+
+/* Fokus */
+#revisiPopup .form-input:focus,
+#revisiPopup .form-textarea:focus,
+#parafNotifPopup .form-input:focus,
+#parafNotifPopup .form-textarea:focus {
+    border-color: #1e4ed8;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(30, 78, 216, 0.2);
+}
+
+/* Readonly inputs */
+#revisiPopup .form-input[readonly],
+#parafNotifPopup .form-input[readonly] {
+    background-color: #e5e7eb;
+    cursor: not-allowed;
+}
+
+/* Textarea min height */
+#revisiPopup .form-textarea,
+#parafNotifPopup .form-textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* Tombol di bagian bawah popup */
+#revisiPopup .popup-btns,
+#parafNotifPopup .popup-btns {
+    justify-content: flex-end;
+    margin-top: 25px;
+}
+
+/* Tombol konfirmasi (hijau) */
+#revisiPopup .btn-confirm,
+#parafNotifPopup .btn-confirm {
+    background: #10b981;
+}
+
+/* Hover untuk tombol konfirmasi */
+#revisiPopup .btn-confirm:hover,
+#parafNotifPopup .btn-confirm:hover {
+    background: #059669;
+}
+
+/* Tambahan kecil: pastikan box-sizing konsisten di dalam popup */
+#revisiPopup, #parafNotifPopup {
+    box-sizing: border-box;
+}

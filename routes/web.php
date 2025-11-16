@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\GoogleLoginController;
+use App\Http\Controllers\KaprodiController; 
 
 // Halaman utama diarahkan ke login
 Route::get('/', function () {
@@ -22,3 +23,13 @@ Route::get('/auth/google/callback', [GoogleLoginController::class, 'handleGoogle
 Route::get('/dashboard', function () {
     return view('dashboard.index');
 })->middleware('auth')->name('dashboard');
+
+
+// semua rute role di sini
+Route::middleware('auth')->group(function () {
+
+    Route::controller(KaprodiController::class)->group(function () {
+        Route::get('/review-surat', 'showReviewSurat')->name('kaprodi.review');
+        Route::get('/paraf-surat', 'showParafSurat')->name('kaprodi.paraf');
+    });
+});
