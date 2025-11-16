@@ -17,7 +17,12 @@ class DocumentController extends Controller
      */
     public function create()
     {
-        return view('Tu.upload');
+        // Ambil semua user yang BUKAN TU untuk jadi pilihan alur
+        $users = User::whereHas('role', function($query) {
+            $query->where('nama_role', '!=', 'TU');
+        })->get(['id', 'nama_lengkap']); // Ambil ID dan NAMA
+
+        return view('Tu.upload', ['users' => $users]); // Kirim data users ke view
     }
 
     /**
@@ -28,8 +33,10 @@ class DocumentController extends Controller
         // 1. Validasi input
         $validated = $request->validate([
             'judul_surat' => 'required|string|max:255',
-            'file_surat'  => 'required|file|mimes:pdf,doc,docx|max:2048',
-            'alur'         => 'required|string',  // Alur penandatanganan (misal: kaprodi_d3,kaprodi_d4,kajur)
+            'file_surat'  => 'required|file|mimes:docx|max:2048',
+            'kategori'    => 'required|string',
+            'tanggal'     => 'required|date',
+            'alur'        => 'required|string',
         ]);
 
         // 2. Ambil file dari request
@@ -40,39 +47,37 @@ class DocumentController extends Controller
         $filename = Str::uuid()->toString() . '.' . $ext;
 
         // 4. Simpan file ke storage/app/public/documents
-        $filePath = $file->storeAs('documents', $filename, 'public');
+        $filePath = $file->storeAs('documents', $filename);
 
         // 5. Simpan metadata dokumen ke database
         $document = Document::create([
             'judul_surat'      => $validated['judul_surat'],
-            'file_name'        => $filename,
-            'file_path'        => 'storage/' . $filePath, 
-            'status'           => 'Ditinjau',  // Status awal dokumen
+            'file_name'        => $file->getClientOriginalName(),
+            'file_path'        => $filePath, 
+            'kategori'         => $validated['kategori'],
+            'tanggal_surat'    => $validated['tanggal'],
+            'status'           => 'Ditinjau',
             'id_user_uploader' => Auth::id(),
             'id_client_app'    => 1,         
         ]);
 
         // 6. Ambil urutan alur yang dipilih (misalnya: ['kaprodi_d3', 'kaprodi_d4', 'kajur'])
-        $alurSteps = explode(',', $validated['alur']); 
+        $alurUserIds = explode(',', $validated['alur']);
 
         // Menyimpan langkah penandatanganan (workflow) untuk dokumen ini
-        foreach ($alurSteps as $index => $userRole) {
-            // Ambil user_id berdasarkan role
-            $userId = $this->getUserIdByRole($userRole); 
-
-            // Periksa jika user_id valid
-            if (!$userId) {
-                return redirect()->back()->withErrors("Role '$userRole' tidak valid atau tidak ditemukan.");
+        foreach ($alurUserIds as $index => $userId) {
+        
+            // Pastikan user-nya ada (keamanan)
+            $userExists = User::find($userId); 
+            if (!$userExists) {
+                return redirect()->back()->withErrors("User ID '$userId' tidak valid.");
             }
 
-            // Simpan langkah workflow ke tabel workflow_steps
             WorkflowStep::create([
                 'document_id' => $document->id,
-                'user_id'     => $userId,
-                'urutan'      => $index + 1, // Urutan penandatanganan
-                'status'      => 'Ditinjau',  // Status awal
-                'posisi_x_ttd'=> null, // Posisi tanda tangan (opsional)
-                'posisi_y_ttd'=> null, // Posisi tanda tangan (opsional)
+                'user_id'     => $userId, // <-- LANGSUNG PAKAI ID
+                'urutan'      => $index + 1,
+                'status'      => 'Ditinjau',
             ]);
         }
 
@@ -80,35 +85,6 @@ class DocumentController extends Controller
         return redirect()
             ->route('tu.upload.create')
             ->with('success', 'Surat berhasil diunggah dan menunggu peninjauan.');
-    }
-
-    /**
-     * Fungsi untuk mendapatkan user_id berdasarkan role
-     */
-    private function getUserIdByRole($role)
-    {
-        // Ambil user_id berdasarkan role
-        switch ($role) {
-            case 'kaprodi_d3':
-                $user = User::where('role', 'kaprodi_d3')->first();
-                break;
-            case 'kaprodi_d4':
-                $user = User::where('role', 'kaprodi_d4')->first();
-                break;
-            case 'kajur':
-                $user = User::where('role', 'kajur')->first();
-                break;
-            default:
-                $user = null;
-        }
-
-        // Pastikan user ditemukan
-        if ($user) {
-            return $user->id;
-        } else {
-            // Jika role tidak ditemukan, lemparkan error atau lakukan penanganan sesuai kebutuhan
-            return null; // Atau lemparkan exception jika role tidak ditemukan
-        }
     }
 
     /**

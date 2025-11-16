@@ -57,12 +57,12 @@
                     <input id="tanggal" name="tanggal" type="date" class="detail-input-inner" required>
                 </div>
                 <div class="detail-field-box">
-                    <label for="dosenSelect">Pilih Alur Penandatanganan :</label>
-                    <select id="dosenSelect" class="detail-input-inner">
-                        <option value="">Pilih alur…</option>
-                        <option value="kaprodi_d3">Kaprodi D3</option>
-                        <option value="kaprodi_d4">Kaprodi D4</option>
-                        <option value="kajur">Kajur</option>
+                    <label for="userSelect">Pilih Alur Penandatanganan :</label>
+                    <select id="userSelect" class="detail-input-inner">
+                        <option value="">Pilih penandatangan...</option>
+                        @foreach($users as $user)
+                            <option value="{{ $user->id }}">{{ $user->nama_lengkap }}</option>
+                        @endforeach
                     </select>
                 </div>
 
@@ -165,37 +165,47 @@ document.addEventListener("DOMContentLoaded", function() {
         submitButtonWrapper.style.display = "block";
     }
 
-    // Fungsi untuk menambah dosen ke dalam alur penandatanganan
-    dosenSelect.addEventListener('change', function() {
-        const dosenValue = this.value;
-        if (dosenValue) {
-            // Menambahkan dosen ke list alur
+    const userSelect = document.getElementById("userSelect");
+    const alurList = document.getElementById("alurList");     // <-- Pastikan ini ada
+    const alurInput = document.getElementById("alurInput");   // <-- Pastikan ini ada
+
+    // Fungsi untuk nambah user ke alur surat
+    userSelect.addEventListener('change', function() {
+        const userId = this.value;
+        const userName = this.options[this.selectedIndex].text;
+        
+        if (userId) {
             const listItem = document.createElement('li');
             listItem.classList.add('alur-item');
-            listItem.textContent = dosenSelect.options[dosenSelect.selectedIndex].text;
+            listItem.textContent = userName; // Tampilkan nama
+            listItem.dataset.userId = userId; // Simpan ID di data attribute
 
-            // Menambah tombol hapus untuk item alur
             const removeButton = document.createElement('button');
-            removeButton.classList.add('remove-alur-btn');
+            removeButton.classList.add('remove-alur-btn'); // <-- Pastikan class ini ada di CSS-mu
             removeButton.textContent = 'Hapus';
             removeButton.onclick = function() {
                 alurList.removeChild(listItem);
                 updateAlurInput();
             };
-            listItem.appendChild(removeButton);
 
+            listItem.appendChild(removeButton);
             alurList.appendChild(listItem);
             updateAlurInput();
+            
+            // Reset dropdown
+            this.value = ""; 
         }
     });
 
-    // Update hidden input alur
+    // Fungsi untuk update alur surat
     function updateAlurInput() {
-        const alurSteps = [];
+        const alurUserIds = [];
         alurList.querySelectorAll('li').forEach((item) => {
-            alurSteps.push(item.textContent.replace('Hapus', '').trim());
+            // Ambil ID-nya
+            alurUserIds.push(item.dataset.userId); 
         });
-        alurInput.value = alurSteps.join(',');  // Mengirimkan data alur sebagai string
+        // Kirim ID sebagai string (misal: "10,12")
+        alurInput.value = alurUserIds.join(',');
     }
 
     // FUNGSI RESET (kalau nanti mau dipakai)
