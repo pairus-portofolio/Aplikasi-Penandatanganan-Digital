@@ -4,15 +4,15 @@
 @section('content')
   <h1 class="page-title">Dashboard</h1>
 
-  <!-- {{-- Pesan sambutan, menampilkan nama pengguna dari session --}} -->
+  <!-- Menampilkan pesan sambutan dengan nama user dari session -->
   <p class="welcome">
     Selamat datang <strong>{{ session('user_name') ?? 'Nama Pengguna' }}</strong>!
   </p>
 
-  <!-- {{-- Menyertakan file partial untuk menampilkan card (misalnya ringkasan data) --}} -->
+  <!-- Menyertakan komponen kartu ringkasan data -->
   @include('partials.cards')
     
-  <!-- {{-- Tabel daftar surat --}} -->
+  <!-- Wrapper tabel daftar surat -->
   <div class="table-shell">
     <table>
       <thead>
@@ -25,28 +25,34 @@
         </tr>
       </thead>
       <tbody>
-        <!-- {{-- Menampilkan data surat jika tersedia, atau data contoh jika belum ada --}} -->
+
+        <!-- Menampilkan daftar surat jika tersedia. Jika tidak ada, gunakan data dummy -->
         @forelse(($daftarSurat ?? [
           ['nomor'=>'B/6756/UN31.FST/PK.01.00/2025','nama'=>'Nama surat','tanggal'=>'26/08/2025','status'=>'Ditinjau','status_class'=>'kuning'],
           ['nomor'=>'B/6756/UN31.FST/PK.01.00/2025','nama'=>'Nama surat','tanggal'=>'07/11/2024','status'=>'Perlu Revisi','status_class'=>'merah'],
           ['nomor'=>'B/6756/UN31.FST/PK.01.00/2025','nama'=>'Nama surat','tanggal'=>'19/01/2025','status'=>'Diparaf','status_class'=>'biru'],
           ['nomor'=>'B/6756/UN31.FST/PK.01.00/2025','nama'=>'Nama surat','tanggal'=>'17/03/2025','status'=>'Ditandatangani','status_class'=>'hijau'],
         ]) as $s)
+
         <tr>
-          <!-- {{-- Menampilkan data surat --}} -->
+          <!-- Menampilkan nomor surat -->
           <td>{{ $s['nomor'] }}</td>
+
+          <!-- Menampilkan judul surat -->
           <td>{{ $s['nama'] }}</td>
+
+          <!-- Menampilkan tanggal surat -->
           <td>{{ $s['tanggal'] }}</td>
 
-          <!-- {{-- Status surat dengan warna sesuai class --}} -->
+          <!-- Menampilkan badge status dengan warna sesuai class -->
           <td><span class="pill {{ $s['status_class'] }}">{{ $s['status'] }}</span></td>
 
-          <!-- {{-- Tombol aksi untuk melihat detail surat --}} -->
+          <!-- Tombol untuk melihat detail surat -->
           <td><a class="aksi" href="#">Lihat</a></td>
         </tr>
 
-        <!-- {{-- Jika tidak ada data surat --}} -->
         @empty
+        <!-- Pesan jika tidak ada data surat -->
         <tr>
           <td colspan="5" style="text-align:center;color:#94a3b8;padding:22px">
             Belum ada data surat.
@@ -57,23 +63,28 @@
     </table>
   </div>
 
-  <!-- {{-- Footer halaman --}} -->
+  <!-- Footer halaman -->
   <div class="foot">Sistem Manajemen Surat - Politeknik Negeri Bandung</div>
 @endsection
 
 @section('popup')
-  {{-- Popup konfirmasi logout --}}
+  <!-- Popup konfirmasi logout -->
   <div class="popup" id="logoutPopup">
     <div class="popup-content">
+
+      <!-- Judul popup -->
       <h3>Konfirmasi Logout</h3>
+
+      <!-- Pesan konfirmasi -->
       <p>Apakah Anda yakin ingin keluar dari sistem?</p>
 
-      {{-- Tombol aksi popup --}}
+      <!-- Tombol-tombol di popup -->
       <div class="popup-btns">
-        {{-- Tombol batal logout --}}
+
+        <!-- Tombol untuk menutup popup tanpa logout -->
         <button class="btn-cancel" id="cancelLogout">Batal</button>
 
-        {{-- Tombol konfirmasi logout (kirim form POST ke route logout) --}}
+        <!-- Form logout yang mengirim request POST -->
         <form method="POST" action="{{ route('logout') }}">
           @csrf
           <button type="submit" class="btn-confirm">Logout</button>
