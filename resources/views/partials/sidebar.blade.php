@@ -54,13 +54,9 @@
 
   <!-- Bagian footer sidebar: tombol logout -->
   <div class="sb-foot">
-      <form method="POST" action="{{ route('logout') }}">
-      @csrf
-
-      <!-- Tombol logout -->
-      <button type="submit" class="logout-btn">
-        <i class="fa-solid fa-arrow-right-from-bracket fa-fw"></i><span>Logout</span>
+      <button type="button" id="logoutBtn" class="logout-btn">
+        <i class="fa-solid fa-arrow-right-from-bracket fa-fw"></i>
+        <span>Logout</span>
       </button>
-      </form> <!-- Menutup tag form logout -->
-  </div> <!-- Menutup div sb-foot -->
+  </div>
 </aside> <!-- Menutup tag aside -->
