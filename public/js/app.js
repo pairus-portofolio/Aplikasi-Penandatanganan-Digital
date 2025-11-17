@@ -1,54 +1,142 @@
 // public/js/app.js
-
 (function () {
-    const hb = document.getElementById("hb"); // Tombol hamburger
-    const html = document.documentElement; // Elemen HTML
-    const overlay = document.getElementById("overlay"); // Overlay hitam untuk mobile
 
-    // Fungsi cek apakah tampilan adalah mode mobile
-    const isMobile = () => window.matchMedia("(max-width: 992px)").matches;
+    /* ===============================
+       SIDEBAR LOGIC (MOBILE & DESKTOP)
+       =============================== */
+    const hb = document.getElementById("hb");
+    const html = document.documentElement;
+    const overlay = document.getElementById("overlay");
 
-    // Event: klik tombol hamburger → toggle sidebar
-    if (hb) {
-        hb.addEventListener("click", () => {
-            if (isMobile()) {
-                document.body.classList.toggle("show-sb"); // Mode mobile
-            } else {
-                html.classList.toggle("collapsed"); // Mode desktop
-            }
-        });
-    }
+    const isMobile = () =>globalThis.matchMedia("(max-width: 992px)").matches;
 
-    // Event: klik overlay → tutup sidebar mobile
-    if (overlay) {
-        overlay.addEventListener("click", () => {
-            document.body.classList.remove("show-sb");
-        });
-    }
+    const toggleSidebar = () => {
+        if (isMobile()) document.body.classList.toggle("show-sb");
+        else html.classList.toggle("collapsed");
+    };
 
-    // Event: saat browser di-resize → pastikan sidebar mobile tidak nge-bug
+    const closeSidebar = () => document.body.classList.remove("show-sb");
+
+    if (hb) hb.addEventListener("click", toggleSidebar);
+    if (overlay) overlay.addEventListener("click", closeSidebar);
+
     window.addEventListener("resize", () => {
-        if (!isMobile()) {
-            document.body.classList.remove("show-sb");
-        }
+        if (!isMobile()) closeSidebar();
     });
 
-    // === Logika Popup Logout ===
-    const logoutBtn = document.getElementById("logoutBtn"); // Tombol untuk membuka popup logout
-    const popup = document.getElementById("logoutPopup"); // Elemen popup logout
-    const cancelBtn = document.getElementById("cancelLogout"); // Tombol untuk menutup popup
 
-    if (logoutBtn && popup) {
-        // Event: buka popup logout
-        logoutBtn.addEventListener("click", () => {
-            popup.classList.add("show");
-        });
+    /* ===============================
+       POPUP LOGOUT
+       =============================== */
+    const logoutBtn = document.getElementById("logoutBtn");
+    const logoutPopup = document.getElementById("logoutPopup");
+    const cancelLogout = document.getElementById("cancelLogout");
+
+    if (logoutBtn && logoutPopup) {
+        logoutBtn.addEventListener("click", () => logoutPopup.classList.add("show"));
+    }
+    if (cancelLogout && logoutPopup) {
+        cancelLogout.addEventListener("click", () => logoutPopup.classList.remove("show"));
     }
 
-    if (cancelBtn && popup) {
-        // Event: tutup popup logout
-        cancelBtn.addEventListener("click", () => {
-            popup.classList.remove("show");
-        });
+
+    /* ===============================
+       POPUP NOTIFIKASI
+       =============================== */
+    const kirimNotifikasiBtn = document.getElementById("kirimNotifikasiBtn");
+    const popupNotifikasi = document.getElementById("parafNotifPopup");
+    const cancelNotifikasi = document.getElementById("batalKirim");
+
+    if (kirimNotifikasiBtn && popupNotifikasi) {
+        kirimNotifikasiBtn.addEventListener("click", () => popupNotifikasi.classList.add("show"));
     }
+    if (cancelNotifikasi && popupNotifikasi) {
+        cancelNotifikasi.addEventListener("click", () => popupNotifikasi.classList.remove("show"));
+    }
+
+
+    /* ===============================
+       POPUP MINTA REVISI
+       =============================== */
+    const mintaRevisiBtn = document.getElementById("mintaRevisiBtn");
+    const revisiPopup = document.getElementById("revisiPopup");
+    const batalBp = document.getElementById("batalBp");
+
+    if (mintaRevisiBtn && revisiPopup) {
+        mintaRevisiBtn.addEventListener("click", () => revisiPopup.classList.add("show"));
+    }
+    if (batalBp && revisiPopup) {
+        batalBp.addEventListener("click", () => revisiPopup.classList.remove("show"));
+    }
+
+
+    /* ===============================
+       ZOOM PREVIEW
+       =============================== */
+    let zoomLevel = 1;
+    const preview = document.getElementById("previewPage");
+
+    const zoomIn = () => {
+        zoomLevel += 0.1;
+        preview.style.transform = `scale(${zoomLevel})`;
+    };
+
+    const zoomOut = () => {
+        if (zoomLevel <= 0.3) return;
+        zoomLevel -= 0.1;
+        preview.style.transform = `scale(${zoomLevel})`;
+    };
+
+    const zoomInBtn = document.getElementById("zoomInBtn");
+    const zoomOutBtn = document.getElementById("zoomOutBtn");
+
+    if (zoomInBtn && zoomOutBtn && preview) {
+        zoomInBtn.addEventListener("click", zoomIn);
+        zoomOutBtn.addEventListener("click", zoomOut);
+    }
+
+
+    /* ===============================
+       PARAF UPLOAD
+       =============================== */
+    document.addEventListener('DOMContentLoaded', () => {
+        const parafBox = document.getElementById("parafBox");
+        const parafImage = document.getElementById("parafImage");
+        const fileInput = document.getElementById("parafImageUpload");
+        const gantiBtn = document.getElementById("parafGantiBtn");
+        const hapusBtn = document.getElementById("parafHapusBtn");
+
+        if (!parafBox || !parafImage || !fileInput || !gantiBtn || !hapusBtn) return;
+
+        const triggerUpload = () => fileInput.click();
+
+        parafBox.addEventListener('click', triggerUpload);
+
+        gantiBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            triggerUpload();
+        });
+
+        hapusBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            parafImage.src = '';
+            parafBox.classList.remove('has-image');
+            parafBox.querySelector(".paraf-text").style.display = "block";
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                parafImage.src = ev.target.result;
+                parafImage.style.display = "block";
+                parafBox.querySelector(".paraf-text").style.display = "none";
+                parafBox.classList.add('has-image');
+            };
+            reader.readAsDataURL(file);
+        });
+    });
+
 })();

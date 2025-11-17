@@ -100,6 +100,10 @@
 
 @endsection
 
+@section('popup')
+    @include('partials.logout-popup')
+@endsection
+
 @push('scripts')
     <script src="{{ asset('js/tu/upload.js') }}"></script>
 @endpush
