@@ -1,0 +1,11 @@
+/* public/css/dashboard/content.css */
+.content {
+  padding:28px 50px 28px 70px;
+  overflow-y: auto;  /* Allow scroll untuk dashboard lain */
+}
+.content.no-scroll {
+  overflow-y: hidden;  /* Jangan scroll khusus di review-surat */
+}
+.inner {max-width:1080px;margin:0 auto;}
+.page-title {font-size:40px;font-weight:900;margin:0 0 8px;}
+.welcome {font-size:18px;font-weight:700;margin:0 0 18px;}
