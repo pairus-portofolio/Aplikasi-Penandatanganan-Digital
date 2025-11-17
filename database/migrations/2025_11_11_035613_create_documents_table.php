@@ -16,6 +16,8 @@ return new class extends Migration
             $table->string('file_path')->nullable();
             $table->string('file_name')->nullable();
             $table->string('judul_surat');
+            $table->string('kategori')->nullable();
+            $table->string('tanggal_surat')->nullable();
             $table->string('status')->default('Ditinjau');
             $table->foreignId('id_user_uploader')->constrained('users');
             $table->foreignId('id_client_app')->constrained('api_clients');

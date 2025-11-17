@@ -1,0 +1,27 @@
+/* public/css/dashboard/base.css */
+:root {
+  --blue-sidebar-1:#002d5b;
+  --blue-sidebar-2:#0a3a7a;
+  --blue-topbar:#1e4ed8;
+  --blue-cap-1:#68a2ff;
+  --blue-cap-2:#4d86f0;
+  --bg:#f4f6fb;
+  --ink:#0b1220;
+  --muted:#6b7280;
+  --card:#ffffff;
+  --line:rgba(15,23,42,.1);
+  --shadow:0 8px 20px rgba(0,0,0,.08);
+  --radius:18px;
+  --sidebar-w:240px;
+  --logout-bg:#001f40;
+  --transition-speed:.28s;
+}
+
+html, body {
+  margin:0;
+  height:100%;
+  font-family:"Inter", system-ui, sans-serif;
+  background:var(--bg);
+  color:var(--ink);
+  overflow-x:hidden;
+}
