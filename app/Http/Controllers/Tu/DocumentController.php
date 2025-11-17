@@ -20,7 +20,7 @@ class DocumentController extends Controller
             $query->where('nama_role', '!=', 'TU');
         })->get(['id', 'nama_lengkap']); // ambil hanya id dan nama
 
-        return view('Tu.upload', ['users' => $users]);
+        return view('tu.upload', ['users' => $users]);
     }
 
     // Proses upload surat
