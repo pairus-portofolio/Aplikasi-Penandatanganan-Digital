@@ -66,7 +66,7 @@ class AuthController extends Controller
         // Jika tetap gagal login
         return back()
             ->withInput($request->only('email'))
-            ->with('error', 'Kredensial tidak cocok.');
+            ->with('error', 'Email tidak valid');
     }
 
     // Proses logout user

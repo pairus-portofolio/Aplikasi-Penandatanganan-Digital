@@ -44,7 +44,7 @@ class GoogleLoginController extends Controller
                 return redirect()->intended('/dashboard');
             } else {
                 // Jika user tidak terdaftar
-                return redirect('/')->with('error', 'Akun Google Anda tidak terdaftar di sistem kami.');
+                return redirect('/')->with('error', 'Email tidak valid');
             }
 
         } catch (Exception $e) {

@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\GoogleLoginController;
 use App\Http\Controllers\Tu\DocumentController;
-use App\Http\Controllers\KaprodiController;
+use App\Http\Controllers\Kaprodi\KaprodiController; 
 
 // Halaman utama diarahkan ke login
 Route::get('/', function () {
@@ -30,10 +30,10 @@ Route::get('/dashboard', function () {
 // TU
 Route::middleware(['auth'])->group(function () {
     // Halaman upload surat TU
-    Route::get('/Tu/upload', [DocumentController::class, 'create'])->name('tu.upload.create');
+    Route::get('/tu/upload', [DocumentController::class, 'create'])->name('tu.upload.create');
 
     // Proses upload surat
-    Route::post('/Tu/upload', [DocumentController::class, 'store'])->name('tu.upload.store');
+    Route::post('/tu/upload', [DocumentController::class, 'store'])->name('tu.upload.store');
 });
 
 // Kaprodi D3 & D4
