@@ -3,7 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\GoogleLoginController;
-use App\Http\Controllers\KaprodiController; 
+use App\Http\Controllers\Tu\DocumentController;
+use App\Http\Controllers\KaprodiController;
 
 // Halaman utama diarahkan ke login
 Route::get('/', function () {
@@ -24,12 +25,23 @@ Route::get('/dashboard', function () {
     return view('dashboard.index');
 })->middleware('auth')->name('dashboard');
 
-
 // semua rute role di sini
+
+// TU
+Route::middleware(['auth'])->group(function () {
+    // Halaman upload surat TU
+    Route::get('/Tu/upload', [DocumentController::class, 'create'])->name('tu.upload.create');
+
+    // Proses upload surat
+    Route::post('/Tu/upload', [DocumentController::class, 'store'])->name('tu.upload.store');
+});
+
+// Kaprodi D3 & D4
 Route::middleware('auth')->group(function () {
 
     Route::controller(KaprodiController::class)->group(function () {
         Route::get('/review-surat', 'showReviewSurat')->name('kaprodi.review');
         Route::get('/paraf-surat', 'showParafSurat')->name('kaprodi.paraf');
     });
+
 });

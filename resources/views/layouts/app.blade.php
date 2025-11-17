@@ -23,55 +23,52 @@
 
 <body>
   <div class="wrap" id="wrap">
+    <!-- Sidebar -->
     @include('partials.sidebar')
 
+    <!-- Main content -->
     <main class="main">
+      <!-- Topbar navigasi -->
       @include('partials.topbar')
 
       @yield('page-header')
 
       <section class="content">
         <div class="inner">
+          <!-- Area konten dinamis yang diisi masing-masing halaman -->
           @yield('content')
         </div>
       </section>
     </main>
   </div>
 
+  <!-- Overlay untuk sidebar versi mobile -->
   <div id="overlay"></div>
-  
   @yield('popup')
 
+  <!-- JS interaktif -->
   <script>
     (function(){
-      const hb = document.getElementById('hb');
-      const html = document.documentElement;
-      const overlay = document.getElementById('overlay');
+      const hb = document.getElementById('hb');            // Tombol hamburger
+      const html = document.documentElement;               // Elemen HTML
+      const overlay = document.getElementById('overlay');  // Overlay hitam untuk mobile
+      
+      // Fungsi cek apakah tampilan adalah mode mobile
       const isMobile = () => window.matchMedia('(max-width: 992px)').matches;
 
-      if(hb) {
-        hb.addEventListener('click', () => {
-          if (isMobile()) document.body.classList.toggle('show-sb');
-          else html.classList.toggle('collapsed');
-        });
-      }
-      if(overlay) {
-        overlay.addEventListener('click', () => document.body.classList.remove('show-sb'));
-      }
+      hb.addEventListener('click', () => {
+        if (isMobile()) document.body.classList.toggle('show-sb');
+        else html.classList.toggle('collapsed');
+      });
+      overlay.addEventListener('click', () => document.body.classList.remove('show-sb'));
       window.addEventListener('resize', () => { if (!isMobile()) document.body.classList.remove('show-sb'); });
 
       const logoutBtn = document.getElementById('logoutBtn');
       const popup = document.getElementById('logoutPopup');
       const cancelBtn = document.getElementById('cancelLogout');
-      
-      if(logoutBtn && popup && cancelBtn) {
-        logoutBtn.addEventListener('click', () => popup.classList.add('show'));
-        cancelBtn.addEventListener('click', () => popup.classList.remove('show'));
-      }
+      logoutBtn.addEventListener('click', () => popup.classList.add('show'));
+      cancelBtn.addEventListener('click', () => popup.classList.remove('show'));
     })();
   </script>
-  
-  @yield('scripts')
-
 </body>
 </html>
