@@ -1,31 +1,37 @@
-/* Panel atas (Pratinjau : Nama Surat) */
+/* Header bagian atas untuk area pratinjau dokumen */
 .pv-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 50px 14px 70px; 
+  padding: 14px 50px 14px 70px;
   background: #e5e7eb;
   border-bottom: none;
   width: 100%;
   box-sizing: border-box;
   transition: margin-left var(--transition-speed) ease, width var(--transition-speed) ease;
   position: sticky;
-  top: 66px; /* Tinggi .topbar */
-  z-index: 490; 
+  top: 66px;
+  z-index: 490;
 }
 
-/* Responsive untuk header */
+/* Penyesuaian header saat sidebar dicollapse */
 html.collapsed .pv-header {
   margin-left: auto;
   width: 100%;
 }
+
+/* Responsif header untuk tampilan mobile */
 @media (max-width: 992px) {
+
+  /* Header mengecil dan menempel ke atas */
   .pv-header {
     margin: -18px auto 0;
     padding: 12px 16px;
     width: 100%;
     max-width: 100%;
   }
+
+  /* Header tetap full width saat sidebar mobile terbuka */
   body.show-sb .pv-header {
     margin-left: auto;
     width: 100%;

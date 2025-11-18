@@ -1,4 +1,4 @@
-/* public/css/dashboard/topbar.css */
+/* Header atas halaman */
 .topbar {
   background:var(--blue-topbar);
   color:#fff;
@@ -13,28 +13,49 @@
   transition:padding var(--transition-speed) ease;
 }
 
+/* Kiri topbar: judul + hamb icon */
 .tleft {
   display:flex;
   align-items:center;
   gap:14px;
 }
 
+/* Tombol hamburger */
 .hamb {
-  width:42px;height:42px;
-  border:none;cursor:pointer;border-radius:10px;
+  width:42px;
+  height:42px;
+  border:none;
+  cursor:pointer;
+  border-radius:10px;
   background:rgba(255,255,255,.2);
-  color:#fff;font-size:18px;
-  display:flex;align-items:center;justify-content:center;
+  color:#fff;
+  font-size:18px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
   transition:background .2s, transform .15s ease;
   margin-left:20px;
 }
+
+/* Hover tombol hamburger */
 .hamb:hover {
   background:rgba(255,255,255,.35);
   transform:scale(1.05);
 }
 
-.user-wrap {display:flex;align-items:center;gap:12px;font-weight:700;}
+/* Wrapper identitas user di kanan */
+.user-wrap {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  font-weight:700;
+}
+
+/* Avatar user */
 .user-wrap .avatar {
-  background:#fff;color:var(--blue-topbar);
-  border:none;border-radius:12px;padding:8px 10px;
+  background:#fff;
+  color:var(--blue-topbar);
+  border:none;
+  border-radius:12px;
+  padding:8px 10px;
 }

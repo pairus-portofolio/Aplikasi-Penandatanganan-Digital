@@ -12,21 +12,21 @@ use Illuminate\Support\Str;
 
 class DocumentController extends Controller
 {
-    // Tampilkan halaman form upload surat
+    // Menampilkan halaman upload surat beserta daftar user penandatangan
     public function create()
     {
         // Ambil semua user yang bukan role TU
         $users = User::whereHas('role', function($query) {
             $query->where('nama_role', '!=', 'TU');
-        })->get(['id', 'nama_lengkap']); // ambil hanya id dan nama
+        })->get(['id', 'nama_lengkap']);
 
         return view('tu.upload', ['users' => $users]);
     }
 
-    // Proses upload surat
+    // Menyimpan surat yang diupload dan membuat workflow penandatangan
     public function store(Request $request)
     {
-        // Validasi input form
+        // Validasi data form upload
         $validated = $request->validate([
             'judul_surat' => 'required|string|max:255',
             'file_surat'  => 'required|file|mimes:docx|max:2048',
@@ -35,17 +35,17 @@ class DocumentController extends Controller
             'alur'        => 'required|string',
         ]);
 
-        // Ambil file dari request
+        // Mengambil file yang diupload
         $file = $request->file('file_surat');
         $ext  = $file->getClientOriginalExtension();
 
-        // Generate nama file baru (unik)
+        // Membuat nama file unik
         $filename = Str::uuid()->toString() . '.' . $ext;
 
-        // Simpan file ke storage/documents
+        // Menyimpan file ke storage
         $filePath = $file->storeAs('documents', $filename);
 
-        // Simpan metadata ke database
+        // Menyimpan data surat ke database
         $document = Document::create([
             'judul_surat'      => $validated['judul_surat'],
             'file_name'        => $file->getClientOriginalName(),
@@ -57,22 +57,22 @@ class DocumentController extends Controller
             'id_client_app'    => 1,
         ]);
 
-        // Pecah string alur menjadi array user ID
+        // Mengubah string daftar user menjadi array
         $alurUserIds = explode(',', $validated['alur']);
 
-        // Simpan setiap langkah workflow
+        // Membuat langkah workflow untuk tiap user
         foreach ($alurUserIds as $index => $userId) {
 
-            // Validasi apakah user ID valid
+            // Validasi user penandatangan
             if (!User::find($userId)) {
                 return redirect()->back()->withErrors("User ID '$userId' tidak valid.");
             }
 
-            // Buat step baru dalam workflow
+            // Menambahkan step workflow ke database
             WorkflowStep::create([
                 'document_id' => $document->id,
                 'user_id'     => $userId,
-                'urutan'      => $index + 1, // urutan dimulai dari 1
+                'urutan'      => $index + 1,
                 'status'      => 'Ditinjau',
             ]);
         }
@@ -83,15 +83,15 @@ class DocumentController extends Controller
             ->with('success', 'Surat berhasil diunggah dan menunggu peninjauan.');
     }
 
-    // Menampilkan detail dokumen + status workflow
+    // Menampilkan detail dokumen beserta status workflow
     public function show(Document $document)
     {
-        // Ambil semua langkah workflow berdasarkan urutan
+        // Mengambil semua langkah workflow berdasarkan urutan
         $workflowSteps = WorkflowStep::where('document_id', $document->id)
             ->orderBy('urutan')
             ->get();
 
-        // Ambil step yang cocok dengan user saat ini
+        // Mengambil step khusus untuk user yang sedang login
         $currentStep = $workflowSteps->firstWhere('user_id', Auth::id());
 
         // Jika user tidak punya akses pada dokumen
@@ -102,34 +102,35 @@ class DocumentController extends Controller
         return view('document.show', compact('document', 'currentStep', 'workflowSteps'));
     }
 
-    // Update status penandatanganan workflow (paraf/ttd)
+    // Mengupdate status penandatanganan workflow oleh user
     public function updateStatus(Request $request, $documentId, $stepId)
     {
-        // Ambil step berdasarkan ID
+        // Mengambil step yang ingin diperbarui
         $step = WorkflowStep::find($stepId);
 
-        // Pastikan step sesuai dengan dokumen
+        // Memastikan step sesuai dengan dokumen yang dimaksud
         if ($step->document_id !== $documentId) {
             return redirect()->back()->withErrors('Langkah ini tidak valid.');
         }
 
-        // Ubah status step menjadi signed
+        // Menandai step sebagai selesai ditandatangani
         $step->status = 'signed';
         $step->tanggal_aksi = now();
         $step->save();
 
-        // Periksa apakah semua step sudah signed
+        // Mengecek apakah semua step sudah ditandatangani
         $allSigned = WorkflowStep::where('document_id', $documentId)
                                 ->where('status', '!=', 'signed')
                                 ->count() == 0;
 
-        // Jika semua sudah signed → update status dokumen
+        // Jika seluruh step selesai, update status dokumen menjadi completed
         if ($allSigned) {
             $document = Document::find($documentId);
             $document->status = 'completed';
             $document->save();
         }
 
+        // Kembali ke halaman upload dengan notifikasi sukses
         return redirect()
             ->route('tu.upload.create')
             ->with('success', 'Langkah penandatanganan selesai.');

@@ -1,12 +1,13 @@
+<!-- Topbar utama yang berisi tombol sidebar dan informasi pengguna -->
 <header class="topbar">
   <div class="tleft">
 
-     <!-- Tombol hamburger untuk membuka/menutup sidebar -->
+    <!-- Tombol untuk membuka/menutup sidebar -->
     <button id="hb" class="hamb" aria-label="Toggle sidebar">
       <i class="fa-solid fa-bars"></i>
     </button>
 
-     <!-- Judul topbar yang berubah sesuai role pengguna -->
+    <!-- Menampilkan judul dashboard sesuai role pengguna -->
     <h2 style="font-size:20px;font-weight:700;margin:0;">
       @php
         $roleId = Auth::user()->role_id ?? null;
@@ -39,11 +40,11 @@
     </h2>
   </div>
 
+  <!-- Bagian kanan topbar yang menampilkan nama & avatar user -->
   <div class="user-wrap">
-     <!-- Menampilkan nama user yang sedang login -->
     <span>{{ Auth::user()->nama_lengkap ?? 'Nama Pengguna' }}</span>
 
-    <!-- Tombol avatar user, juga berisi informasi role sebagai tooltip -->
+    <!-- Avatar user (ikon profil) -->
     <button class="avatar" title="{{ Auth::user()->role->nama_role ?? '' }}">
       <i class="fa-solid fa-user"></i>
     </button>

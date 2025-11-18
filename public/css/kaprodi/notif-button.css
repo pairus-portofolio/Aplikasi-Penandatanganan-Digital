@@ -1,12 +1,16 @@
-/* Tombol Kirim Notifikasi (Paraf) - dipisah agar modular */
+/* Tombol aksi utama berwarna biru */
 .pv-primary-btn.btn-blue {
     background: #0C8CE9;
     box-shadow: 0 4px 14px rgba(30, 78, 216, 0.3);
 }
+
+/* Efek hover tombol biru */
 .pv-primary-btn.btn-blue:hover {
     background: #2563eb;
     box-shadow: 0 6px 18px rgba(30, 78, 216, 0.4);
 }
+
+/* Efek klik tombol biru */
 .pv-primary-btn.btn-blue:active {
     box-shadow: 0 2px 8px rgba(30, 78, 216, 0.3);
 }

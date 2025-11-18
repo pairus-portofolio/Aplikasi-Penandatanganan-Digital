@@ -1,21 +1,27 @@
-/* --- Aturan Layout Area Preview Surat (Paraf) --- */
+/* Layout container untuk sidebar paraf + area preview */
 .paraf-layout-container {
     display: flex;
-    flex-wrap: wrap; 
+    flex-wrap: wrap;
     gap: 24px;
 }
+
+/* Sidebar berisi tombol/aksi paraf */
 .paraf-sidebar {
     flex: 0 0 180px;
 }
+
+/* Area untuk pratinjau dokumen */
 .paraf-preview-area {
     flex: 1;
     min-width: 0;
 }
+
+/* Halaman preview */
 #previewPage {
     margin: 0;
 }
 
-/* Kotak Template Paraf */
+/* Kotak template paraf sebelum gambar di-upload */
 .paraf-template-box {
     width: 100%;
     height: 120px;
@@ -28,26 +34,30 @@
     border: 2px dashed #ccc;
     background: #fdfdfd;
     cursor: pointer;
-    transition: background .2s ease, border-color .2s ease;
+    transition: background 0.2s ease, border-color 0.2s ease;
     position: relative;
     overflow: hidden;
     padding: 5px;
     box-sizing: border-box;
 }
+
+/* Hover efek kotak template */
 .paraf-template-box:hover {
     background: #f4f4f4;
     border-color: #aaa;
 }
 
-/* Teks "Klik untuk upload" */
+/* Teks dalam template ketika belum ada gambar */
 .paraf-template-box .paraf-text {
     display: block;
 }
+
+/* Sembunyikan teks jika sudah ada gambar */
 .paraf-template-box.has-image .paraf-text {
     display: none;
 }
 
-/* Gambar Paraf */
+/* Preview gambar paraf pada sidebar */
 .paraf-image-preview {
     width: 100%;
     height: 100%;
@@ -55,14 +65,18 @@
     cursor: grab;
     display: none;
 }
+
+/* Tampilkan gambar jika sudah ter-upload */
 .paraf-template-box.has-image .paraf-image-preview {
     display: block;
 }
+
+/* Efek klik saat gambar di-drag */
 .paraf-image-preview:active {
     cursor: grabbing;
 }
 
-/* Ikon Ganti & Hapus Paraf*/
+/* Tombol aksi (ganti/hapus) dalam template */
 .paraf-box-actions {
     position: absolute;
     top: 5px;
@@ -70,11 +84,15 @@
     display: none;
     gap: 5px;
 }
+
+/* Tampilkan tombol aksi jika ada gambar */
 .paraf-template-box.has-image .paraf-box-actions {
     display: flex;
 }
+
+/* Style tombol ganti/delete */
 .paraf-action-btn {
-    background: rgba(255,255,255,0.8);
+    background: rgba(255, 255, 255, 0.8);
     border: 1px solid #ccc;
     border-radius: 5px;
     width: 28px;
@@ -86,12 +104,14 @@
     align-items: center;
     justify-content: center;
 }
+
+/* Hover efek tombol */
 .paraf-action-btn:hover {
     background: #fff;
     color: #000;
 }
 
-/* Paraf yang di-Drop & 'Selected' */
+/* Elemen paraf yang sudah di-drop ke halaman */
 .paraf-dropped {
     position: absolute;
     width: 150px;
@@ -101,17 +121,21 @@
     border: 2px dashed rgba(0, 0, 0, 0.3);
     cursor: grab;
 }
+
+/* Efek saat paraf sedang digerakkan */
 .paraf-dropped:active {
     cursor: grabbing;
     z-index: 11;
 }
+
+/* Highlight ketika paraf sedang dipilih */
 .paraf-dropped.selected {
     border: 2px solid #1e4ed8;
     box-shadow: 0 0 10px rgba(30, 78, 216, 0.5);
     background: rgba(230, 230, 255, 0.6);
 }
 
-/* Feedback area drop */
+/* Efek visual border saat area drop aktif */
 .paraf-drop-zone {
     transition: border-color 0.2s ease;
 }

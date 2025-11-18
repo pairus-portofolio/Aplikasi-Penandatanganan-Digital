@@ -14,67 +14,71 @@ class AuthController extends Controller
         return view('auth.login');
     }
 
-    // Proses login user
+    // Memproses login pengguna
     public function login(Request $request)
     {
-        // Validasi input form
+        // Validasi input login
         $credentials = $request->validate([
             'email' => ['required', 'string'],
             'password' => ['required'],
         ]);
 
-        // Tentukan apakah login menggunakan email atau nama_lengkap
+        // Menentukan apakah login memakai email atau nama lengkap
         $loginField = filter_var($credentials['email'], FILTER_VALIDATE_EMAIL) ? 'email' : 'nama_lengkap';
 
-        // Coba login dengan data yang diberikan
+        // Mencoba login dengan kredensial yang dimasukkan
         $attempt = Auth::attempt(
             [$loginField => $credentials['email'], 'password' => $credentials['password']],
             $request->filled('remember')
         );
 
-        // Jika berhasil login
+        // Jika login berhasil
         if ($attempt) {
             $request->session()->regenerate();
             return redirect()->intended(route('dashboard'));
         }
 
-        // Jika gagal, cek kemungkinan password masih disimpan dalam bentuk plaintext (misal dari seeder)
+        // Mencari user untuk kemungkinan password yang masih plaintext
         $userQuery = $loginField === 'email'
             ? ['email' => $credentials['email']]
             : ['nama_lengkap' => $credentials['email']];
 
         $user = User::where($userQuery)->first();
 
-        // Jika ditemukan dan password cocok (plaintext)
+        // Validasi login untuk user yang menyimpan password plaintext
         if ($user && $user->password === $credentials['password']) {
-            // Hash password agar aman (otomatis oleh cast 'hashed' di model User)
+            // Mengubah plaintext password menjadi hash
             $user->password = $credentials['password'];
             $user->save();
 
-            // Coba login ulang setelah password di-hash
+            // Mencoba login ulang setelah password diperbaiki
             $attempt = Auth::attempt(
                 [$loginField => $credentials['email'], 'password' => $credentials['password']],
                 $request->filled('remember')
             );
 
+            // Jika berhasil setelah diperbaiki
             if ($attempt) {
                 $request->session()->regenerate();
                 return redirect()->intended(route('dashboard'));
             }
         }
 
-        // Jika tetap gagal login
+        // Jika login gagal, kirim pesan error
         return back()
             ->withInput($request->only('email'))
             ->with('error', 'Email tidak valid');
     }
 
-    // Proses logout user
+    // Logout pengguna dan mengakhiri sesi
     public function logout(Request $request)
     {
+        // Logout dan menghapus sesi user
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
+        // Arahkan kembali ke halaman login
         return redirect()->route('auth.login');
     }
 }
