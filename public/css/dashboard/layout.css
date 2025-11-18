@@ -1,10 +1,11 @@
-/* public/css/dashboard/layout.css */
+/* Wrapper utama layout */
 .wrap {
   display:flex;
   min-height:100vh;
   transition:all var(--transition-speed) ease;
 }
 
+/* Area konten utama di sebelah kanan sidebar */
 .main {
   flex:1;
   display:flex;
@@ -14,19 +15,64 @@
   min-height:100vh;
 }
 
-/* COLLAPSED SIDEBAR */
-html.collapsed .sidebar {transform:translateX(-100%);}
-html.collapsed .main {margin-left:0;}
+/* Mode sidebar collapse (desktop) */
+html.collapsed .sidebar {
+  transform:translateX(-100%);
+}
+html.collapsed .main {
+  margin-left:0;
+}
 
-/* RESPONSIVE */
+/* Responsif untuk layar kecil */
 @media (max-width:992px){
-  .sidebar {transform:translateX(-100%);position:fixed;height:100%;}
-  body.show-sb .sidebar{transform:translateX(0);}
-  #overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:900;}
-  body.show-sb #overlay{display:block;}
-  .main {margin-left:0;}
-  .content {padding:28px 20px;overflow-y: auto;}
-  .content.no-scroll {overflow-y: hidden;}
-  .topbar {padding:12px 20px;}
-  .tleft h2 {font-size:18px;}
+
+  /* Sidebar menyatu menjadi mode slide-in */
+  .sidebar {
+    transform:translateX(-100%);
+    position:fixed;
+    height:100%;
+  }
+
+  /* Sidebar ditampilkan ketika body.show-sb */
+  body.show-sb .sidebar{
+    transform:translateX(0);
+  }
+
+  /* Overlay hitam saat sidebar aktif */
+  #overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.35);
+    z-index:900;
+  }
+  body.show-sb #overlay{
+    display:block;
+  }
+
+  /* Main area menjadi full width */
+  .main {
+    margin-left:0;
+  }
+
+  /* Penyesuaian padding konten */
+  .content {
+    padding:28px 20px;
+    overflow-y: auto;
+  }
+
+  /* Mode konten tanpa scroll */
+  .content.no-scroll {
+    overflow-y: hidden;
+  }
+
+  /* Penyesuaian tampilan topbar */
+  .topbar {
+    padding:12px 20px;
+  }
+
+  /* Ukuran judul kecil di mobile */
+  .tleft h2 {
+    font-size:18px;
+  }
 }

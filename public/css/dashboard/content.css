@@ -1,11 +1,30 @@
-/* public/css/dashboard/content.css */
+/* Area konten utama */
 .content {
   padding:28px 50px 28px 70px;
-  overflow-y: auto;  /* Allow scroll untuk dashboard lain */
+  overflow-y: auto;
 }
+
+/* Mode konten tanpa scroll */
 .content.no-scroll {
-  overflow-y: hidden;  /* Jangan scroll khusus di review-surat */
+  overflow-y: hidden;
 }
-.inner {max-width:1080px;margin:0 auto;}
-.page-title {font-size:40px;font-weight:900;margin:0 0 8px;}
-.welcome {font-size:18px;font-weight:700;margin:0 0 18px;}
+
+/* Pembatas lebar konten agar rapi di tengah */
+.inner {
+  max-width:1080px;
+  margin:0 auto;
+}
+
+/* Judul halaman */
+.page-title {
+  font-size:40px;
+  font-weight:900;
+  margin:0 0 8px;
+}
+
+/* Pesan sambutan pengguna */
+.welcome {
+  font-size:18px;
+  font-weight:700;
+  margin:0 0 18px;
+}

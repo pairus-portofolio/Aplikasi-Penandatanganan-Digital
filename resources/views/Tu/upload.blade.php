@@ -4,14 +4,14 @@
 
 @section('content')
 
-<!-- Tampilkan pesan sukses jika upload berhasil -->
+<!-- Menampilkan pesan sukses setelah upload berhasil -->
 @if(session('success'))
     <div class="bg-green-200 text-green-700 p-3 rounded mb-4">
         {{ session('success') }}
     </div>
 @endif
 
-<!-- Tampilkan error validasi jika ada -->
+<!-- Menampilkan daftar error validasi -->
 @if ($errors->any())
     <div class="bg-red-200 text-red-700 p-3 rounded mb-4">
         <ul class="list-disc ms-5">
@@ -22,35 +22,33 @@
     </div>
 @endif
 
-<!-- Load CSS khusus halaman upload -->
+<!-- Load CSS halaman unggah surat -->
 <link rel="stylesheet" href="{{ asset('css/tu/upload.css') }}">
 
 <h1>Unggah Surat</h1>
 
-<!-- Form upload surat -->
+<!-- Form utama untuk upload surat -->
 <form method="POST" action="{{ route('tu.upload.store') }}" enctype="multipart/form-data">
     @csrf
 
-    <!-- Area untuk drag & drop file -->
+    <!-- Area drag & drop untuk upload file -->
     <div class="upload-box" id="drop-area">
         <p class="upload-title">Seret & letakan file disini</p>
         <p class="upload-subtitle">hanya mendukung file docx</p>
         <button type="button" class="upload-btn">pilih file</button>
     </div>
 
-    <!-- Input file asli (disembunyikan) -->
+    <!-- Input file yang disembunyikan -->
     <input id="file-input" name="file_surat" type="file" accept=".docx" style="display:none;" required>
 
-    <!-- Container form detail surat -->
+    <!-- Container bagian input detail surat -->
     <div class="form-container">
-
-        <!-- Wrapper detail surat -->
         <div class="detail-container">
             <div class="detail-title">Detail Surat</div>
 
             <div class="detail-wrapper">
 
-                <!-- Judul surat yang diambil otomatis dari nama file -->
+                <!-- Judul surat (otomatis dari nama file) -->
                 <div class="detail-field-box">
                     <label for="judul_surat">Judul Surat :</label>
                     <input id="judul_surat" name="judul_surat" type="text" class="detail-input-inner" required readonly>
@@ -79,20 +77,20 @@
                     </select>
                 </div>
 
-                <!-- List alur penandatangan surat -->
+                <!-- Daftar urutan penandatangan -->
                 <div id="alurStepsContainer" class="alur-steps">
                     <p class="alur-placeholder">Alur surat.</p>
                     <ol id="alurList" class="alur-list"></ol>
                 </div>
 
-                <!-- Input tersembunyi untuk menyimpan urutan penandatangan -->
+                <!-- Input tersembunyi untuk menyimpan urutan user -->
                 <input type="hidden" name="alur" id="alurInput">
 
             </div>
         </div>
     </div>
 
-    <!-- Tombol submit akan muncul setelah file dipilih -->
+    <!-- Tombol unggah muncul setelah file dipilih -->
     <div id="submit-button-wrapper" style="text-align: center; margin-top: 32px; display: none;">
         <button type="submit" class="upload-btn" style="cursor: pointer;">Unggah</button>
     </div>
@@ -101,9 +99,11 @@
 @endsection
 
 @section('popup')
+    <!-- Popup logout -->
     @include('partials.logout-popup')
 @endsection
 
 @push('scripts')
+    <!-- Script untuk logika drag-and-drop dan alur sign -->
     <script src="{{ asset('js/tu/upload.js') }}"></script>
 @endpush

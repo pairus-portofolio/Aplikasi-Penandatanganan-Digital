@@ -1,7 +1,6 @@
-// public/js/tu/upload_surat.js
-
+// Menjalankan script setelah seluruh halaman siap
 document.addEventListener("DOMContentLoaded", function () {
-    // === Element utama ===
+    // Mengambil elemen utama untuk upload file
     const dropArea = document.getElementById("drop-area");
     const fileInput = document.getElementById("file-input");
     const submitButtonWrapper = document.getElementById(
@@ -9,36 +8,30 @@ document.addEventListener("DOMContentLoaded", function () {
     );
     const judulSuratInput = document.getElementById("judul_surat");
 
-    // Simpan HTML awal upload-box untuk kebutuhan reset
+    // Menyimpan tampilan awal area upload
     const initialDropAreaHTML = dropArea.innerHTML;
 
-    // Set agar hanya file docx diterima
+    // Mengunci input agar hanya menerima .docx
     fileInput.setAttribute("accept", ".docx");
 
-    // ======================================================
-    // === Klik area upload untuk membuka file dialog     ===
-    // ======================================================
+    // Membuka file picker ketika area upload diklik
     dropArea.addEventListener("click", () => {
         fileInput.value = "";
         fileInput.click();
     });
 
-    // ======================================================
-    // === Drag & Drop file ke area upload                 ===
-    // ======================================================
-
-    // Tambahkan efek saat file di-drag ke area upload
+    // Memberi efek saat file sedang di-drag di atas area upload
     dropArea.addEventListener("dragover", (e) => {
         e.preventDefault();
         dropArea.classList.add("drag-over");
     });
 
-    // Hilangkan efek saat drag keluar area
+    // Menghapus efek drag ketika file keluar dari area upload
     dropArea.addEventListener("dragleave", () => {
         dropArea.classList.remove("drag-over");
     });
 
-    // Jika file di-drop, tangani file tersebut
+    // Memproses file ketika dilepas ke area upload
     dropArea.addEventListener("drop", (e) => {
         e.preventDefault();
         dropArea.classList.remove("drag-over");
@@ -48,16 +41,13 @@ document.addEventListener("DOMContentLoaded", function () {
             try {
                 fileInput.files = files;
             } catch (err) {
-                // Beberapa browser mungkin tidak mengizinkan assignment langsung
                 console.error("Tidak dapat meng-assign fileInput.files:", err);
             }
             handleFile(files[0]);
         }
     });
 
-    // ======================================================
-    // === Upload file menggunakan file dialog             ===
-    // ======================================================
+    // Memproses file ketika dipilih melalui file picker
     fileInput.addEventListener("change", function () {
         if (this.files && this.files.length > 0) {
             handleFile(this.files[0]);
@@ -66,18 +56,16 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    // ======================================================
-    // === Fungsi menangani file yang diupload             ===
-    // ======================================================
+    // Mengecek dan menampilkan file yang dipilih
     function handleFile(file) {
-        // Cek file valid (harus .docx)
+        // Memastikan file adalah .docx
         if (!file.name.toLowerCase().endsWith(".docx")) {
             alert("Hanya file .docx yang diperbolehkan.");
             resetFileSelection();
             return;
         }
 
-        // Ubah area upload menjadi tampilan file terpilih
+        // Menampilkan file yang terpilih di dalam area upload
         dropArea.classList.add("has-file");
         dropArea.innerHTML = `
             <div class="selected-file">
@@ -87,69 +75,57 @@ document.addEventListener("DOMContentLoaded", function () {
             </div>
         `;
 
-        // Isi judul surat berdasarkan nama file
+        // Mengisi judul otomatis berdasarkan nama file
         judulSuratInput.value = file.name;
 
-        // Tampilkan tombol submit
+        // Menampilkan tombol submit setelah file valid
         submitButtonWrapper.style.display = "block";
     }
 
-    // ======================================================
-    // === Alur penandatangan surat                       ===
-    // ======================================================
+    // Mengambil elemen untuk input alur penandatanganan
     const userSelect = document.getElementById("userSelect");
     const alurList = document.getElementById("alurList");
     const alurInput = document.getElementById("alurInput");
 
-    // Tambahkan user ke daftar alur ketika dipilih
+    // Menambahkan user ke daftar alur ketika dipilih
     userSelect.addEventListener("change", function () {
         const userId = this.value;
         const userName = this.options[this.selectedIndex].text;
 
         if (userId) {
-            // Buat elemen list baru
             const listItem = document.createElement("li");
             listItem.classList.add("alur-item");
             listItem.textContent = userName;
             listItem.dataset.userId = userId;
 
-            // Buat tombol hapus setiap alur
+            // Tombol untuk menghapus user dari alur
             const removeButton = document.createElement("button");
             removeButton.classList.add("remove-alur-btn");
             removeButton.textContent = "Hapus";
 
-            // Event tombol hapus
             removeButton.onclick = function () {
                 alurList.removeChild(listItem);
                 updateAlurInput();
             };
 
-            // Tempelkan tombol hapus
             listItem.appendChild(removeButton);
             alurList.appendChild(listItem);
 
-            // Update input hidden
             updateAlurInput();
-
-            // Reset dropdown
             this.value = "";
         }
     });
 
-    // Simpan urutan ID penandatangan ke input hidden
+    // Memperbarui input hidden sesuai urutan alur
     function updateAlurInput() {
         const alurUserIds = [];
-
         alurList.querySelectorAll("li").forEach((item) => {
             alurUserIds.push(item.dataset.userId);
         });
-
         alurInput.value = alurUserIds.join(",");
     }
 
-    // ======================================================
-    // === Reset file upload                              ===
-    // ======================================================
+    // Mengembalikan UI upload ke kondisi awal
     window.resetFileSelection = function () {
         fileInput.value = "";
         dropArea.classList.remove("has-file");

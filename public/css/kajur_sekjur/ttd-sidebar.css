@@ -1,0 +1,75 @@
+/* Container tombol sidebar TTD */
+.ttd-btn-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+/* Tombol aksi tanda tangan di sidebar */
+.ttd-sidebar-btn {
+    width: 100px;
+    height: 100px;
+    background-color: #e5e7eb;
+    border: none;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    color: #1f2937;
+}
+
+/* Efek hover tombol */
+.ttd-sidebar-btn:hover {
+    background-color: #d1d5db;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Efek klik tombol */
+.ttd-sidebar-btn:active {
+    transform: translateY(0);
+}
+
+/* Ikon dalam tombol TTD */
+.ttd-sidebar-btn i {
+    font-size: 32px;
+    margin-bottom: 8px;
+    color: #000;
+}
+
+/* Teks label tombol TTD */
+.ttd-sidebar-btn span {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+/* Kotak placeholder captcha */
+.captcha-placeholder {
+    background: #f3f4f6;
+    border: 1px dashed #9ca3af;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 15px;
+    font-family: monospace;
+    font-size: 18px;
+    letter-spacing: 4px;
+    color: #374151;
+    border-radius: 6px;
+}
+
+/* Tombol/teks untuk reload captcha */
+.captcha-reload {
+    font-size: 12px;
+    color: #2563eb;
+    cursor: pointer;
+    text-decoration: underline;
+    margin-top: 5px;
+    display: block;
+}

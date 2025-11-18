@@ -1,15 +1,72 @@
-/* public/css/dashboard/tables.css */
-.table-shell {background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);overflow:hidden;}
-table {width:100%;border-collapse:collapse;font-size:14px;}
-thead tr {background:linear-gradient(90deg,var(--blue-cap-1),var(--blue-cap-2));color:#fff;}
-th, td {padding:14px 16px;text-align:left;}
-tbody tr {border-bottom:1px solid var(--line);}
-tbody tr:nth-child(odd){background:#f8fafc;}
-.pill {display:inline-block;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:800;}
-.kuning{background:#fef9c3;color:#a16207;}
-.merah{background:#fee2e2;color:#b91c1c;}
-.biru{background:#e0f2fe;color:#0369a1;}
-.hijau{background:#dcfce7;color:#15803d;}
-.aksi{color:#1d4ed8;font-weight:700;text-decoration:none;}
-.aksi:hover{text-decoration:underline;}
-.foot {padding:18px;text-align:center;color:#94a3b8;font-size:13px;}
+/* Wrapper tabel keseluruhan */
+.table-shell {
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:18px;
+  box-shadow:var(--shadow);
+  overflow:hidden;
+}
+
+/* Pengaturan dasar tabel */
+table {
+  width:100%;
+  border-collapse:collapse;
+  font-size:14px;
+}
+
+/* Header tabel */
+thead tr {
+  background:linear-gradient(90deg,var(--blue-cap-1),var(--blue-cap-2));
+  color:#fff;
+}
+
+/* Padding kolom */
+th, td {
+  padding:14px 16px;
+  text-align:left;
+}
+
+/* Border antar baris */
+tbody tr {
+  border-bottom:1px solid var(--line);
+}
+
+/* Warna baris selang-seling */
+tbody tr:nth-child(odd) {
+  background:#f8fafc;
+}
+
+/* Badge status */
+.pill {
+  display:inline-block;
+  padding:6px 14px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:800;
+}
+
+/* Warna badge status */
+.kuning {background:#fef9c3;color:#a16207;}
+.merah  {background:#fee2e2;color:#b91c1c;}
+.biru   {background:#e0f2fe;color:#0369a1;}
+.hijau  {background:#dcfce7;color:#15803d;}
+
+/* Tombol aksi "Lihat" */
+.aksi {
+  color:#1d4ed8;
+  font-weight:700;
+  text-decoration:none;
+}
+
+/* Hover tombol aksi */
+.aksi:hover {
+  text-decoration:underline;
+}
+
+/* Footer halaman */
+.foot {
+  padding:18px;
+  text-align:center;
+  color:#94a3b8;
+  font-size:13px;
+}

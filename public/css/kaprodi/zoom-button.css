@@ -1,4 +1,4 @@
-/* Grup tombol zoom (plus dan minus)*/
+/* Wrapper tombol zoom pada panel bawah */
 .pv-zoom {
     display: flex;
     gap: 8px;
@@ -6,7 +6,7 @@
     padding-left: 25px;
 }
 
-/* Tombol Kontrol Zoom (Style Dasar Transparan) */
+/* Tombol kontrol zoom (+ / -) */
 .pv-ctrl-btn {
     width: auto;
     height: auto;
@@ -22,16 +22,21 @@
     transition: all 0.2s ease;
     padding: 8px;
 }
+
+/* Hover efek tombol zoom */
 .pv-ctrl-btn:hover {
     background: transparent;
     border-color: transparent;
     color: #111827;
     transform: scale(1.1);
 }
+
+/* Efek klik tombol zoom */
 .pv-ctrl-btn:active {
     transform: scale(0.95);
 }
 
+/* Penyesuaian posisi zoom pada mobile */
 @media (max-width: 992px) {
   .pv-zoom {
     justify-content: flex-start;

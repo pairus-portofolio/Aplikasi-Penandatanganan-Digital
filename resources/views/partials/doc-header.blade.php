@@ -1,3 +1,4 @@
+<!-- Header bagian atas untuk menampilkan nama surat dan info halaman -->
 <div class="pv-header">
     <div class="pv-name">{{ $judulSurat ?? 'Nama surat' }}</div>
     <div class="pv-page-info">

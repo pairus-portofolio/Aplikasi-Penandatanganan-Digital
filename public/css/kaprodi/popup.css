@@ -1,43 +1,48 @@
-/* --- POPUP NOTIFIKASI & REVISI --- */
-
-/* Kontainer konten popup (kotak putih) untuk kedua popup */
+/* Layout konten popup (revisi, notifikasi paraf, notifikasi TTD) */
 #revisiPopup .popup-content,
-#parafNotifPopup .popup-content {
+#parafNotifPopup .popup-content,
+#ttdNotifPopup .popup-content {
     max-width: 480px;
     text-align: left;
     padding: 24px 30px;
 }
 
-/* Judul popup (tengah) */
+/* Judul popup */
 #revisiPopup h3,
-#parafNotifPopup h3 {
+#parafNotifPopup h3,
+#ttdNotifPopup h3 {
     font-size: 20px;
     font-weight: 700;
     text-align: center;
     margin-bottom: 20px;
 }
 
-/* Grup form (label + input) */
+/* Wrapper setiap form group */
 #revisiPopup .form-group,
-#parafNotifPopup .form-group {
+#parafNotifPopup .form-group,
+#ttdNotifPopup .form-group {
     display: flex;
     flex-direction: column;
     margin-bottom: 15px;
 }
 
+/* Label dalam popup */
 #revisiPopup .form-group label,
-#parafNotifPopup .form-group label {
+#parafNotifPopup .form-group label,
+#ttdNotifPopup .form-group label {
     font-size: 14px;
     color: #4b5563;
     margin-bottom: 6px;
     font-weight: 600;
 }
 
-/* Input / textarea styling yang sama untuk kedua popup */
+/* Input & textarea popup */
 #revisiPopup .form-input,
 #revisiPopup .form-textarea,
 #parafNotifPopup .form-input,
-#parafNotifPopup .form-textarea {
+#parafNotifPopup .form-textarea,
+#ttdNotifPopup .form-input,
+#ttdNotifPopup .form-textarea {
     width: 100%;
     padding: 10px 14px;
     border: 1px solid #d1d5db;
@@ -50,50 +55,88 @@
     font-family: "Inter", system-ui, sans-serif;
 }
 
-/* Fokus */
+/* Fokus input dan textarea */
 #revisiPopup .form-input:focus,
 #revisiPopup .form-textarea:focus,
 #parafNotifPopup .form-input:focus,
-#parafNotifPopup .form-textarea:focus {
+#parafNotifPopup .form-textarea:focus,
+#ttdNotifPopup .form-input:focus,
+#ttdNotifPopup .form-textarea:focus {
     border-color: #1e4ed8;
     outline: none;
     box-shadow: 0 0 0 3px rgba(30, 78, 216, 0.2);
 }
 
-/* Readonly inputs */
+/* Input read-only */
 #revisiPopup .form-input[readonly],
-#parafNotifPopup .form-input[readonly] {
+#parafNotifPopup .form-input[readonly],
+#ttdNotifPopup .form-input[readonly] {
     background-color: #e5e7eb;
     cursor: not-allowed;
 }
 
-/* Textarea min height */
+/* Tinggi minimal textarea */
 #revisiPopup .form-textarea,
-#parafNotifPopup .form-textarea {
+#parafNotifPopup .form-textarea,
+#ttdNotifPopup .form-textarea {
     resize: vertical;
     min-height: 80px;
 }
 
-/* Tombol di bagian bawah popup */
+/* Wrapper tombol bagian bawah popup */
 #revisiPopup .popup-btns,
-#parafNotifPopup .popup-btns {
+#parafNotifPopup .popup-btns,
+#ttdNotifPopup .popup-btns {
     justify-content: flex-end;
     margin-top: 25px;
 }
 
 /* Tombol konfirmasi (hijau) */
 #revisiPopup .btn-confirm,
-#parafNotifPopup .btn-confirm {
-    background: #10b981;
+#parafNotifPopup .btn-confirm,
+#ttdNotifPopup .btn-confirm {
+    background: #0C8CE9;
 }
 
-/* Hover untuk tombol konfirmasi */
+/* Hover tombol konfirmasi */
 #revisiPopup .btn-confirm:hover,
-#parafNotifPopup .btn-confirm:hover {
-    background: #059669;
+#parafNotifPopup .btn-confirm:hover,
+#ttdNotifPopup .btn-confirm:hover {
+    background: #2563eb;
 }
 
-/* Tambahan kecil: pastikan box-sizing konsisten di dalam popup */
-#revisiPopup, #parafNotifPopup {
+/* Box sizing agar konsisten */
+#revisiPopup,
+#parafNotifPopup,
+#ttdNotifPopup {
     box-sizing: border-box;
 }
+
+.popup {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.popup.show {
+    display: flex !important;
+}
+
+.paraf-drop-zone {
+    height: 150vh;
+    background: #f0f0f0;
+    border: 1px dashed #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    transform-origin: top center;
+    transition: transform 0.2s ease;
+    overflow: hidden;
+}
+
+

@@ -1,4 +1,4 @@
-/* public/css/dashboard/base.css */
+/* Variabel warna dan layout global */
 :root {
   --blue-sidebar-1:#002d5b;
   --blue-sidebar-2:#0a3a7a;
@@ -17,6 +17,7 @@
   --transition-speed:.28s;
 }
 
+/* Style dasar untuk seluruh halaman */
 html, body {
   margin:0;
   height:100%;
