@@ -45,30 +45,6 @@
   <div id="overlay"></div>
   @yield('popup')
 
-  <!-- JS interaktif -->
-  <script>
-    (function(){
-      const hb = document.getElementById('hb');            // Tombol hamburger
-      const html = document.documentElement;               // Elemen HTML
-      const overlay = document.getElementById('overlay');  // Overlay hitam untuk mobile
-      
-      // Fungsi cek apakah tampilan adalah mode mobile
-      const isMobile = () => window.matchMedia('(max-width: 992px)').matches;
-
-      hb.addEventListener('click', () => {
-        if (isMobile()) document.body.classList.toggle('show-sb');
-        else html.classList.toggle('collapsed');
-      });
-      overlay.addEventListener('click', () => document.body.classList.remove('show-sb'));
-      window.addEventListener('resize', () => { if (!isMobile()) document.body.classList.remove('show-sb'); });
-
-      const logoutBtn = document.getElementById('logoutBtn');
-      const popup = document.getElementById('logoutPopup');
-      const cancelBtn = document.getElementById('cancelLogout');
-      logoutBtn.addEventListener('click', () => popup.classList.add('show'));
-      cancelBtn.addEventListener('click', () => popup.classList.remove('show'));
-    })();
-  </script>
   <!-- Script utama untuk interaksi layout -->
   <script src="{{ asset('js/app.js') }}"></script>
 

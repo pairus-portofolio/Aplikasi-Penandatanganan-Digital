@@ -4,7 +4,9 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\GoogleLoginController;
 use App\Http\Controllers\Tu\DocumentController;
-use App\Http\Controllers\Kaprodi\KaprodiController; 
+use App\Http\Controllers\Kaprodi\ReviewController; 
+use App\Http\Controllers\Kaprodi\ParafController;
+use App\Http\Controllers\Kajur_Sekjur\TandatanganController;
 
 // Halaman utama diarahkan ke login
 Route::get('/', function () {
@@ -38,10 +40,18 @@ Route::middleware(['auth'])->group(function () {
 
 // Kaprodi D3 & D4
 Route::middleware('auth')->group(function () {
+    
+    // Route untuk Review Surat
+    Route::get('/review-surat', [ReviewController::class, 'index'])->name('kaprodi.review');
 
-    Route::controller(KaprodiController::class)->group(function () {
-        Route::get('/review-surat', 'showReviewSurat')->name('kaprodi.review');
-        Route::get('/paraf-surat', 'showParafSurat')->name('kaprodi.paraf');
-    });
+    // Route untuk Paraf Surat
+    Route::get('/paraf-surat', [ParafController::class, 'index'])->name('kaprodi.paraf');
 
+});
+
+// Kajur & Sekjur
+Route::middleware('auth')->group(function () {
+    
+    // Route Tanda Tangan
+    Route::get('/tandatangan-surat', [TandatanganController::class, 'index'])->name('kajur.tandatangan'); 
 });

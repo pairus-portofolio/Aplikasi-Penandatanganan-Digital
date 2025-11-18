@@ -14,7 +14,7 @@
 @endpush
 
 @section('page-header')
-    @include('partials.preview-header', [
+    @include('partials.doc-header', [
         'judulSurat'  => 'Pratijau: Nama Surat',
         'currentPage' => 1,
         'totalPages'  => 5,
@@ -54,10 +54,10 @@
 @endsection
 
 @section('popup')
-    @include('partials.paraf-toolbar')
+    @include('partials.action-paraf')
     @include('partials.logout-popup')
 @endsection
 
-@section('scripts')
+@push('scripts')
     <script src="{{ asset('js/kaprodi/paraf-surat.js') }}"></script>
-@endsection
+@endpush

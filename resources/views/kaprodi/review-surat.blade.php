@@ -11,7 +11,7 @@
 @endpush
 
 @section('page-header')
-    @include('partials.preview-header', [
+    @include('partials.doc-header', [
         'judulSurat'  => 'Pratijau: Nama Surat',
         'currentPage' => 1,
         'totalPages'  => 5,
@@ -25,10 +25,10 @@
 @endsection
 
 @section('popup')
-    @include('partials.preview-toolbar')
+    @include('partials.action-review')
     @include('partials.logout-popup')
 @endsection
 
-@section('scripts')
-    <script src="{{ asset('js/kaprodi/review-surat.js') }}"></script>
-@endsection
+@push('scripts')
+    {{-- Script review-surat.js dihapus karena logikanya pindah ke app.js --}}
+@endpush

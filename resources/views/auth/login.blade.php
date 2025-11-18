@@ -153,7 +153,7 @@
   </div>
 
   <!-- Custom JS login -->
-  <script src="{{ asset('js/login.js') }}"></script>
+  <script src="{{ asset('js/auth/login.js') }}"></script>
 
 </body>
 </html>

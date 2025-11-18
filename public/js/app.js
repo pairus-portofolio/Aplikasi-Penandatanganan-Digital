@@ -1,142 +1,90 @@
 // public/js/app.js
-(function () {
 
-    /* ===============================
-       SIDEBAR LOGIC (MOBILE & DESKTOP)
-       =============================== */
+document.addEventListener("DOMContentLoaded", function () {
+    
+    /* ==========================================
+       1. SIDEBAR LOGIC
+       ========================================== */
     const hb = document.getElementById("hb");
     const html = document.documentElement;
     const overlay = document.getElementById("overlay");
+    const isMobile = () => window.matchMedia("(max-width: 992px)").matches;
 
-    const isMobile = () =>globalThis.matchMedia("(max-width: 992px)").matches;
-
-    const toggleSidebar = () => {
-        if (isMobile()) document.body.classList.toggle("show-sb");
-        else html.classList.toggle("collapsed");
-    };
-
-    const closeSidebar = () => document.body.classList.remove("show-sb");
-
-    if (hb) hb.addEventListener("click", toggleSidebar);
-    if (overlay) overlay.addEventListener("click", closeSidebar);
-
+    if (hb) {
+        hb.addEventListener("click", () => {
+            if (isMobile()) document.body.classList.toggle("show-sb");
+            else html.classList.toggle("collapsed");
+        });
+    }
+    
+    if (overlay) {
+        overlay.addEventListener("click", () => document.body.classList.remove("show-sb"));
+    }
+    
     window.addEventListener("resize", () => {
-        if (!isMobile()) closeSidebar();
+        if (!isMobile()) document.body.classList.remove("show-sb");
     });
 
+    /* ==========================================
+       2. POPUP SYSTEM (Generic Handler)
+       ========================================== */
+    function setupPopup(triggerId, popupId, closeBtnIds = []) {
+        const trigger = document.getElementById(triggerId);
+        const popup = document.getElementById(popupId);
 
-    /* ===============================
-       POPUP LOGOUT
-       =============================== */
-    const logoutBtn = document.getElementById("logoutBtn");
-    const logoutPopup = document.getElementById("logoutPopup");
-    const cancelLogout = document.getElementById("cancelLogout");
+        if (trigger && popup) {
+            // Buka Popup
+            trigger.addEventListener("click", () => popup.classList.add("show"));
 
-    if (logoutBtn && logoutPopup) {
-        logoutBtn.addEventListener("click", () => logoutPopup.classList.add("show"));
-    }
-    if (cancelLogout && logoutPopup) {
-        cancelLogout.addEventListener("click", () => logoutPopup.classList.remove("show"));
-    }
+            // Tutup Popup via Tombol (Batal/Kirim)
+            closeBtnIds.forEach(btnId => {
+                const btn = document.getElementById(btnId);
+                if (btn) {
+                    btn.addEventListener("click", () => popup.classList.remove("show"));
+                }
+            });
 
-
-    /* ===============================
-       POPUP NOTIFIKASI
-       =============================== */
-    const kirimNotifikasiBtn = document.getElementById("kirimNotifikasiBtn");
-    const popupNotifikasi = document.getElementById("parafNotifPopup");
-    const cancelNotifikasi = document.getElementById("batalKirim");
-
-    if (kirimNotifikasiBtn && popupNotifikasi) {
-        kirimNotifikasiBtn.addEventListener("click", () => popupNotifikasi.classList.add("show"));
-    }
-    if (cancelNotifikasi && popupNotifikasi) {
-        cancelNotifikasi.addEventListener("click", () => popupNotifikasi.classList.remove("show"));
+            // Tutup Popup via Klik Background (Overlay)
+            popup.addEventListener("click", (e) => {
+                if (e.target === popup) popup.classList.remove("show");
+            });
+        }
     }
 
+    // Inisialisasi Popup Logout
+    setupPopup("logoutBtn", "logoutPopup", ["cancelLogout"]);
 
-    /* ===============================
-       POPUP MINTA REVISI
-       =============================== */
-    const mintaRevisiBtn = document.getElementById("mintaRevisiBtn");
-    const revisiPopup = document.getElementById("revisiPopup");
-    const batalBp = document.getElementById("batalBp");
+    // Inisialisasi Popup Revisi (Review Surat)
+    setupPopup("mintaRevisiBtn", "revisiPopup", ["batalBp", "kirimBp"]);
 
-    if (mintaRevisiBtn && revisiPopup) {
-        mintaRevisiBtn.addEventListener("click", () => revisiPopup.classList.add("show"));
-    }
-    if (batalBp && revisiPopup) {
-        batalBp.addEventListener("click", () => revisiPopup.classList.remove("show"));
-    }
+    // Inisialisasi Popup Notifikasi (Paraf Surat)
+    setupPopup("kirimNotifikasiBtn", "parafNotifPopup", ["batalKirim", "konfirmasiKirim"]);
+
+    // Inisialisasi Popup Tanda Tangan (Kajur/Sekjur)
+    setupPopup("btnSelesaiTtd", "ttdNotifPopup", ["batalTtd", "kirimTtd"]);
 
 
-    /* ===============================
-       ZOOM PREVIEW
-       =============================== */
-    let zoomLevel = 1;
-    const preview = document.getElementById("previewPage");
-
-    const zoomIn = () => {
-        zoomLevel += 0.1;
-        preview.style.transform = `scale(${zoomLevel})`;
-    };
-
-    const zoomOut = () => {
-        if (zoomLevel <= 0.3) return;
-        zoomLevel -= 0.1;
-        preview.style.transform = `scale(${zoomLevel})`;
-    };
-
+    /* ==========================================
+       3. ZOOM CONTROLS
+       ========================================== */
+    const page = document.getElementById("previewPage");
     const zoomInBtn = document.getElementById("zoomInBtn");
     const zoomOutBtn = document.getElementById("zoomOutBtn");
+    let currentScale = 1;
 
-    if (zoomInBtn && zoomOutBtn && preview) {
-        zoomInBtn.addEventListener("click", zoomIn);
-        zoomOutBtn.addEventListener("click", zoomOut);
+    if (page && zoomInBtn && zoomOutBtn) {
+        const applyZoom = () => {
+            page.style.transform = `scale(${currentScale})`;
+        };
+
+        zoomInBtn.addEventListener("click", () => {
+            currentScale = Math.min(currentScale + 0.1, 2); // Max zoom 2x
+            applyZoom();
+        });
+
+        zoomOutBtn.addEventListener("click", () => {
+            currentScale = Math.max(currentScale - 0.1, 0.5); // Min zoom 0.5x
+            applyZoom();
+        });
     }
-
-
-    /* ===============================
-       PARAF UPLOAD
-       =============================== */
-    document.addEventListener('DOMContentLoaded', () => {
-        const parafBox = document.getElementById("parafBox");
-        const parafImage = document.getElementById("parafImage");
-        const fileInput = document.getElementById("parafImageUpload");
-        const gantiBtn = document.getElementById("parafGantiBtn");
-        const hapusBtn = document.getElementById("parafHapusBtn");
-
-        if (!parafBox || !parafImage || !fileInput || !gantiBtn || !hapusBtn) return;
-
-        const triggerUpload = () => fileInput.click();
-
-        parafBox.addEventListener('click', triggerUpload);
-
-        gantiBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            triggerUpload();
-        });
-
-        hapusBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            parafImage.src = '';
-            parafBox.classList.remove('has-image');
-            parafBox.querySelector(".paraf-text").style.display = "block";
-        });
-
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(ev) {
-                parafImage.src = ev.target.result;
-                parafImage.style.display = "block";
-                parafBox.querySelector(".paraf-text").style.display = "none";
-                parafBox.classList.add('has-image');
-            };
-            reader.readAsDataURL(file);
-        });
-    });
-
-})();
+});

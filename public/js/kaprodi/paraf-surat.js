@@ -1,141 +1,196 @@
+// public/js/kaprodi/paraf-surat.js
+
 document.addEventListener('DOMContentLoaded', function() {
-            
-    let selectedParaf = null; 
-    const page   = document.getElementById('previewPage');
-    const zoomIn = document.getElementById('zoomInBtn');
-    const zoomOut = document.getElementById('zoomOutBtn');
-    let currentScale = 1; 
-
-    if (page && zoomIn && zoomOut) {
-        function applyZoom() { page.style.transform = 'scale(' + currentScale + ')'; }
-        zoomIn.addEventListener('click', () => { currentScale = Math.min(currentScale + 0.1, 2); applyZoom(); });
-        zoomOut.addEventListener('click', () => { currentScale = Math.max(currentScale - 0.1, 0.5); applyZoom(); });
-    }
-
-    // --- KODE POPUP KIRIM NOTIFIKASI ---
-    const kirimBtn = document.getElementById('kirimNotifikasiBtn'); 
-    const kirimModal = document.getElementById('parafNotifPopup'); 
-    const batalKirimBtn = document.getElementById('batalKirim'); 
-    const konfirmasiKirimBtn = document.getElementById('konfirmasiKirim');
-
-    if (kirimBtn && kirimModal && batalKirimBtn) {
-        kirimBtn.addEventListener('click', () => kirimModal.classList.add('show'));
-        batalKirimBtn.addEventListener('click', () => kirimModal.classList.remove('show'));
-        kirimModal.addEventListener('click', (e) => { if (e.target === kirimModal) kirimModal.classList.remove('show'); });
-        if (konfirmasiKirimBtn) {
-            konfirmasiKirimBtn.addEventListener('click', () => kirimModal.classList.remove('show'));
-        }
-    }
     
-    // --- KODE UPLOAD/GANTI/HAPUS PARAF ---
+    // Variabel Global untuk Halaman Ini
+    let selectedParaf = null; 
+    const dropZone = document.getElementById('previewPage'); // Drop zone area
+
+    // Untuk keperluan kalkulasi posisi drop (mengambil nilai scale dari style elemen)
+    function getCurrentScale() {
+        const style = window.getComputedStyle(dropZone);
+        const matrix = new WebKitCSSMatrix(style.transform);
+        return matrix.a; // Mengambil nilai scale X (biasanya sama dengan scale Y)
+    }
+
+    /* ==========================================
+       1. UPLOAD & MANAJEMEN GAMBAR PARAF
+       ========================================== */
     const parafBox = document.getElementById('parafBox');
     const parafImage = document.getElementById('parafImage');
     const fileInput = document.getElementById('parafImageUpload');
     const gantiBtn = document.getElementById('parafGantiBtn');
     const hapusBtn = document.getElementById('parafHapusBtn');
 
-    if (parafBox && parafImage && fileInput && gantiBtn && hapusBtn) {
+    if (parafBox && parafImage && fileInput) {
         const triggerUpload = () => fileInput.click();
-        parafBox.addEventListener('click', triggerUpload);
-        gantiBtn.addEventListener('click', (e) => { e.stopPropagation(); triggerUpload(); });
-        hapusBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            parafImage.src = '';
-            parafBox.classList.remove('has-image');
+
+        // Klik box untuk upload
+        parafBox.addEventListener('click', () => {
+            if (!parafBox.classList.contains('has-image')) triggerUpload();
         });
-        fileInput.addEventListener('change', function(e) {
+
+        // Tombol Ganti
+        if(gantiBtn) {
+            gantiBtn.addEventListener('click', (e) => { 
+                e.stopPropagation(); 
+                triggerUpload(); 
+            });
+        }
+
+        // Tombol Hapus
+        if(hapusBtn) {
+            hapusBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                parafImage.src = '';
+                parafImage.style.display = 'none';
+                fileInput.value = ''; 
+                parafBox.classList.remove('has-image');
+            });
+        }
+
+        // Handle File Input Change
+        fileInput.addEventListener('change', (e) => {
             if (e.target.files && e.target.files[0]) {
                 const reader = new FileReader();
-                reader.onload = (ev) => { parafImage.src = ev.target.result; parafBox.classList.add('has-image'); }
+                reader.onload = (ev) => { 
+                    parafImage.src = ev.target.result; 
+                    parafImage.style.display = 'block'; 
+                    parafBox.classList.add('has-image'); 
+                }
                 reader.readAsDataURL(e.target.files[0]);
             }
         });
-    }
-    
-    // --- KODE DRAG AND DROP ---
-    if (parafImage) {
-        parafImage.addEventListener('dragstart', function(e) {
+
+        // Setup Drag Start dari Sidebar
+        parafImage.addEventListener('dragstart', (e) => {
             if (parafImage.src && parafBox.classList.contains('has-image')) {
-                e.dataTransfer.setData('text/plain', parafImage.id);
+                e.dataTransfer.setData('text/plain', 'parafImage'); 
                 e.dataTransfer.effectAllowed = 'copy';
-            } else { e.preventDefault(); }
+            } else { 
+                e.preventDefault(); 
+            }
         });
     }
 
-    const dropZone = document.getElementById('previewPage');
+    /* ==========================================
+       2. DROP ZONE & DRAGGABLE ELEMENTS
+       ========================================== */
     if (dropZone) {
-        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; dropZone.style.borderColor = '#1e4ed8'; });
-        dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = '#ccc'; });
-        dropZone.addEventListener('drop', function(e) {
+        dropZone.addEventListener('dragover', (e) => { 
+            e.preventDefault(); 
+            e.dataTransfer.dropEffect = 'copy'; 
+            dropZone.style.borderColor = '#1e4ed8'; 
+        });
+
+        dropZone.addEventListener('dragleave', () => { 
+            dropZone.style.borderColor = '#ccc'; 
+        });
+
+        dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
             dropZone.style.borderColor = '#ccc';
+            
             const data = e.dataTransfer.getData('text/plain');
-            const originalParaf = document.getElementById(data);
+            if (data !== 'parafImage') return;
+
+            const originalParaf = document.getElementById('parafImage');
             if (!originalParaf || !originalParaf.src) return;
 
+            // Clone Paraf
             const newParaf = originalParaf.cloneNode(true);
             newParaf.id = 'paraf-dropped-' + Date.now();
             newParaf.classList.add('paraf-dropped');
+            newParaf.classList.remove('paraf-image-preview'); 
             
+            // Kalkulasi Posisi
+            const currentScale = getCurrentScale();
             const dropRect = dropZone.getBoundingClientRect();
             const x = (e.clientX - dropRect.left) / currentScale;
             const y = (e.clientY - dropRect.top) / currentScale;
 
+            // Set Style
             newParaf.style.position = 'absolute';
             newParaf.style.left = `${x}px`;
             newParaf.style.top = `${y}px`;
             newParaf.style.display = 'block';
             newParaf.style.width = '150px';
             newParaf.style.height = 'auto';
+            newParaf.style.zIndex = '100';
+            newParaf.style.cursor = 'grab';
 
             dropZone.appendChild(newParaf);
             makeElementMovable(newParaf);
             makeElementSelectable(newParaf);
         });
+
+        // Klik Dropzone untuk Deselect
+        dropZone.addEventListener('click', () => {
+            if (selectedParaf) {
+                selectedParaf.classList.remove('selected');
+                selectedParaf = null;
+            }
+        });
     }
 
-    // --- FUNGSI GESER & HAPUS ---
+    /* ==========================================
+       3. UTILITY FUNCTIONS (Move & Select)
+       ========================================== */
     function makeElementMovable(element) {
-        element.addEventListener('mousedown', function(e) {
-            e.preventDefault(); e.stopPropagation();
-            let initialX = e.clientX, initialY = e.clientY;
-            let initialLeft = element.offsetLeft, initialTop = element.offsetTop;
+        let isDragging = false;
+        
+        element.addEventListener('mousedown', (e) => {
+            e.preventDefault(); 
+            e.stopPropagation();
+            
+            isDragging = true;
+            selectElement(element);
+
+            const currentScale = getCurrentScale();
+            let startX = e.clientX;
+            let startY = e.clientY;
+            let startLeft = element.offsetLeft;
+            let startTop = element.offsetTop;
+
             function onMouseMove(moveEvent) {
-                let dx = (moveEvent.clientX - initialX) / currentScale;
-                let dy = (moveEvent.clientY - initialY) / currentScale;
-                element.style.left = `${initialLeft + dx}px`;
-                element.style.top = `${initialTop + dy}px`;
+                if (!isDragging) return;
+                
+                let dx = (moveEvent.clientX - startX) / currentScale;
+                let dy = (moveEvent.clientY - startY) / currentScale;
+                
+                element.style.left = `${startLeft + dx}px`;
+                element.style.top = `${startTop + dy}px`;
             }
+
             function onMouseUp() {
+                isDragging = false;
                 document.removeEventListener('mousemove', onMouseMove);
                 document.removeEventListener('mouseup', onMouseUp);
             }
+
             document.addEventListener('mousemove', onMouseMove);
             document.addEventListener('mouseup', onMouseUp);
         });
     }
 
     function makeElementSelectable(element) {
-        element.addEventListener('click', function(e) {
+        element.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (selectedParaf) selectedParaf.classList.remove('selected');
-            selectedParaf = element;
-            element.classList.add('selected');
+            selectElement(element);
         });
     }
 
-    dropZone.addEventListener('click', function() {
-        if (selectedParaf) {
-            selectedParaf.classList.remove('selected');
-            selectedParaf = null;
-        }
-    });
+    function selectElement(element) {
+        if (selectedParaf) selectedParaf.classList.remove('selected');
+        selectedParaf = element;
+        element.classList.add('selected');
+    }
 
-    document.addEventListener('keydown', function(e) {
+    // Hapus dengan tombol Delete
+    document.addEventListener('keydown', (e) => {
         if ((e.key === 'Delete' || e.key === 'Backspace') && selectedParaf) {
             selectedParaf.remove();
             selectedParaf = null;
         }
     });
-
 });
