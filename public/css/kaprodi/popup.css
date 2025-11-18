@@ -111,3 +111,32 @@
 #ttdNotifPopup {
     box-sizing: border-box;
 }
+
+.popup {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.popup.show {
+    display: flex !important;
+}
+
+.paraf-drop-zone {
+    height: 150vh;
+    background: #f0f0f0;
+    border: 1px dashed #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    transform-origin: top center;
+    transition: transform 0.2s ease;
+    overflow: hidden;
+}
+
+
