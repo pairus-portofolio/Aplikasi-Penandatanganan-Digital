@@ -49,7 +49,7 @@
       <!-- Menu khusus Kajur & Sekjur -->
       @if(in_array(Auth::user()->role_id, [4, 5]))
         <!-- Halaman tanda tangan surat -->
-        <a href="{{ route('kajur.tandatangan') }}" class="{{ Request::is('tandatangan-surat') ? 'active' : '' }}">
+        <a href="{{ route('kajur.tandatangan') }}" class="{{ Request::is('tandatangan-surat*') ? 'active' : '' }}">
           <i class="fa-solid fa-signature fa-fw"></i><span>Tanda Tangan Surat</span>
         </a>
       @endif

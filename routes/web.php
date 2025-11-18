@@ -61,6 +61,12 @@ Route::middleware('auth')->group(function () {
 // Kajur & Sekjur
 Route::middleware('auth')->group(function () {
     
-    // Route Tanda Tangan
-    Route::get('/tandatangan-surat', [TandatanganController::class, 'index'])->name('kajur.tandatangan'); 
+    // 1. Halaman Tabel Daftar
+    Route::get('/tandatangan-surat', [TandatanganController::class, 'index'])
+        ->name('kajur.tandatangan');
+
+    // 2. Halaman Detail Tanda Tangan (Pakai ID)
+    Route::get('/tandatangan-surat/{id}', [TandatanganController::class, 'show'])
+        ->name('kajur.tandatangan.show');
+
 });
