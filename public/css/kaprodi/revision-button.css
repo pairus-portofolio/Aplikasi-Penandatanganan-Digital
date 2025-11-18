@@ -1,25 +1,30 @@
-/* Tombol Minta Revisi (Style Dasar Oranye) */
+/* Tombol aksi utama (warna kuning/oranye) */
 .pv-primary-btn {
     border: none;
     padding: 10px 28px;
     font-weight: 600;
     font-size: 14px;
     cursor: pointer;
-    background: #f59e0b;  
+    background: #f59e0b;
     color: #fff;
     border-radius: 8px;
     box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3);
     transition: box-shadow 0.2s ease;
     white-space: nowrap;
 }
+
+/* Hover efek tombol */
 .pv-primary-btn:hover {
     background: #f5a728;
     box-shadow: 0 6px 18px rgba(245, 158, 11, 0.4);
 }
+
+/* Efek klik tombol */
 .pv-primary-btn:active {
     box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
 }
 
+/* Posisi tombol pada layar mobile (tengah) */
 @media (max-width: 992px) {
   .pv-primary-btn {
     position: absolute;

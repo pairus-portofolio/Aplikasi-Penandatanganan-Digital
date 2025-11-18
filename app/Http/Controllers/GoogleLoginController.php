@@ -17,38 +17,42 @@ class GoogleLoginController extends Controller
         return Socialite::driver('google')->redirect();
     }
 
-    // Menangani data yang dikirim Google setelah login
+    // Menangani callback setelah user login melalui Google
     public function handleGoogleCallback()
     {
         try {
-            // Ambil data user dari akun Google
+            // Mengambil data pengguna dari Google
             $googleUser = Socialite::driver('google')->user();
 
-            // Cari user di database berdasarkan email
+            // Mencari user berdasarkan email yang diberikan Google
             $user = User::where('email', $googleUser->getEmail())->first();
 
-            // Jika user ditemukan
+            // Login jika user ditemukan
             if ($user) {
-                // Simpan ID Google ke kolom google_id
+
+                // Simpan google_id untuk menyambungkan akun
                 $user->google_id = $googleUser->getId();
 
-                // Jika email belum diverifikasi, isi tanggal verifikasinya
+                // Verifikasi email jika belum diverifikasi
                 if (empty($user->email_verified_at)) {
                     $user->email_verified_at = Carbon::now();
                 }
 
+                // Simpan perubahan user
                 $user->save();
 
-                // Login-kan user dan arahkan ke dashboard
+                // Login user ke sistem
                 Auth::login($user);
                 return redirect()->intended('/dashboard');
             } else {
-                // Jika user tidak terdaftar
+
+                // Email Google tidak terdaftar di sistem
                 return redirect('/')->with('error', 'Email tidak valid');
             }
 
         } catch (Exception $e) {
-            // Jika terjadi error saat login
+
+            // Menangani error ketika proses login Google gagal
             return redirect('/')->with('error', 'Gagal login dengan Google. Coba lagi.');
         }
     }

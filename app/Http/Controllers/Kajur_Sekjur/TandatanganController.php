@@ -7,9 +7,9 @@ use Illuminate\Http\Request;
 
 class TandatanganController extends Controller
 {
+    // Menampilkan halaman tanda tangan surat untuk Kajur/Sekjur
     public function index()
     {
-        // Di sini nanti Anda bisa mengambil data surat dari DB
         return view('kajur_sekjur.tandatangan-surat');
     }
 }

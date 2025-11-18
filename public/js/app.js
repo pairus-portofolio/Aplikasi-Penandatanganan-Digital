@@ -1,89 +1,84 @@
-// public/js/app.js
-
+// Menjalankan script setelah halaman sepenuhnya dimuat
 document.addEventListener("DOMContentLoaded", function () {
-    
-    /* ==========================================
-       1. SIDEBAR LOGIC
-       ========================================== */
+    // Mengambil elemen utama untuk sidebar dan kondisi mobile
     const hb = document.getElementById("hb");
     const html = document.documentElement;
     const overlay = document.getElementById("overlay");
     const isMobile = () => window.matchMedia("(max-width: 992px)").matches;
 
+    // Mengatur toggle sidebar untuk desktop dan mobile
     if (hb) {
         hb.addEventListener("click", () => {
             if (isMobile()) document.body.classList.toggle("show-sb");
             else html.classList.toggle("collapsed");
         });
     }
-    
+
+    // Menutup sidebar mobile ketika overlay diklik
     if (overlay) {
-        overlay.addEventListener("click", () => document.body.classList.remove("show-sb"));
+        overlay.addEventListener("click", () =>
+            document.body.classList.remove("show-sb")
+        );
     }
-    
+
+    // Menutup sidebar mobile otomatis ketika layar diperbesar
     window.addEventListener("resize", () => {
         if (!isMobile()) document.body.classList.remove("show-sb");
     });
 
-    /* ==========================================
-       2. POPUP SYSTEM (Generic Handler)
-       ========================================== */
+    // Membuat sistem popup generik untuk membuka & menutup modal
     function setupPopup(triggerId, popupId, closeBtnIds = []) {
         const trigger = document.getElementById(triggerId);
         const popup = document.getElementById(popupId);
 
         if (trigger && popup) {
-            // Buka Popup
-            trigger.addEventListener("click", () => popup.classList.add("show"));
+            trigger.addEventListener("click", () =>
+                popup.classList.add("show")
+            );
 
-            // Tutup Popup via Tombol (Batal/Kirim)
-            closeBtnIds.forEach(btnId => {
+            closeBtnIds.forEach((btnId) => {
                 const btn = document.getElementById(btnId);
                 if (btn) {
-                    btn.addEventListener("click", () => popup.classList.remove("show"));
+                    btn.addEventListener("click", () =>
+                        popup.classList.remove("show")
+                    );
                 }
             });
 
-            // Tutup Popup via Klik Background (Overlay)
             popup.addEventListener("click", (e) => {
                 if (e.target === popup) popup.classList.remove("show");
             });
         }
     }
 
-    // Inisialisasi Popup Logout
+    // Mengaktifkan semua popup yang digunakan di sistem
     setupPopup("logoutBtn", "logoutPopup", ["cancelLogout"]);
-
-    // Inisialisasi Popup Revisi (Review Surat)
     setupPopup("mintaRevisiBtn", "revisiPopup", ["batalBp", "kirimBp"]);
-
-    // Inisialisasi Popup Notifikasi (Paraf Surat)
-    setupPopup("kirimNotifikasiBtn", "parafNotifPopup", ["batalKirim", "konfirmasiKirim"]);
-
-    // Inisialisasi Popup Tanda Tangan (Kajur/Sekjur)
+    setupPopup("kirimNotifikasiBtn", "parafNotifPopup", [
+        "batalKirim",
+        "konfirmasiKirim",
+    ]);
     setupPopup("btnSelesaiTtd", "ttdNotifPopup", ["batalTtd", "kirimTtd"]);
 
-
-    /* ==========================================
-       3. ZOOM CONTROLS
-       ========================================== */
+    // Mengambil elemen kontrol zoom dokumen
     const page = document.getElementById("previewPage");
     const zoomInBtn = document.getElementById("zoomInBtn");
     const zoomOutBtn = document.getElementById("zoomOutBtn");
     let currentScale = 1;
 
+    // Mengatur fungsi zoom in & zoom out pada halaman preview
     if (page && zoomInBtn && zoomOutBtn) {
         const applyZoom = () => {
             page.style.transform = `scale(${currentScale})`;
         };
 
         zoomInBtn.addEventListener("click", () => {
-            currentScale = Math.min(currentScale + 0.1, 2); // Max zoom 2x
+            currentScale = Math.min(currentScale + 0.1, 2);
             applyZoom();
         });
 
         zoomOutBtn.addEventListener("click", () => {
-            currentScale = Math.max(currentScale - 0.1, 0.5); // Min zoom 0.5x
+            currentScale = Math.max(currentScale - 0.1, 0.5);
             applyZoom();
         });
     }

@@ -1,13 +1,16 @@
+<!-- Kontrol bawah halaman: zoom + tombol kirim notifikasi -->
 <div class="pv-controls">
-    {{-- Panggil Zoom dari folder shared --}}
+
+    <!-- Include kontrol zoom -->
     @include('partials.shared.zoom-controls')
 
+    <!-- Tombol untuk membuka popup notifikasi email -->
     <button type="button" class="pv-primary-btn btn-blue" id="kirimNotifikasiBtn">
         Kirim Notifikasi
     </button>
 </div>
 
-{{-- Panggil Popup dari folder shared --}}
+<!-- Include popup modal pengiriman notifikasi email -->
 @include('partials.shared.popup-modal', [
     'modalId'       => 'parafNotifPopup',
     'title'         => 'Kirim Notifikasi Email',

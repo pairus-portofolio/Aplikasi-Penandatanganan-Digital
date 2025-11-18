@@ -1,27 +1,26 @@
-// public/js/login.js
-
+// Menunggu seluruh elemen halaman siap
 document.addEventListener("DOMContentLoaded", function () {
-    // Ambil elemen penting
-    const togglePassword = document.getElementById("togglePassword"); // tombol toggle
-    const passwordInput = document.getElementById("password"); // input password
-    const eyeOpen = document.getElementById("eyeOpen"); // ikon mata terbuka
-    const eyeClosed = document.getElementById("eyeClosed"); // ikon mata tertutup
+    // Ambil elemen terkait toggle password
+    const togglePassword = document.getElementById("togglePassword");
+    const passwordInput = document.getElementById("password");
+    const eyeOpen = document.getElementById("eyeOpen");
+    const eyeClosed = document.getElementById("eyeClosed");
 
-    // Pastikan semua elemen ada
+    // Cegah error jika elemen tidak ditemukan
     if (!togglePassword || !passwordInput || !eyeOpen || !eyeClosed) {
         return;
     }
 
-    // Event klik untuk show/hide password
+    // Logika menampilkan/menyembunyikan password
     togglePassword.addEventListener("click", () => {
-        const isHidden = passwordInput.type === "password"; // cek apakah hidden
-        passwordInput.type = isHidden ? "text" : "password"; // toggle tipe
+        const isHidden = passwordInput.type === "password";
+        passwordInput.type = isHidden ? "text" : "password";
 
-        // Toggle icon
+        // Ganti ikon mata
         eyeOpen.classList.toggle("hidden", isHidden);
         eyeClosed.classList.toggle("hidden", !isHidden);
 
-        // Update atribut ARIA untuk aksesibilitas
+        // Update atribut aksesibilitas
         togglePassword.setAttribute("aria-pressed", String(isHidden));
         togglePassword.setAttribute(
             "aria-label",

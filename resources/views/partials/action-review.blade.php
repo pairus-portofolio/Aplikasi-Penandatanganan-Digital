@@ -1,13 +1,16 @@
-﻿<div class="pv-controls">
-    {{-- Panggil Zoom dari folder shared --}}
+﻿<!-- Kontrol dokumen: zoom + tombol permintaan revisi -->
+<div class="pv-controls">
+
+    <!-- Include kontrol zoom -->
     @include('partials.shared.zoom-controls')
 
+    <!-- Tombol membuka popup permintaan revisi -->
     <button type="button" class="pv-primary-btn" id="mintaRevisiBtn">
         Minta Revisi
     </button>
 </div>
 
-{{-- Panggil Popup dari folder shared --}}
+<!-- Include popup modal untuk mengirim notifikasi revisi -->
 @include('partials.shared.popup-modal', [
     'modalId'       => 'revisiPopup',
     'title'         => 'Kirim Notifikasi Revisi via Email',

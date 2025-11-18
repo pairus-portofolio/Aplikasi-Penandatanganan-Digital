@@ -1,4 +1,4 @@
-/* public/css/dashboard/sidebar.css */
+/* Sidebar utama */
 .sidebar {
   width:var(--sidebar-w);
   background:linear-gradient(180deg,var(--blue-sidebar-1),var(--blue-sidebar-2));
@@ -8,37 +8,96 @@
   flex-direction:column;
   justify-content:space-between;
   position:fixed;
-  top:0;bottom:0;left:0;
+  top:0; bottom:0; left:0;
   z-index:1000;
   overflow:hidden;
   transition:transform var(--transition-speed) ease, width var(--transition-speed) ease;
 }
 
-.sb-head {display:flex;align-items:center;gap:14px;margin-bottom:24px;}
-.logo {width:48px;height:48px;border-radius:12px;overflow:hidden;background:#0a2b59;display:flex;align-items:center;justify-content:center;}
-.logo img {width:100%;height:100%;object-fit:contain;}
-.brand {font-weight:800;font-size:18px;white-space:nowrap;}
+/* Header sidebar (logo + nama role) */
+.sb-head {
+  display:flex;
+  align-items:center;
+  gap:14px;
+  margin-bottom:24px;
+}
 
-.menu {display:flex;flex-direction:column;gap:10px;}
+/* Kotak logo */
+.logo {
+  width:48px;
+  height:48px;
+  border-radius:12px;
+  overflow:hidden;
+  background:#0a2b59;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* Gambar logo */
+.logo img {
+  width:100%;
+  height:100%;
+  object-fit:contain;
+}
+
+/* Nama role */
+.brand {
+  font-weight:800;
+  font-size:18px;
+  white-space:nowrap;
+}
+
+/* Wrapper menu navigasi */
+.menu {
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+/* Link menu */
 .menu a {
-  display:flex;align-items:center;gap:12px;
-  padding:10px 14px;border-radius:12px;
-  color:#e2e8f0;text-decoration:none;font-weight:600;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:10px 14px;
+  border-radius:12px;
+  color:#e2e8f0;
+  text-decoration:none;
+  font-weight:600;
   transition:all .2s ease;
 }
-.menu a:hover {background:rgba(255,255,255,.16);}
+
+/* Hover menu */
+.menu a:hover {
+  background:rgba(255,255,255,.16);
+}
+
+/* Menu aktif */
 .menu a.active {
-  background:#fff; color:#111827;
+  background:#fff;
+  color:#111827;
   box-shadow:0 6px 14px rgba(2,6,23,.12);
 }
 
+/* Tombol logout */
 .sb-foot button {
   width:100%;
-  background:none;border:none;
-  color:#fff;font-weight:700;
-  padding:10px 14px;border-radius:12px;
-  display:flex;align-items:center;gap:10px;
-  cursor:pointer;text-align:left;
+  background:none;
+  border:none;
+  color:#fff;
+  font-weight:700;
+  padding:10px 14px;
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  cursor:pointer;
+  text-align:left;
   transition:all .2s ease;
 }
-.sb-foot button:hover {background:rgba(255,255,255,.16);}
+
+/* Hover tombol logout */
+.sb-foot button:hover {
+  background:rgba(255,255,255,.16);
+}
