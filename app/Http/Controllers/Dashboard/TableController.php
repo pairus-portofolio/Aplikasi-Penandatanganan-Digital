@@ -11,17 +11,26 @@ class TableController extends Controller
     public static function getData()
     {
         $user = Auth::user();
-        $roleName = $user->role->nama_role ?? '';
+        
+        // Ubah pengecekan dari 'nama_role' menjadi 'role_id'
+        $roleId = $user->role_id; 
+        
         $rawDocs = collect([]);
 
-        // Pastikan menggunakan 'with' untuk mengambil data relasi uploader agar lebih efisien
-        if ($roleName === 'TU') {
+        // 1. Logika TU (ID: 1)
+        if ($roleId == 1) {
             $rawDocs = Document::with('uploader')->latest()->get();
-        } elseif (in_array($roleName, ['Kaprodi D3', 'Kaprodi D4'])) {
+        } 
+        
+        // 2. Logika Kaprodi D3 (ID: 2) & D4 (ID: 3)
+        elseif (in_array($roleId, [2, 3])) {
             $rawDocs = Document::with('uploader')->whereHas('workflowSteps', function($q) use ($user) {
                 $q->where('user_id', $user->id);
             })->latest()->get();
-        } elseif (in_array($roleName, ['Kajur', 'Sekjur'])) {
+        } 
+        
+        // 3. Logika Kajur (ID: 4) & Sekjur (ID: 5)
+        elseif (in_array($roleId, [4, 5])) {
             $rawDocs = Document::with('uploader')->whereHas('workflowSteps', function($q) use ($user) {
                 $q->where('user_id', $user->id);
             })->latest()->get();
@@ -42,9 +51,10 @@ class TableController extends Controller
 
             return [
                 'id_raw'       => $doc->id,
+                'nomor'        => 'SRT-' . str_pad($doc->id, 4, '0', STR_PAD_LEFT),
                 'nama'         => $doc->judul_surat,
-                'pengunggah'   => $doc->uploader->nama_lengkap ?? 'Tidak Diketahui', 
-                'tanggal'      => $doc->created_at->format('d/m/Y'), 
+                'pengunggah'   => $doc->uploader->nama_lengkap ?? 'Tidak Diketahui',
+                'tanggal'      => $doc->created_at->format('d/m/Y'),
                 'status'       => ucfirst($doc->status),
                 'status_class' => $statusClass
             ];
