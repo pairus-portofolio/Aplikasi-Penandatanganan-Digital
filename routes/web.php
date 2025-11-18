@@ -3,6 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\GoogleLoginController;
+use App\Http\Controllers\Dashboard\CardsController;
+use App\Http\Controllers\Dashboard\TableController;
 use App\Http\Controllers\Tu\DocumentController;
 use App\Http\Controllers\Kaprodi\ReviewController; 
 use App\Http\Controllers\Kaprodi\ParafController;
@@ -23,9 +25,8 @@ Route::get('/auth/google/redirect', [GoogleLoginController::class, 'redirectToGo
 Route::get('/auth/google/callback', [GoogleLoginController::class, 'handleGoogleCallback'])->name('google.callback');
 
 // Dashboard
-Route::get('/dashboard', function () {
-    return view('dashboard.index');
-})->middleware('auth')->name('dashboard');
+Route::get('/dashboard', [CardsController::class, 'index'])->middleware('auth')->name('dashboard');
+Route::get('/dashboard/table', [TableController::class, 'index'])->middleware('auth')->name('dashboard.table');
 
 // semua rute role di sini
 
@@ -41,12 +42,20 @@ Route::middleware(['auth'])->group(function () {
 // Kaprodi D3 & D4
 Route::middleware('auth')->group(function () {
     
-    // Route untuk Review Surat
+    // --- REVIEW SURAT ---
+    // 1. Menampilkan Tabel Daftar Surat (Fitur)
     Route::get('/review-surat', [ReviewController::class, 'index'])->name('kaprodi.review');
+    
+    // 2. Menampilkan Halaman Proses Review (Detail)
+    Route::get('/review-surat/{id}', [ReviewController::class, 'show'])->name('kaprodi.review.show');
 
-    // Route untuk Paraf Surat
+
+    // --- PARAF SURAT  ---
+    // 1. Tabel Daftar
     Route::get('/paraf-surat', [ParafController::class, 'index'])->name('kaprodi.paraf');
 
+    // 2. Halaman Detail (Tambahkan parameter {id})
+    Route::get('/paraf-surat/{id}', [ParafController::class, 'show'])->name('kaprodi.paraf.show');
 });
 
 // Kajur & Sekjur

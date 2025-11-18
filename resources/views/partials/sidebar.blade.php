@@ -36,12 +36,12 @@
       <!-- Menu khusus Kaprodi D3 & D4 -->
       @if(in_array(Auth::user()->role_id, [2, 3]))
         <!-- Halaman untuk review surat -->
-        <a href="{{ route('kaprodi.review') }}" class="{{ Request::is('review-surat') ? 'active' : '' }}">
+        <a href="{{ route('kaprodi.review') }}" class="{{ Request::is('review-surat*') ? 'active' : '' }}">
           <i class="fa-regular fa-file-lines"></i> Review Surat
         </a>
 
         <!-- Halaman untuk melakukan paraf -->
-        <a href="{{ route('kaprodi.paraf') }}" class="{{ Request::is('paraf-surat') ? 'active' : '' }}">
+        <a href="{{ route('kaprodi.paraf') }}" class="{{ Request::is('paraf-surat*') ? 'active' : '' }}">
           <i class="fa-solid fa-stamp"></i> Paraf Surat
         </a>
       @endif

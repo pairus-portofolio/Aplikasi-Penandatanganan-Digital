@@ -1,16 +1,11 @@
 @extends('layouts.app')
-@section('title', 'Dashboard')
+
+@section('title', 'Daftar Paraf Surat')
 
 @section('content')
 
-  <h1 class="page-title">Dashboard</h1>
+  <h1 class="page-title">Daftar Surat Perlu Diparaf</h1>
 
-  <p class="welcome">
-    Selamat datang <strong>{{ Auth::user()->nama_lengkap ?? 'Pengguna' }}</strong>!
-  </p>
-
-  @include('partials.cards')
-    
   <div class="table-shell">
     <table>
       <thead>
@@ -19,9 +14,8 @@
           <th>Pengunggah</th>
           <th>Tanggal Pembuat</th>
           <th>Status</th>
-        </tr>
+          <th>Aksi</th> </tr>
       </thead>
-
       <tbody>
         @forelse($daftarSurat as $s)
         <tr>
@@ -35,11 +29,16 @@
               {{ $s['status'] }}
             </span>
           </td>
+          <td>
+            <a class="aksi" href="{{ route('kaprodi.paraf.show', $s['id_raw']) }}">
+               Lihat
+            </a>
+          </td>
         </tr>
         @empty
         <tr>
-          <td colspan="4" style="text-align:center;color:#94a3b8;padding:22px">
-            Belum ada data surat.
+          <td colspan="5" style="text-align:center;color:#94a3b8;padding:22px">
+            Tidak ada surat yang perlu diparaf.
           </td>
         </tr>
         @endforelse
@@ -47,10 +46,4 @@
     </table>
   </div>
 
-  <div class="foot">Sistem Manajemen Surat - Politeknik Negeri Bandung</div>
-
-@endsection
-
-@section('popup')
-  @include('partials.logout-popup')
 @endsection
