@@ -1,16 +1,11 @@
 @extends('layouts.app')
-@section('title', 'Dashboard')
+
+@section('title', 'Daftar Tanda Tangan')
 
 @section('content')
 
-  <h1 class="page-title">Dashboard</h1>
+  <h1 class="page-title">Daftar Surat Perlu Tanda Tangan</h1>
 
-  <p class="welcome">
-    Selamat datang <strong>{{ Auth::user()->nama_lengkap ?? 'Pengguna' }}</strong>!
-  </p>
-
-  @include('partials.cards')
-    
   <div class="table-shell">
     <table>
       <thead>
@@ -19,14 +14,15 @@
           <th>Pengunggah</th>
           <th>Tanggal Pembuat</th>
           <th>Status</th>
+          <th>Aksi</th>
         </tr>
       </thead>
-
       <tbody>
         @forelse($daftarSurat as $s)
         <tr>
           <td>
              <div style="font-weight:bold;">{{ $s['nama'] }}</div>
+             <div style="font-size:12px; color:#64748b;">{{ $s['nomor'] }}</div>
           </td>
           <td>{{ $s['pengunggah'] }}</td>
           <td>{{ $s['tanggal'] }}</td>
@@ -35,11 +31,16 @@
               {{ $s['status'] }}
             </span>
           </td>
+          <td>
+            <a class="aksi" href="{{ route('kajur.tandatangan.show', $s['id_raw']) }}">
+               Lihat
+            </a>
+          </td>
         </tr>
         @empty
         <tr>
-          <td colspan="4" style="text-align:center;color:#94a3b8;padding:22px">
-            Belum ada data surat.
+          <td colspan="5" style="text-align:center;color:#94a3b8;padding:22px">
+            Tidak ada surat yang perlu ditandatangani.
           </td>
         </tr>
         @endforelse
@@ -47,10 +48,10 @@
     </table>
   </div>
 
-  <div class="foot">Sistem Manajemen Surat - Politeknik Negeri Bandung</div>
-
 @endsection
 
 @section('popup')
-  @include('partials.logout-popup')
+
+    <!-- Popup konfirmasi logout -->
+    @include('partials.logout-popup')
 @endsection
