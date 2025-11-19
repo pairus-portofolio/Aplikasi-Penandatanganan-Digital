@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Document;
 use App\Models\WorkflowStep;
 
 class CardsController extends Controller
@@ -11,32 +12,70 @@ class CardsController extends Controller
     public function index()
     {
         $user = Auth::user();
-        $role = $user->role->nama_role ?? '';
+        $roleId = $user->role_id;
 
-        // Ambil query utama dari TableController → konsisten
-        $mainQuery = TableController::getBaseQueryByRole();
+        // Ambil dokumen yang boleh dilihat user (sudah Collection!)
+        $docs = TableController::getBaseQueryByRole();
 
-        // CARD: Surat Keluar (TU)
-        $suratKeluarCount = ($role === 'TU')
-            ? $mainQuery->count()
+        // =============================
+        // CARD UNTUK ROLE TU
+        // =============================
+        $suratKeluarCount = ($roleId == 1)
+            ? $docs->count()
             : 0;
 
-        // CARD: Surat Perlu Review (Kaprodi)
-        $suratPerluReview = in_array($role, ['Kaprodi D3', 'Kaprodi D4'])
-            ? WorkflowStep::where('user_id', $user->id)
-                ->where('status', 'Ditinjau')
-                ->count()
-            : 0;
+        // =============================
+        // CARD UNTUK KAPRODI (role 2, 3)
+        // Dokumen hanya dihitung jika: 
+        // - dia urutan aktif
+        // - status step = Ditinjau
+        // =============================
+        if (in_array($roleId, [2,3])) {
 
-        // CARD: Surat Perlu Paraf (Kaprodi)
-        $suratPerluParaf = $suratPerluReview;
+            $suratPerluParaf = $docs->filter(function ($doc) use ($user) {
 
-        // CARD: Surat Perlu TTD (Kajur/Sekjur)
-        $suratPerluTtd = in_array($role, ['Kajur', 'Sekjur'])
-            ? $mainQuery->count() // sudah otomatis status = Diparaf
-            : 0;
+                $activeStep = WorkflowStep::where('document_id', $doc->id)
+                    ->where('status', 'Ditinjau')
+                    ->orderBy('urutan')
+                    ->first();
 
-        // Data tabel
+                return $activeStep && $activeStep->user_id == $user->id;
+
+            })->count();
+
+            // REVIEW = sama dengan paraf (kaprodi review == kaprodi paraf)
+            $suratPerluReview = $suratPerluParaf;
+
+        } else {
+            $suratPerluParaf = 0;
+            $suratPerluReview = 0;
+        }
+
+        // =============================
+        // CARD UNTUK KAJUR / SEKJUR
+        // Dokumen dihitung jika:
+        // - status dokumen = Diparaf
+        // - dia adalah urutan aktif
+        // =============================
+        if (in_array($roleId, [4,5])) {
+
+            $suratPerluTtd = $docs->filter(function ($doc) use ($user) {
+
+                // Ambil step aktif
+                $activeStep = WorkflowStep::where('document_id', $doc->id)
+                    ->where('status', 'Ditinjau')
+                    ->orderBy('urutan')
+                    ->first();
+
+                return $activeStep && $activeStep->user_id == $user->id;
+
+            })->count();
+
+        } else {
+            $suratPerluTtd = 0;
+        }
+
+        // Data tabel utama
         $daftarSurat = TableController::getData();
 
         return view('dashboard.index', compact(
