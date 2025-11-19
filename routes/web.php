@@ -56,6 +56,9 @@ Route::middleware('auth')->group(function () {
 
     // 2. Halaman Detail (Tambahkan parameter {id})
     Route::get('/paraf-surat/{id}', [ParafController::class, 'show'])->name('kaprodi.paraf.show');
+
+    // Rute ini untuk menangani download/tampilan file yang aman
+    Route::get('/document/download/{document}', [DocumentController::class, 'download'])->name('document.download');
 });
 
 // Kajur & Sekjur

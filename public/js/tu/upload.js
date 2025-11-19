@@ -11,8 +11,8 @@ document.addEventListener("DOMContentLoaded", function () {
     // Menyimpan tampilan awal area upload
     const initialDropAreaHTML = dropArea.innerHTML;
 
-    // Mengunci input agar hanya menerima .docx
-    fileInput.setAttribute("accept", ".docx");
+    // Mengunci input agar hanya menerima .pdf
+    fileInput.setAttribute("accept", ".pdf");
 
     // Membuka file picker ketika area upload diklik
     dropArea.addEventListener("click", () => {
@@ -58,9 +58,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Mengecek dan menampilkan file yang dipilih
     function handleFile(file) {
-        // Memastikan file adalah .docx
-        if (!file.name.toLowerCase().endsWith(".docx")) {
-            alert("Hanya file .docx yang diperbolehkan.");
+        // Memastikan file adalah .pdf
+        if (!file.name.toLowerCase().endsWith(".pdf")) {
+            alert("Hanya file .pdf yang diperbolehkan.");
             resetFileSelection();
             return;
         }

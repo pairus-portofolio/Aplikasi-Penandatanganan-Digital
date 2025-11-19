@@ -3,43 +3,50 @@
 @section('title', 'Review Surat')
 
 @push('styles')
-    <!-- Memuat seluruh stylesheet yang diperlukan untuk halaman review -->
+    {{-- CSS Review --}}
     <link rel="stylesheet" href="{{ asset('css/kaprodi/preview-top.css') }}">
     <link rel="stylesheet" href="{{ asset('css/kaprodi/preview-bottom.css') }}">
     <link rel="stylesheet" href="{{ asset('css/kaprodi/zoom-button.css') }}">
     <link rel="stylesheet" href="{{ asset('css/kaprodi/revision-button.css') }}">
     <link rel="stylesheet" href="{{ asset('css/kaprodi/popup.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/kaprodi/preview-layout.css') }}">
 @endpush
 
 @section('page-header')
-    <!-- Header dokumen: judul surat dan informasi nomor halaman -->
     @include('partials.doc-header', [
-        'judulSurat'  => 'Pratijau: Nama Surat',
+        'judulSurat'  => 'Pratinjau: ' . $document->judul_surat,
         'currentPage' => 1,
-        'totalPages'  => 5,
+        'totalPages'  => 1, 
     ])
 @endsection
 
 @section('content')
-
-    <!-- Area pratinjau surat yang ditampilkan sebelum direvisi atau disetujui -->
-    <div 
-        id="previewPage"
-        style="height: 150vh; background: #f0f0f0; border: 1px dashed #ccc; display:flex; align-items:center; justify-content:center; color: #999; transform-origin: top center;"
-    >
-        (Area Preview Dokumen)
+    <div class="review-preview-area">
+        
+        {{-- Container Scroll --}}
+        <div id="scrollContainer">
+            <div id="pdf-render-container"></div>
+        </div>
     </div>
-
 @endsection
 
 @section('popup')
-    <!-- Popup aksi untuk melakukan review (revisi, setujui, dll.) -->
     @include('partials.action-review')
-
-    <!-- Popup konfirmasi logout -->
     @include('partials.logout-popup')
 @endsection
 
 @push('scripts')
-    <!-- Placeholder untuk script tambahan bila diperlukan -->
+    {{-- 1. Load Library PDF.js (Wajib) --}}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    
+    {{-- 2. Konfigurasi Data dari Laravel ke JS --}}
+    <script>
+        window.reviewConfig = {
+            pdfUrl: "{{ route('document.download', $document->id) }}",
+            workerSrc: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js'
+        };
+    </script>
+
+    {{-- 3. Panggil Script Eksternal yang baru dibuat --}}
+    <script src="{{ asset('js/kaprodi/review-surat.js') }}"></script>
 @endpush

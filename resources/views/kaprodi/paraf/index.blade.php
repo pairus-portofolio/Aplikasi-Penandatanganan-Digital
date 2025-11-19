@@ -17,31 +17,26 @@
           <th>Aksi</th> </tr>
       </thead>
       <tbody>
-        @forelse($daftarSurat as $s)
-        <tr>
-          <td>
-             <div style="font-weight:bold;">{{ $s['nama'] }}</div>
-          </td>
-          <td>{{ $s['pengunggah'] }}</td>
-          <td>{{ $s['tanggal'] }}</td>
-          <td>
-            <span class="pill {{ $s['status_class'] }}">
-              {{ $s['status'] }}
-            </span>
-          </td>
-          <td>
-            <a class="aksi" href="{{ route('kaprodi.paraf.show', $s['id_raw']) }}">
-               Lihat
-            </a>
-          </td>
-        </tr>
-        @empty
-        <tr>
-          <td colspan="5" style="text-align:center;color:#94a3b8;padding:22px">
-            Tidak ada surat yang perlu diparaf.
-          </td>
-        </tr>
-        @endforelse
+          @forelse($daftarTugas as $tugas)
+          <tr>
+              <td>{{ $tugas->document->judul_surat }}</td>
+              <td>{{ $tugas->document->uploader->nama_lengkap }}</td>
+              <td>{{ $tugas->document->created_at->format('d/m/Y') }}</td>
+              <td><span class="pill">{{ $tugas->status }}</span></td>
+              <td>
+                  {{-- LINK KE HALAMAN PARAF DETAIL --}}
+                  <a class="aksi" href="{{ route('kaprodi.paraf.show', $tugas->document_id) }}">
+                      Lihat
+                  </a>
+              </td>
+          </tr>
+          @empty
+          <tr>
+              <td colspan="5" style="text-align:center; padding: 20px; color: gray;">
+                  Tidak ada surat yang perlu diparaf.
+              </td>
+          </tr>
+          @endforelse
       </tbody>
     </table>
   </div>

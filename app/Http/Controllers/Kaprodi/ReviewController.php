@@ -5,27 +5,33 @@ namespace App\Http\Controllers\Kaprodi;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Document;
-use App\Http\Controllers\Dashboard\TableController; // Import Logic Tabel
+use App\Models\WorkflowStep; 
+use Illuminate\Support\Facades\Auth;
 
 class ReviewController extends Controller
 {
     // 1. Halaman LIST (Tabel Fitur)
     public function index()
     {
-        // Ambil data tabel dari Logic Pusat
-        $daftarSurat = TableController::getData();
+        $user = Auth::user();
 
-        // Tampilkan View Tabel Khusus Review
-        return view('kaprodi.review.index', compact('daftarSurat'));
+        // Ambil tugas review dari database
+        $daftarTugas = WorkflowStep::where('user_id', $user->id)
+                                   ->whereIn('status', ['Ditinjau', 'Perlu Revisi'])
+                                   ->with('document.uploader')
+                                   ->orderBy('created_at', 'desc')
+                                   ->get();
+
+        // Kirim ke view dengan nama variabel yang benar
+        return view('kaprodi.review.index', compact('daftarTugas'));
     }
 
     // 2. Halaman DETAIL (Proses Review Surat)
     public function show($id)
     {
-        // Cari dokumen berdasarkan ID (Pastikan logic keamanan ditambahkan nanti)
         $document = Document::findOrFail($id);
-
-        // Tampilkan halaman review yang ada preview gambarnya
+        
+        // Kirim variabel 'surat' agar sesuai dengan view 'kaprodi.review-surat'
         return view('kaprodi.review-surat', compact('document'));
     }
 }
