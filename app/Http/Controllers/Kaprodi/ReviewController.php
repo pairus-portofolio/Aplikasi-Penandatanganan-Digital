@@ -7,31 +7,22 @@ use Illuminate\Http\Request;
 use App\Models\Document;
 use App\Models\WorkflowStep; 
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Dashboard\TableController;
 
 class ReviewController extends Controller
 {
-    // 1. Halaman LIST (Tabel Fitur)
+    // 1. Halaman LIST
     public function index()
     {
-        $user = Auth::user();
-
-        // Ambil tugas review dari database
-        $daftarTugas = WorkflowStep::where('user_id', $user->id)
-                                   ->whereIn('status', ['Ditinjau', 'Perlu Revisi'])
-                                   ->with('document.uploader')
-                                   ->orderBy('created_at', 'desc')
-                                   ->get();
-
-        // Kirim ke view dengan nama variabel yang benar
-        return view('kaprodi.review.index', compact('daftarTugas'));
+        $daftarSurat = TableController::getData();
+        return view('kaprodi.review.index', compact('daftarSurat'));
     }
 
-    // 2. Halaman DETAIL (Proses Review Surat)
+    // 2. Halaman DETAIL (lihat dokumen)
     public function show($id)
     {
         $document = Document::findOrFail($id);
         
-        // Kirim variabel 'surat' agar sesuai dengan view 'kaprodi.review-surat'
         return view('kaprodi.review-surat', compact('document'));
     }
 }
