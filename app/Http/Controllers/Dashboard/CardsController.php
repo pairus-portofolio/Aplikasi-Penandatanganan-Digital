@@ -3,54 +3,79 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Document;
 use App\Models\WorkflowStep;
-use App\Http\Controllers\Dashboard\TableController;
 
 class CardsController extends Controller
 {
     public function index()
     {
         $user = Auth::user();
-        $roleName = $user->role->nama_role ?? '';
+        $roleId = $user->role_id;
 
-        // --- LOGIKA 1: CARDS (BERFUNGSI REAL-TIME) ---
-        // Inisialisasi variabel kartu
-        $suratKeluarCount = 0; // Untuk TU
-        $suratPerluReview = 0; // Untuk Kaprodi
-        $suratPerluParaf  = 0; // Untuk Kaprodi
-        $suratPerluTtd    = 0; // Untuk Kajur/Sekjur
+        // Ambil dokumen yang boleh dilihat user (sudah Collection!)
+        $docs = TableController::getBaseQueryByRole();
 
-        // Logika TU
-        if ($roleName === 'TU') {
-            $suratKeluarCount = Document::count();
-        } 
-        
-        // Logika Kaprodi (D3 & D4)
-        elseif (in_array($roleName, ['Kaprodi D3', 'Kaprodi D4'])) {
-            $totalPending = WorkflowStep::where('user_id', $user->id)
-                                        ->where('status', 'Ditinjau')
-                                        ->count();
-            
-            $suratPerluReview = $totalPending;
-            $suratPerluParaf  = $totalPending;
-        } 
-        
-        // Logika Kajur & Sekjur
-        elseif (in_array($roleName, ['Kajur', 'Sekjur'])) {
-            $suratPerluTtd = WorkflowStep::where('user_id', $user->id)
-                                        ->where('status', 'Ditinjau')
-                                        ->count();
+        // =============================
+        // CARD UNTUK ROLE TU
+        // =============================
+        $suratKeluarCount = ($roleId == 1)
+            ? $docs->count()
+            : 0;
+
+        // =============================
+        // CARD UNTUK KAPRODI (role 2, 3)
+        // Dokumen hanya dihitung jika: 
+        // - dia urutan aktif
+        // - status step = Ditinjau
+        // =============================
+        if (in_array($roleId, [2,3])) {
+
+            $suratPerluParaf = $docs->filter(function ($doc) use ($user) {
+
+                $activeStep = WorkflowStep::where('document_id', $doc->id)
+                    ->where('status', 'Ditinjau')
+                    ->orderBy('urutan')
+                    ->first();
+
+                return $activeStep && $activeStep->user_id == $user->id;
+
+            })->count();
+
+            // REVIEW = sama dengan paraf (kaprodi review == kaprodi paraf)
+            $suratPerluReview = $suratPerluParaf;
+
+        } else {
+            $suratPerluParaf = 0;
+            $suratPerluReview = 0;
         }
 
+        // =============================
+        // CARD UNTUK KAJUR / SEKJUR
+        // Dokumen dihitung jika:
+        // - status dokumen = Diparaf
+        // - dia adalah urutan aktif
+        // =============================
+        if (in_array($roleId, [4,5])) {
 
-        // --- LOGIKA 2: TABEL (Diserahkan ke teman Anda) ---
-        // Kita TIDAK mengirim variabel $daftarSurat.
-        // Dengan begini, index.blade.php akan otomatis pakai data dummy/palsu 
-        // yang sudah ada di kodingan HTML-nya sebagai tampilan contoh.
-        
+            $suratPerluTtd = $docs->filter(function ($doc) use ($user) {
+
+                // Ambil step aktif
+                $activeStep = WorkflowStep::where('document_id', $doc->id)
+                    ->where('status', 'Ditinjau')
+                    ->orderBy('urutan')
+                    ->first();
+
+                return $activeStep && $activeStep->user_id == $user->id;
+
+            })->count();
+
+        } else {
+            $suratPerluTtd = 0;
+        }
+
+        // Data tabel utama
         $daftarSurat = TableController::getData();
 
         return view('dashboard.index', compact(
@@ -59,7 +84,6 @@ class CardsController extends Controller
             'suratPerluParaf',
             'suratPerluTtd',
             'daftarSurat'
-            // 'daftarSurat' <-- HAPUS INI agar tabel memunculkan data dummy
         ));
-    } 
+    }
 }
