@@ -8,41 +8,55 @@ use App\Models\Document;
 
 class TableController extends Controller
 {
-    public static function getData()
+    /**
+     * Query dasar berdasarkan role user.
+     * Digunakan oleh CardsController & Tabel.
+     */
+    public static function getBaseQueryByRole()
     {
         $user = Auth::user();
-        
-        // Ubah pengecekan dari 'nama_role' menjadi 'role_id'
-        $roleId = $user->role_id; 
-        
-        $rawDocs = collect([]);
+        $roleId = $user->role_id;
 
-        // 1. Logika TU (ID: 1)
+        // TU → lihat semua surat
         if ($roleId == 1) {
-            $rawDocs = Document::with('uploader')->latest()->get();
-        } 
-        
-        // 2. Logika Kaprodi D3 (ID: 2) & D4 (ID: 3)
-        elseif (in_array($roleId, [2, 3])) {
-            $rawDocs = Document::with('uploader')->whereHas('workflowSteps', function($q) use ($user) {
-                $q->where('user_id', $user->id);
-            })->latest()->get();
-        } 
-        
-        // 3. Logika Kajur (ID: 4) & Sekjur (ID: 5)
-        elseif (in_array($roleId, [4, 5])) {
-            $rawDocs = Document::with('uploader')->whereHas('workflowSteps', function($q) use ($user) {
-                $q->where('user_id', $user->id);
-            })->latest()->get();
+            return Document::with('uploader');
         }
 
-        return self::formatSuratForTable($rawDocs);
+        // Kaprodi (2,3) → lihat surat yg punya workflow untuk dia
+        if (in_array($roleId, [2, 3])) {
+            return Document::with('uploader')
+                ->whereHas('workflowSteps', function ($q) use ($user) {
+                    $q->where('user_id', $user->id);
+                });
+        }
+
+        // Kajur / Sekjur (4,5)
+        if (in_array($roleId, [4, 5])) {
+            return Document::with('uploader')
+                ->whereHas('workflowSteps', function ($q) use ($user) {
+                    $q->where('user_id', $user->id);
+                })
+                ->where('status', 'Diparaf'); // HANYA yang sudah diparaf Kaprodi
+        }
+
+        // Default fallback
+        return Document::with('uploader')->limit(0);
+    }
+
+    /**
+     * Digunakan oleh tabel HTML (formatting)
+     */
+    public static function getData()
+    {
+        return self::formatSuratForTable(
+            self::getBaseQueryByRole()->latest()->get()
+        );
     }
 
     private static function formatSuratForTable($documents)
     {
-        return $documents->map(function($doc) {
-            $statusClass = match($doc->status) {
+        return $documents->map(function ($doc) {
+            $statusClass = match ($doc->status) {
                 'completed', 'signed', 'Ditandatangani' => 'hijau',
                 'Ditinjau', 'Diparaf' => 'kuning',
                 'revisi', 'Perlu Revisi' => 'merah',

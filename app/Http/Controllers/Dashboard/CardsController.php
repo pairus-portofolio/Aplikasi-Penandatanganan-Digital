@@ -3,54 +3,40 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\Document;
 use App\Models\WorkflowStep;
-use App\Http\Controllers\Dashboard\TableController;
 
 class CardsController extends Controller
 {
     public function index()
     {
         $user = Auth::user();
-        $roleName = $user->role->nama_role ?? '';
+        $role = $user->role->nama_role ?? '';
 
-        // --- LOGIKA 1: CARDS (BERFUNGSI REAL-TIME) ---
-        // Inisialisasi variabel kartu
-        $suratKeluarCount = 0; // Untuk TU
-        $suratPerluReview = 0; // Untuk Kaprodi
-        $suratPerluParaf  = 0; // Untuk Kaprodi
-        $suratPerluTtd    = 0; // Untuk Kajur/Sekjur
+        // Ambil query utama dari TableController → konsisten
+        $mainQuery = TableController::getBaseQueryByRole();
 
-        // Logika TU
-        if ($roleName === 'TU') {
-            $suratKeluarCount = Document::count();
-        } 
-        
-        // Logika Kaprodi (D3 & D4)
-        elseif (in_array($roleName, ['Kaprodi D3', 'Kaprodi D4'])) {
-            $totalPending = WorkflowStep::where('user_id', $user->id)
-                                        ->where('status', 'Ditinjau')
-                                        ->count();
-            
-            $suratPerluReview = $totalPending;
-            $suratPerluParaf  = $totalPending;
-        } 
-        
-        // Logika Kajur & Sekjur
-        elseif (in_array($roleName, ['Kajur', 'Sekjur'])) {
-            $suratPerluTtd = WorkflowStep::where('user_id', $user->id)
-                                        ->where('status', 'Ditinjau')
-                                        ->count();
-        }
+        // CARD: Surat Keluar (TU)
+        $suratKeluarCount = ($role === 'TU')
+            ? $mainQuery->count()
+            : 0;
 
+        // CARD: Surat Perlu Review (Kaprodi)
+        $suratPerluReview = in_array($role, ['Kaprodi D3', 'Kaprodi D4'])
+            ? WorkflowStep::where('user_id', $user->id)
+                ->where('status', 'Ditinjau')
+                ->count()
+            : 0;
 
-        // --- LOGIKA 2: TABEL (Diserahkan ke teman Anda) ---
-        // Kita TIDAK mengirim variabel $daftarSurat.
-        // Dengan begini, index.blade.php akan otomatis pakai data dummy/palsu 
-        // yang sudah ada di kodingan HTML-nya sebagai tampilan contoh.
-        
+        // CARD: Surat Perlu Paraf (Kaprodi)
+        $suratPerluParaf = $suratPerluReview;
+
+        // CARD: Surat Perlu TTD (Kajur/Sekjur)
+        $suratPerluTtd = in_array($role, ['Kajur', 'Sekjur'])
+            ? $mainQuery->count() // sudah otomatis status = Diparaf
+            : 0;
+
+        // Data tabel
         $daftarSurat = TableController::getData();
 
         return view('dashboard.index', compact(
@@ -59,7 +45,6 @@ class CardsController extends Controller
             'suratPerluParaf',
             'suratPerluTtd',
             'daftarSurat'
-            // 'daftarSurat' <-- HAPUS INI agar tabel memunculkan data dummy
         ));
-    } 
+    }
 }
