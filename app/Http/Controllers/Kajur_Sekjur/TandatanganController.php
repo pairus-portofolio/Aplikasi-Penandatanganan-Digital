@@ -14,20 +14,19 @@ class TandatanganController extends Controller
     // Function untuk mengecek apakah user mendapat giliran menandatangani
     private function checkWorkflowAccess($documentId)
     {
-        // Step aktif = step dengan urutan terkecil yang belum signed
+        // Step aktif = step dengan status Ditinjau
         $activeStep = WorkflowStep::where('document_id', $documentId)
-            ->where('status', '!=', 'signed')
+            ->where('status', 'Ditinjau')
             ->orderBy('urutan')
             ->first();
 
-        // Jika workflow sudah selesai (tidak ada step aktif)
         if (!$activeStep) {
             return false;
         }
 
-        // Cek apakah user login adalah user yang harus tanda tangan
         return $activeStep->user_id == Auth::id();
     }
+
 
     // 1. Halaman tabel daftar surat
     public function index()
@@ -53,40 +52,46 @@ class TandatanganController extends Controller
 
      public function submit(Request $request, $documentId)
     {
-        // Step aktif (urutan terkecil yang belum selesai)
+        $document = Document::findOrFail($documentId);
+
+        // Step aktif = yang statusnya Ditinjau dan urutan terkecil
         $activeStep = WorkflowStep::where('document_id', $documentId)
-            ->whereIn('status', ['Ditinjau', 'Diparaf']) // status yang belum final
+            ->where('status', 'Ditinjau')
             ->orderBy('urutan')
             ->first();
 
-        // Validasi benar atau tidak gilirannya
+        // Validasi giliran user
         if (!$activeStep || $activeStep->user_id != Auth::id()) {
             return back()->withErrors('Bukan giliran Anda untuk menandatangani dokumen ini.');
-    }
+        }
 
-        // 1. Update step ini menjadi Ditandatangani
+        // ===============================
+        // 1. Update step aktif → Ditandatangani
+        // ===============================
         $activeStep->status = 'Ditandatangani';
         $activeStep->tanggal_aksi = now();
         $activeStep->save();
 
-        // 2. CEK apakah masih ada step yang Belum Ditandatangani/Diparaf
-        $sisaStep = WorkflowStep::where('document_id', $documentId)
-            ->whereIn('status', ['Ditinjau', 'Diparaf'])
-            ->count();
+        // ===============================
+        // 2. Cek apakah masih ada step lain yg statusnya Ditinjau
+        // ===============================
+        $nextStep = WorkflowStep::where('document_id', $documentId)
+            ->where('status', 'Ditinjau')
+            ->orderBy('urutan')
+            ->first();
 
-        $document = Document::find($documentId);
-
-        if ($sisaStep == 0) {
-            // 🔵 3. Semua step selesai → dokumen menjadi Ditandatangani
-            $document->status = 'Ditandatangani';
+        if ($nextStep) {
+            // Masih ada step (berarti ada kajur/sekjur berikutnya)
+            $document->status = 'Diparaf'; 
         } else {
-            // Masih ada step → ini berarti dokumen diparaf
-            $document->status = 'Diparaf';
+            // Semua step selesai → dokumen final
+            $document->status = 'Ditandatangani';
         }
 
         $document->save();
 
         return redirect()->route('kajur.tandatangan.index')
             ->with('success', 'Dokumen berhasil ditandatangani.');
-    }   
+    }
+
 }

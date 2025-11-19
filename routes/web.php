@@ -42,10 +42,19 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/paraf-surat', [ParafController::class, 'index'])->name('kaprodi.paraf');
     Route::get('/paraf-surat/{id}', [ParafController::class, 'show'])->name('kaprodi.paraf.show');
+
+    // 
+    Route::post('/paraf-surat/{id}/submit', [ParafController::class, 'submit'])
+        ->name('kaprodi.paraf.submit');
 });
 
 // Kajur & Sekjur
 Route::middleware('auth')->group(function () {
+
     Route::get('/tandatangan-surat', [TandatanganController::class, 'index'])->name('kajur.tandatangan');
     Route::get('/tandatangan-surat/{id}', [TandatanganController::class, 'show'])->name('kajur.tandatangan.show');
+
+    //
+    Route::post('/tandatangan-surat/{id}/submit', [TandatanganController::class, 'submit'])
+        ->name('kajur.tandatangan.submit');
 });
