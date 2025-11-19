@@ -63,11 +63,17 @@ class AuthController extends Controller
                 return redirect()->intended(route('dashboard'));
             }
         }
-
+        
         // Jika login gagal, kirim pesan error
+        if (!$user) {
+            $error = 'Email tidak terdaftar';
+        } else {
+            $error = 'Password yang Anda masukkan salah.';
+        }
+
         return back()
             ->withInput($request->only('email'))
-            ->with('error', 'Email tidak valid');
+            ->with('error', $error);
     }
 
     // Logout pengguna dan mengakhiri sesi
