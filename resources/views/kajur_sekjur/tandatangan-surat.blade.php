@@ -98,4 +98,13 @@
 
     {{-- 3. Panggil Script yang dibuat --}}
     <script src="{{ asset('js/kajur_sekjur/tandatangan.js') }}"></script>
+
+    <script>
+        @if(session('popup'))
+            document.addEventListener("DOMContentLoaded", function () {
+                document.getElementById("ttdNotifPopup").classList.add("show");
+            });
+        @endif
+    </script>
+
 @endpush

@@ -36,12 +36,12 @@
       <!-- Menu khusus Kaprodi D3 & D4 -->
       @if(in_array(Auth::user()->role_id, [2, 3]))
         <!-- Halaman untuk review surat -->
-        <a href="{{ route('kaprodi.review') }}" class="{{ Request::is('review-surat*') ? 'active' : '' }}">
+        <a href="{{ route('kaprodi.review.index') }}" class="{{ Request::is('review-surat*') ? 'active' : '' }}">
           <i class="fa-regular fa-file-lines"></i> Review Surat
         </a>
 
         <!-- Halaman untuk melakukan paraf -->
-        <a href="{{ route('kaprodi.paraf') }}" class="{{ Request::is('paraf-surat*') ? 'active' : '' }}">
+        <a href="{{ route('kaprodi.paraf.index') }}" class="{{ Request::is('paraf-surat*') ? 'active' : '' }}">
           <i class="fa-solid fa-stamp"></i> Paraf Surat
         </a>
       @endif
@@ -49,7 +49,7 @@
       <!-- Menu khusus Kajur & Sekjur -->
       @if(in_array(Auth::user()->role_id, [4, 5]))
         <!-- Halaman tanda tangan surat -->
-        <a href="{{ route('kajur.tandatangan') }}" class="{{ Request::is('tandatangan-surat*') ? 'active' : '' }}">
+        <a href="{{ route('kajur.tandatangan.index') }}" class="{{ Request::is('tandatangan-surat*') ? 'active' : '' }}">
           <i class="fa-solid fa-signature fa-fw"></i><span>Tanda Tangan Surat</span>
         </a>
       @endif
