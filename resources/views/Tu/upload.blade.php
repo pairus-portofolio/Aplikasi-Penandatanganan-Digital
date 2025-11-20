@@ -34,12 +34,12 @@
     <!-- Area drag & drop untuk upload file -->
     <div class="upload-box" id="drop-area">
         <p class="upload-title">Seret & letakan file disini</p>
-        <p class="upload-subtitle">hanya mendukung file docx</p>
-        <button type="button" class="upload-btn">pilih file</button>
+        <p class="upload-subtitle">hanya mendukung file PDF</p>
+        <button type="button" class="upload-btn">Pilih File</button>
     </div>
 
     <!-- Input file yang disembunyikan -->
-    <input id="file-input" name="file_surat" type="file" accept=".docx" style="display:none;" required>
+    <input id="file-input" name="file_surat" type="file" accept=".pdf" style="display:none;" required>
 
     <!-- Container bagian input detail surat -->
     <div class="form-container">

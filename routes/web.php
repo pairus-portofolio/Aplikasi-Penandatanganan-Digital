@@ -43,9 +43,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/paraf-surat', [ParafController::class, 'index'])->name('kaprodi.paraf');
     Route::get('/paraf-surat/{id}', [ParafController::class, 'show'])->name('kaprodi.paraf.show');
 
-    // 
-    Route::post('/paraf-surat/{id}/submit', [ParafController::class, 'submit'])
-        ->name('kaprodi.paraf.submit');
+    Route::get('/document/download/{document}', [DocumentController::class, 'download'])->name('document.download');
+
+    Route::post('/paraf-surat/{id}/submit', [ParafController::class, 'submit'])->name('kaprodi.paraf.submit');
 });
 
 // Kajur & Sekjur

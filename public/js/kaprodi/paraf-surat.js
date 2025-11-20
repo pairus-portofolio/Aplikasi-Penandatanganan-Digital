@@ -1,24 +1,35 @@
-// Menjalankan script setelah seluruh DOM siap
-document.addEventListener("DOMContentLoaded", function () {
-    // Variabel dasar untuk elemen paraf & area drop
+document.addEventListener('DOMContentLoaded', function () {
+    // ==========================================
+    // 1. CONFIG & VARIABEL UTAMA
+    // ==========================================
+    const config = window.pdfConfig;
+    const container = document.getElementById('pdf-render-container');
+    const scrollContainer = document.getElementById('scrollContainer');
+    const zoomText = document.getElementById('zoomLevel');
+    const currPageElem = document.getElementById('curr_page');
+    const totalPagesElem = document.getElementById('total_pages');
+    
+    // Variabel PDF
+    let pdfDoc = null;
+    let scale = 1.0;
     let selectedParaf = null;
-    const dropZone = document.getElementById("previewPage");
+    const outputScale = window.devicePixelRatio || 1;
 
-    // Mengambil nilai zoom/scale saat ini dari dokumen
-    function getCurrentScale() {
-        const style = window.getComputedStyle(dropZone);
-        const matrix = new WebKitCSSMatrix(style.transform);
-        return matrix.a;
+    if (!config || !window.pdfjsLib) {
+        console.error("PDF Configuration missing!");
+        return;
     }
+    pdfjsLib.GlobalWorkerOptions.workerSrc = config.workerSrc;
 
-    // Mengambil elemen terkait upload & preview paraf
+    // ==========================================
+    // 2. LOGIKA SIDEBAR (UPLOAD/HAPUS/GANTI)
+    // ==========================================
     const parafBox = document.getElementById("parafBox");
     const parafImage = document.getElementById("parafImage");
     const fileInput = document.getElementById("parafImageUpload");
     const gantiBtn = document.getElementById("parafGantiBtn");
     const hapusBtn = document.getElementById("parafHapusBtn");
 
-    // Logika upload gambar paraf
     if (parafBox && parafImage && fileInput) {
         // Trigger input file
         const triggerUpload = () => fileInput.click();
@@ -71,24 +82,95 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // Aktivasi area drop tanda tangan
-    if (dropZone) {
-        // Memberi efek saat item di-drag di atas dokumen
+    // ==========================================
+    // 3. LOGIKA RENDER PDF
+    // ==========================================
+    const pageObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            // Jika halaman terlihat di layar
+            if (entry.isIntersecting) {
+                const pageNum = entry.target.id.split('-')[1];
+                
+                // Update teks di header
+                if (currPageElem) {
+                    currPageElem.innerText = pageNum;
+                }
+            }
+        });
+    }, {
+        root: scrollContainer, 
+        rootMargin: '0px',
+        threshold: 0.1 
+    });
+
+    function renderAllPages() {
+        container.innerHTML = ''; 
+        
+        // Reset Observer setiap kali render ulang (biar gak numpuk)
+        pageObserver.disconnect();
+
+        if (!pdfDoc) return;
+
+        for (let num = 1; num <= pdfDoc.numPages; num++) {
+            const canvas = document.createElement('canvas');
+            canvas.id = 'page-' + num; 
+            canvas.className = 'pdf-page-canvas';
+            canvas.style.marginBottom = "20px";
+            canvas.style.display = "block";
+
+            container.appendChild(canvas);
+            renderPage(num, canvas);
+
+            // DAFTARKAN CANVAS KE OBSERVER
+            pageObserver.observe(canvas);
+        }
+
+        if (zoomText) zoomText.innerText = Math.round(scale * 100) + "%";
+    }
+
+    function renderPage(num, canvas) {
+        pdfDoc.getPage(num).then(function(page) {
+            const ctx = canvas.getContext('2d');
+            const viewport = page.getViewport({ scale: scale });
+
+            canvas.width = Math.floor(viewport.width * outputScale);
+            canvas.height = Math.floor(viewport.height * outputScale);
+
+            canvas.style.width = Math.floor(viewport.width) + "px";
+            canvas.style.height = Math.floor(viewport.height) + "px";
+
+            const transform = outputScale !== 1 
+                ? [outputScale, 0, 0, outputScale, 0, 0] 
+                : null;
+
+            const renderContext = {
+                canvasContext: ctx,
+                transform: transform,
+                viewport: viewport
+            };
+            page.render(renderContext);
+        });
+    }
+
+    // ==========================================
+    // 4. LOGIKA DROP ZONE
+    // ==========================================
+    function setupDropZone(dropZone) {
+        
         dropZone.addEventListener("dragover", (e) => {
             e.preventDefault();
             e.dataTransfer.dropEffect = "copy";
-            dropZone.style.borderColor = "#1e4ed8";
+            // Efek border saat drag over
+            dropZone.style.outline = "2px dashed #1e4ed8"; 
         });
 
-        // Reset border ketika drag keluar area
         dropZone.addEventListener("dragleave", () => {
-            dropZone.style.borderColor = "#ccc";
+            dropZone.style.outline = "none";
         });
 
-        // Menempatkan paraf baru ke area dokumen
         dropZone.addEventListener("drop", (e) => {
             e.preventDefault();
-            dropZone.style.borderColor = "#ccc";
+            dropZone.style.outline = "none";
 
             const data = e.dataTransfer.getData("text/plain");
             if (data !== "parafImage") return;
@@ -96,41 +178,51 @@ document.addEventListener("DOMContentLoaded", function () {
             const originalParaf = document.getElementById("parafImage");
             if (!originalParaf || !originalParaf.src) return;
 
+            // Clone & Create Logic
             const newParaf = originalParaf.cloneNode(true);
             newParaf.id = "paraf-dropped-" + Date.now();
             newParaf.classList.add("paraf-dropped");
-            newParaf.classList.remove("paraf-image-preview");
+            newParaf.classList.remove("paraf-image-preview"); 
 
-            const currentScale = getCurrentScale();
+            // --- PERHITUNGAN POSISI 
             const dropRect = dropZone.getBoundingClientRect();
-            const x = (e.clientX - dropRect.left) / currentScale;
-            const y = (e.clientY - dropRect.top) / currentScale;
+            const x = e.clientX - dropRect.left;
+            const y = e.clientY - dropRect.top;
 
+            // Styling Posisi
             newParaf.style.position = "absolute";
-            newParaf.style.left = `${x}px`;
-            newParaf.style.top = `${y}px`;
+            newParaf.style.left = `${x - 50}px`; // Center cursor (asumsi lebar 100)
+            newParaf.style.top = `${y - 25}px`;  // Center cursor (asumsi tinggi 50)
+            
             newParaf.style.display = "block";
-            newParaf.style.width = "150px";
+            newParaf.style.width = "100px"; // Ukuran default paraf di kertas
             newParaf.style.zIndex = "100";
             newParaf.style.cursor = "grab";
+            newParaf.style.border = "1px dashed transparent"; // Untuk seleksi
 
             dropZone.appendChild(newParaf);
+            
+            // Pasang Logic Move & Select (Persis Kode Lama)
             makeElementMovable(newParaf);
             makeElementSelectable(newParaf);
         });
 
-        // Reset seleksi paraf jika klik area kosong
+        // Reset seleksi jika klik area kosong
         dropZone.addEventListener("click", () => {
             if (selectedParaf) {
+                selectedParaf.style.border = "1px dashed transparent";
                 selectedParaf.classList.remove("selected");
                 selectedParaf = null;
             }
         });
     }
 
-    // Mengaktifkan fitur drag untuk elemen hasil drop
+    // ==========================================
+    // 5. LOGIKA MOVE & SELECT
+    // ==========================================
     function makeElementMovable(element) {
         let isDragging = false;
+        let startX, startY, startLeft, startTop;
 
         element.addEventListener("mousedown", (e) => {
             e.preventDefault();
@@ -138,18 +230,19 @@ document.addEventListener("DOMContentLoaded", function () {
 
             isDragging = true;
             selectElement(element);
+            element.style.cursor = "grabbing";
 
-            const currentScale = getCurrentScale();
-            let startX = e.clientX;
-            let startY = e.clientY;
-            let startLeft = element.offsetLeft;
-            let startTop = element.offsetTop;
+            startX = e.clientX;
+            startY = e.clientY;
+            startLeft = element.offsetLeft;
+            startTop = element.offsetTop;
 
             function onMouseMove(moveEvent) {
                 if (!isDragging) return;
 
-                let dx = (moveEvent.clientX - startX) / currentScale;
-                let dy = (moveEvent.clientY - startY) / currentScale;
+                // Hitung Delta
+                let dx = moveEvent.clientX - startX;
+                let dy = moveEvent.clientY - startY;
 
                 element.style.left = `${startLeft + dx}px`;
                 element.style.top = `${startTop + dy}px`;
@@ -157,6 +250,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             function onMouseUp() {
                 isDragging = false;
+                element.style.cursor = "grab";
                 document.removeEventListener("mousemove", onMouseMove);
                 document.removeEventListener("mouseup", onMouseUp);
             }
@@ -166,7 +260,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // Membuat elemen bisa dipilih
     function makeElementSelectable(element) {
         element.addEventListener("click", (e) => {
             e.stopPropagation();
@@ -174,18 +267,81 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // Menentukan elemen paraf mana yang sedang aktif
     function selectElement(element) {
-        if (selectedParaf) selectedParaf.classList.remove("selected");
+        if (selectedParaf && selectedParaf !== element) {
+            selectedParaf.style.border = "1px dashed transparent";
+            selectedParaf.classList.remove("selected");
+        }
         selectedParaf = element;
-        element.classList.add("selected");
+        selectedParaf.classList.add("selected");
+        selectedParaf.style.border = "2px dashed #007bff"; 
     }
 
-    // Menghapus paraf yang sedang dipilih dengan tombol Delete / Backspace
     document.addEventListener("keydown", (e) => {
         if ((e.key === "Delete" || e.key === "Backspace") && selectedParaf) {
             selectedParaf.remove();
             selectedParaf = null;
         }
+    });
+
+    // ==========================================
+    // 6. LOAD & ZOOM
+    // ==========================================
+    function autoFit() {
+        if(!pdfDoc) return;
+        
+        // Ambil lebar scrollContainer (dikurangi sedikit padding biar aman)
+        const containerWidth = scrollContainer.clientWidth - 40; 
+
+        pdfDoc.getPage(1).then(function(page) {
+            const unscaledViewport = page.getViewport({ scale: 1 });
+            // Hitung skala agar pas lebar
+            let newScale = containerWidth / unscaledViewport.width;
+
+            // Limit minimal dan maksimal zoom agar masuk akal
+            if (newScale < 0.5) newScale = 0.5;
+            if (newScale > 2.0) newScale = 2.0;
+            
+            scale = newScale;
+            renderAllPages();
+        });
+    }
+
+    pdfjsLib.getDocument(config.pdfUrl).promise.then(function (pdfDoc_) {
+        pdfDoc = pdfDoc_;
+        
+        // Update Total Halaman di Header
+        if (totalPagesElem) {
+            totalPagesElem.innerText = pdfDoc.numPages;
+        }
+        
+        autoFit();
+    }).catch(function (error) {
+        console.error(error);
+    });
+
+    // Zoom Buttons
+    const btnZoomIn = document.getElementById('zoomInBtn');
+    const btnZoomOut = document.getElementById('zoomOutBtn');
+
+    if (btnZoomIn) {
+        btnZoomIn.addEventListener('click', () => {
+            scale += 0.1;
+            renderAllPages();
+        });
+    }
+
+    if (btnZoomOut) {
+        btnZoomOut.addEventListener('click', () => {
+            if (scale > 0.4) {
+                scale -= 0.1;
+                renderAllPages();
+            }
+        });
+    }
+
+    window.addEventListener('resize', () => {
+        clearTimeout(window.resizeTimer);
+        window.resizeTimer = setTimeout(autoFit, 200);
     });
 });

@@ -33,15 +33,16 @@ class ParafController extends Controller
         return view('kaprodi.paraf.index', compact('daftarSurat'));
     }
 
+    // 2. Halaman Detail
     public function show($id)
     {
         $document = Document::findOrFail($id);
+        // Kita kirim sebagai 'document' agar konsisten
 
         if (!$this->checkWorkflowAccess($document->id)) {
             return redirect()->route('kaprodi.paraf.index')
                 ->withErrors('Belum giliran Anda untuk memparaf dokumen ini.');
         }
-
         return view('kaprodi.paraf-surat', compact('document'));
     }
 

@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Kaprodi;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Document;
+use App\Models\WorkflowStep; 
+use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Dashboard\TableController;
 
 class ReviewController extends Controller
@@ -20,8 +22,7 @@ class ReviewController extends Controller
     public function show($id)
     {
         $document = Document::findOrFail($id);
-
-        // Tidak ada pengecekan giliran di sini
+        
         return view('kaprodi.review-surat', compact('document'));
     }
 }
