@@ -49,24 +49,19 @@ Route::middleware('auth')->group(function () {
         ->name('kaprodi.paraf.index');
     Route::get('/paraf-surat/{id}', [ParafController::class, 'show'])
         ->name('kaprodi.paraf.show');
+
     Route::post('/paraf-surat/{id}/submit', [ParafController::class, 'submit'])
         ->name('kaprodi.paraf.submit');
 
-    // DOWNLOAD PDF
+    // Upload / Delete Paraf
+    Route::post('/kaprodi/paraf/upload', [ParafController::class, 'uploadParaf'])
+        ->name('kaprodi.paraf.upload');
+    Route::post('/kaprodi/paraf/delete', [ParafController::class, 'deleteParaf'])
+        ->name('kaprodi.paraf.delete');
+
+    // DOWNLOAD
     Route::get('/document/download/{document}', [DocumentController::class, 'download'])
         ->name('document.download');
-
-    // 1. Route Download Document
-    Route::get('/document/download/{document}', [DocumentController::class, 'download'])->name('document.download');
-
-    // 2. Route Submit Paraf
-    Route::post('/paraf-surat/{id}/submit', [ParafController::class, 'submit'])->name('kaprodi.paraf.submit');
-
-    // 3. Route untuk Upload Paraf via AJAX
-    Route::post('/kaprodi/paraf/upload', [ParafController::class, 'uploadParaf'])->name('kaprodi.paraf.upload');
-
-    // 4. Route Hapus 
-    Route::post('/kaprodi/paraf/delete', [ParafController::class, 'deleteParaf'])->name('kaprodi.paraf.delete');
 });
 
 

@@ -88,11 +88,13 @@ class TableController extends Controller
         return $documents->map(function ($doc) {
 
             $statusClass = match ($doc->status) {
-                'Ditandatangani' => 'hijau',
-                'Ditinjau', 'Diparaf' => 'kuning',
-                'Perlu Revisi' => 'merah',
-                default => 'biru',
-            };
+            'Ditinjau'       => 'kuning',
+            'Diparaf'        => 'biru',
+            'Ditandatangani' => 'hijau',
+            'Perlu Revisi'   => 'merah',
+            default          => 'abu', 
+        };
+
 
             return [
                 'id_raw'       => $doc->id,

@@ -5,18 +5,20 @@ namespace App\Http\Controllers\Kajur_Sekjur;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Document;
-use App\Models\WorkflowStep;   // ← Tambahkan
-use Illuminate\Support\Facades\Auth; // ← Tambahkan
+use App\Models\WorkflowStep;
+use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Dashboard\TableController;
 
 class TandatanganController extends Controller
 {
-    // Function untuk mengecek apakah user mendapat giliran menandatangani
+    // =========================
+    // CEK AKSES WORKFLOW
+    // =========================
     private function checkWorkflowAccess($documentId)
     {
-        // Step aktif = step dengan status Ditinjau
+        // Step aktif = step dengan urutan terkecil yg belum selesai
         $activeStep = WorkflowStep::where('document_id', $documentId)
-            ->where('status', 'Ditinjau')
+            ->whereIn('status', ['Ditinjau']) 
             ->orderBy('urutan')
             ->first();
 
@@ -27,72 +29,72 @@ class TandatanganController extends Controller
         return $activeStep->user_id == Auth::id();
     }
 
-
-    // 1. Halaman tabel daftar surat
+    // ======================================================
+    // 1. LIST TABEL
+    // ======================================================
     public function index()
     {
         $daftarSurat = TableController::getData();
         return view('kajur_sekjur.tandatangan.index', compact('daftarSurat'));
     }
 
-    // 2. Halaman detail tanda tangan (tampilan dokumen)
+    // ======================================================
+    // 2. HALAMAN DETAIL TTD
+    // ======================================================
     public function show($id)
     {
         $document = Document::findOrFail($id);
 
-        // Cek giliran workflow
         if (!$this->checkWorkflowAccess($document->id)) {
             return redirect()->route('kajur.tandatangan.index')
                 ->withErrors('Belum giliran Anda untuk menandatangani dokumen ini.');
         }
 
-        // Jika sudah giliran → tampilkan halaman tanda tangan
         return view('kajur_sekjur.tandatangan-surat', compact('document'));
     }
 
-        public function submit(Request $request, $documentId)
+    // ======================================================
+    // 3. SUBMIT TANDA TANGAN
+    // ======================================================
+    public function submit(Request $request, $documentId)
     {
         $document = Document::findOrFail($documentId);
 
-        // step aktif
+        // Step aktif tanda tangan
         $activeStep = WorkflowStep::where('document_id', $documentId)
             ->where('status', 'Ditinjau')
             ->orderBy('urutan')
             ->first();
 
-        // Validasi giliran
         if (!$activeStep || $activeStep->user_id != Auth::id()) {
             return back()->withErrors('Bukan giliran Anda untuk menandatangani dokumen ini.');
         }
 
-        // ===============================
-        // 1. Update step → Ditandatangani
-        // ===============================
+        // 1. UPDATE STEP
         $activeStep->status = 'Ditandatangani';
         $activeStep->tanggal_aksi = now();
         $activeStep->save();
 
-        // ===============================
-        // 2. Cek apakah masih ada step berikutnya
-        // ===============================
-        $nextStep = WorkflowStep::where('document_id', $documentId)
-            ->where('status', 'Ditinjau')
-            ->orderBy('urutan')
-            ->first();
+        // 2. CEK APAKAH MASIH ADA STEP TTD LAIN YG BELUM SELESAI
+        $nextTtd = WorkflowStep::where('document_id', $documentId)
+            ->where('status', 'Ditinjau') // hanya step tanda tangan berikutnya
+            ->whereHas('user.role', function ($q) {
+                $q->whereIn('nama_role', ['Kajur', 'Sekjur']);
+            })
+            ->count();
 
-        if ($nextStep) {
-            // Masih ada Kaprodi/Kajur lain yang harus tanda tangan
+        if ($nextTtd > 0) {
+            // Masih ada Kajur/Sekjur lain → dokumen tetap "Diparaf"
             $document->status = 'Diparaf';
         } else {
-            // Step terakhir → dokumen selesai
+            // Semua tanda tangan selesai → FINAL
             $document->status = 'Ditandatangani';
         }
 
         $document->save();
 
         return redirect()
-            ->route('kajur.tandatangan.show', $documentId)
-            ->with('success', 'Dokumen berhasil ditandatangani.')
-            ->with('popup', true); // Tampilkan popup notifikasi
+            ->route('kajur.tandatangan.index')
+            ->with('success', 'Dokumen berhasil ditandatangani.');
     }
 }

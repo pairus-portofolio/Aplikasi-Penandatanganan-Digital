@@ -141,35 +141,38 @@ class ParafController extends Controller
     // 5. Submit Paraf (Workflow - JANGAN DIUBAH)
     // =====================================================================
     public function submit(Request $request, $documentId)
-    {
-        $activeStep = WorkflowStep::where('document_id', $documentId)
-            ->where('status', 'Ditinjau')
-            ->orderBy('urutan')
-            ->first();
+{
+    $activeStep = WorkflowStep::where('document_id', $documentId)
+        ->where('status', 'Ditinjau')
+        ->orderBy('urutan')
+        ->first();
 
-        if (!$activeStep || $activeStep->user_id != Auth::id()) {
-            return back()->withErrors('Bukan giliran Anda untuk memparaf dokumen ini.');
-        }
-
-        // Update workflow step
-        $activeStep->status = 'Diparaf';
-        $activeStep->tanggal_aksi = now();
-        $activeStep->save();
-
-        $document = Document::find($documentId);
-
-        // Apakah masih ada yang belum paraf?
-        $sisa = WorkflowStep::where('document_id', $documentId)
-            ->where('status', 'Ditinjau')
-            ->count();
-
-        $document->status = ($sisa > 0) ? 'Ditinjau' : 'Diparaf';
-        $document->save();
-
-        return redirect()
-            ->route('kaprodi.paraf.show', $documentId)
-            ->with('success', 'Dokumen berhasil diparaf.')
-            ->with('popup', true); 
-
+    if (!$activeStep || $activeStep->user_id != Auth::id()) {
+        return back()->withErrors('Bukan giliran Anda untuk memparaf dokumen ini.');
     }
+
+    // Update workflow step
+    $activeStep->status = 'Diparaf';
+    $activeStep->tanggal_aksi = now();
+    $activeStep->save();
+
+    $document = Document::find($documentId);
+
+    // Cek apakah masih ada KAPRODI yang belum paraf
+    $masihBelumParaf = WorkflowStep::where('document_id', $documentId)
+        ->where('status', 'Ditinjau')
+        ->whereHas('user.role', function ($q) {
+            $q->whereIn('nama_role', ['Kaprodi D3', 'Kaprodi D4']);
+        })
+        ->count();
+
+    // Jika masih ada Kaprodi → status tetap Ditinjau
+    // Jika semua Kaprodi selesai → status Dokumen jadi Diparaf
+    $document->status = ($masihBelumParaf > 0) ? 'Ditinjau' : 'Diparaf';
+    $document->save();
+
+    return redirect()->route('kaprodi.paraf.index')
+        ->with('success', 'Dokumen berhasil diparaf.');
+}
+
 }
