@@ -42,10 +42,18 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/paraf-surat', [ParafController::class, 'index'])->name('kaprodi.paraf');
     Route::get('/paraf-surat/{id}', [ParafController::class, 'show'])->name('kaprodi.paraf.show');
-
+   
+    // 1. Route Download Document
     Route::get('/document/download/{document}', [DocumentController::class, 'download'])->name('document.download');
 
+    // 2. Route Submit Paraf
     Route::post('/paraf-surat/{id}/submit', [ParafController::class, 'submit'])->name('kaprodi.paraf.submit');
+
+    // 3. Route untuk Upload Paraf via AJAX
+    Route::post('/kaprodi/paraf/upload', [ParafController::class, 'uploadParaf'])->name('kaprodi.paraf.upload');
+
+    // 4. Route Hapus 
+    Route::post('/kaprodi/paraf/delete', [ParafController::class, 'deleteParaf'])->name('kaprodi.paraf.delete');
 });
 
 // Kajur & Sekjur
@@ -54,7 +62,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/tandatangan-surat', [TandatanganController::class, 'index'])->name('kajur.tandatangan');
     Route::get('/tandatangan-surat/{id}', [TandatanganController::class, 'show'])->name('kajur.tandatangan.show');
 
-    //
     Route::post('/tandatangan-surat/{id}/submit', [TandatanganController::class, 'submit'])
         ->name('kajur.tandatangan.submit');
 });
