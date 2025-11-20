@@ -37,15 +37,44 @@ Route::middleware(['auth'])->group(function () {
 
 // Kaprodi
 Route::middleware('auth')->group(function () {
-    Route::get('/review-surat', [ReviewController::class, 'index'])->name('kaprodi.review');
-    Route::get('/review-surat/{id}', [ReviewController::class, 'show'])->name('kaprodi.review.show');
 
-    Route::get('/paraf-surat', [ParafController::class, 'index'])->name('kaprodi.paraf');
-    Route::get('/paraf-surat/{id}', [ParafController::class, 'show'])->name('kaprodi.paraf.show');
+    // REVIEW
+    Route::get('/review-surat', [ReviewController::class, 'index'])
+        ->name('kaprodi.review.index');
+    Route::get('/review-surat/{id}', [ReviewController::class, 'show'])
+        ->name('kaprodi.review.show');
+
+    // PARAF
+    Route::get('/paraf-surat', [ParafController::class, 'index'])
+        ->name('kaprodi.paraf.index');
+    Route::get('/paraf-surat/{id}', [ParafController::class, 'show'])
+        ->name('kaprodi.paraf.show');
+
+    Route::post('/paraf-surat/{id}/submit', [ParafController::class, 'submit'])
+        ->name('kaprodi.paraf.submit');
+
+    // Upload / Delete Paraf
+    Route::post('/kaprodi/paraf/upload', [ParafController::class, 'uploadParaf'])
+        ->name('kaprodi.paraf.upload');
+    Route::post('/kaprodi/paraf/delete', [ParafController::class, 'deleteParaf'])
+        ->name('kaprodi.paraf.delete');
+
+    // DOWNLOAD
+    Route::get('/document/download/{document}', [DocumentController::class, 'download'])
+        ->name('document.download');
 });
+
 
 // Kajur & Sekjur
 Route::middleware('auth')->group(function () {
-    Route::get('/tandatangan-surat', [TandatanganController::class, 'index'])->name('kajur.tandatangan');
-    Route::get('/tandatangan-surat/{id}', [TandatanganController::class, 'show'])->name('kajur.tandatangan.show');
+
+    Route::get('/tandatangan-surat', [TandatanganController::class, 'index'])
+        ->name('kajur.tandatangan.index');
+
+    Route::get('/tandatangan-surat/{id}', [TandatanganController::class, 'show'])
+        ->name('kajur.tandatangan.show');
+
+    Route::post('/tandatangan-surat/{id}/submit', [TandatanganController::class, 'submit'])
+        ->name('kajur.tandatangan.submit');
 });
+

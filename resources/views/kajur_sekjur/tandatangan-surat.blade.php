@@ -16,11 +16,10 @@
 @endpush
 
 @section('page-header')
-    <!-- Header dokumen (judul + pagination halaman) -->
     @include('partials.doc-header', [
-        'judulSurat'  => 'Pratinjau: Nama Surat',
+        'judulSurat'  => 'Pratinjau: ' . $document->judul_surat,
         'currentPage' => 1,
-        'totalPages'  => 5,
+        'totalPages'  => 1, 
     ])
 @endsection
 
@@ -43,10 +42,10 @@
         
         <!-- Area utama untuk menampilkan dokumen yang akan ditandatangani -->
         <div class="paraf-preview-area">
-            <div id="previewPage" 
-                 class="paraf-drop-zone"
-                 style="height: 150vh; background: #f0f0f0; border: 1px dashed #ccc; display:flex; align-items:center; justify-content:center; color: #999; transform-origin: top center; position: relative; overflow: hidden;">
-                (Area Dokumen Tanda Tangan)
+            <div class="paraf-preview-area">
+                <div id="scrollContainer">
+                    <div id="pdf-render-container"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -86,6 +85,26 @@
 @endsection
 
 @push('scripts')
-    <!-- Script utama halaman tanda tangan (drag-drop, captcha, zoom, dll) -->
+    {{-- 1. Load Library PDF.js (Wajib) --}}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    
+    {{-- 2. Konfigurasi Data dari Laravel ke JS --}}
+    <script>
+        window.reviewConfig = {
+            pdfUrl: "{{ route('document.download', $document->id) }}",
+            workerSrc: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js'
+        };
+    </script>
+
+    {{-- 3. Panggil Script yang dibuat --}}
     <script src="{{ asset('js/kajur_sekjur/tandatangan.js') }}"></script>
+
+    <script>
+        @if(session('popup'))
+            document.addEventListener("DOMContentLoaded", function () {
+                document.getElementById("ttdNotifPopup").classList.add("show");
+            });
+        @endif
+    </script>
+
 @endpush

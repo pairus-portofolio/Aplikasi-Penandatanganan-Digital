@@ -9,6 +9,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpWord\IOFactory;
 
 class DocumentController extends Controller
 {
@@ -29,7 +31,7 @@ class DocumentController extends Controller
         // Validasi data form upload
         $validated = $request->validate([
             'judul_surat' => 'required|string|max:255',
-            'file_surat'  => 'required|file|mimes:docx|max:2048',
+            'file_surat'  => 'required|file|mimes:pdf|max:2048',
             'kategori'    => 'required|string',
             'tanggal'     => 'required|date',
             'alur'        => 'required|string',
@@ -134,5 +136,27 @@ class DocumentController extends Controller
         return redirect()
             ->route('tu.upload.create')
             ->with('success', 'Langkah penandatanganan selesai.');
+    }
+
+    public function download(Document $document)
+    {
+        // Ambil path dari database (misal: documents/abc.pdf)
+        $relativePath = $document->file_path;
+        
+        // Cek dulu apakah path di database sudah ada 'private/' atau belum
+        if (!str_starts_with($relativePath, 'private/')) {
+            $fullPath = 'private/' . $relativePath;
+        } else {
+            $fullPath = $relativePath;
+        }
+
+        $absolutePath = storage_path('app/' . $fullPath);
+
+        // 3. Cek Keberadaan File
+        if (!file_exists($absolutePath)) {
+            abort(404);
+        }
+
+        return response()->file($absolutePath);
     }
 }

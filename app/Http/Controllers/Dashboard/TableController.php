@@ -5,63 +5,96 @@ namespace App\Http\Controllers\Dashboard;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Document;
+use App\Models\WorkflowStep;
 
 class TableController extends Controller
 {
     /**
      * Query dasar berdasarkan role user.
-     * Digunakan oleh CardsController & Tabel.
      */
     public static function getBaseQueryByRole()
     {
         $user = Auth::user();
         $roleId = $user->role_id;
 
-        // TU → lihat semua surat
+        // 1. TU → semua dokumen (Collection)
         if ($roleId == 1) {
-            return Document::with('uploader');
+            return Document::with('uploader')->latest()->get();
         }
 
-        // Kaprodi (2,3) → lihat surat yg punya workflow untuk dia
-        if (in_array($roleId, [2, 3])) {
-            return Document::with('uploader')
-                ->whereHas('workflowSteps', function ($q) use ($user) {
-                    $q->where('user_id', $user->id);
-                });
-        }
+        // 2. Kaprodi → dokumen yang ada di workflow, tapi hanya jika dia urutan aktif
+        if (in_array($roleId, [2,3])) {
 
-        // Kajur / Sekjur (4,5)
-        if (in_array($roleId, [4, 5])) {
-            return Document::with('uploader')
+            $docs = Document::with('uploader')
                 ->whereHas('workflowSteps', function ($q) use ($user) {
                     $q->where('user_id', $user->id);
                 })
-                ->where('status', 'Diparaf'); // HANYA yang sudah diparaf Kaprodi
+                ->latest()
+                ->get();
+
+            return $docs->filter(function ($doc) use ($user) {
+
+                $activeStep = WorkflowStep::where('document_id', $doc->id)
+                    ->where('status', 'Ditinjau')
+                    ->orderBy('urutan')
+                    ->first();
+
+                if (!$activeStep) return false;
+
+                return $activeStep->user_id == $user->id;
+            });
         }
 
-        // Default fallback
-        return Document::with('uploader')->limit(0);
+        // 3. Kajur / Sekjur → hanya dokumen Diparaf, dan jika dia urutan aktif
+        if (in_array($roleId, [4,5])) {
+
+            $docs = Document::with('uploader')
+                ->where('status', 'Diparaf')
+                ->whereHas('workflowSteps', function ($q) use ($user) {
+                    $q->where('user_id', $user->id);
+                })
+                ->latest()
+                ->get();
+
+            return $docs->filter(function ($doc) use ($user) {
+                $activeStep = WorkflowStep::where('document_id', $doc->id)
+                    ->where('status', 'Ditinjau')
+                    ->orderBy('urutan')
+                    ->first();
+
+                if (!$activeStep) return false;
+
+                return $activeStep->user_id == $user->id;
+            });
+        }
+
+        // Default → empty collection
+        return collect();
     }
 
+
     /**
-     * Digunakan oleh tabel HTML (formatting)
+     * Digunakan oleh tabel HTML (formatting).
      */
     public static function getData()
     {
-        return self::formatSuratForTable(
-            self::getBaseQueryByRole()->latest()->get()
-        );
+        $documents = self::getBaseQueryByRole();
+
+        return self::formatSuratForTable($documents);
     }
 
     private static function formatSuratForTable($documents)
     {
         return $documents->map(function ($doc) {
+
             $statusClass = match ($doc->status) {
-                'completed', 'signed', 'Ditandatangani' => 'hijau',
-                'Ditinjau', 'Diparaf' => 'kuning',
-                'revisi', 'Perlu Revisi' => 'merah',
-                default => 'biru',
-            };
+            'Ditinjau'       => 'kuning',
+            'Diparaf'        => 'biru',
+            'Ditandatangani' => 'hijau',
+            'Perlu Revisi'   => 'merah',
+            default          => 'abu', 
+        };
+
 
             return [
                 'id_raw'       => $doc->id,
