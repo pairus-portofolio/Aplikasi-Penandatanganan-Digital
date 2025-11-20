@@ -8,8 +8,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const zoomText = document.getElementById('zoomLevel');
     const currPageElem = document.getElementById('curr_page');
     const totalPagesElem = document.getElementById('total_pages');
-    
-    // Variabel PDF
+
     let pdfDoc = null;
     let scale = 1.0;
     let selectedParaf = null;
@@ -22,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function () {
     pdfjsLib.GlobalWorkerOptions.workerSrc = config.workerSrc;
 
     // ==========================================
-    // 2. LOGIKA SIDEBAR (UPLOAD/HAPUS/GANTI)
+    // 2. LOGIKA SIDEBAR (UPLOAD / HAPUS / GANTI)
     // ==========================================
     const parafBox = document.getElementById("parafBox");
     const parafImage = document.getElementById("parafImage");
@@ -31,15 +30,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const hapusBtn = document.getElementById("parafHapusBtn");
 
     if (parafBox && parafImage && fileInput) {
-        // Trigger input file
+
+        // ---- TRIGGER UPLOAD ----
         const triggerUpload = () => fileInput.click();
 
-        // Klik box untuk upload pertama kali
         parafBox.addEventListener("click", () => {
             if (!parafBox.classList.contains("has-image")) triggerUpload();
         });
 
-        // Mengganti gambar paraf
         if (gantiBtn) {
             gantiBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
@@ -47,31 +45,107 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
-        // Menghapus gambar paraf
+        // ==============================================
+        // HAPUS PARAF (UPDATE + HAPUS PERMANEN SERVER)
+        // ==============================================
         if (hapusBtn) {
             hapusBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
-                parafImage.src = "";
-                parafImage.style.display = "none";
-                fileInput.value = "";
-                parafBox.classList.remove("has-image");
+
+                if (!confirm("Yakin ingin menghapus paraf ini secara permanen?")) return;
+
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+                if (!csrfToken) {
+                    alert("CSRF Token tidak ditemukan.");
+                    return;
+                }
+
+                fetch('/kaprodi/paraf/delete', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        parafImage.src = "";
+                        parafImage.style.display = "none";
+                        fileInput.value = "";
+                        parafBox.classList.remove("has-image");
+                        const t = parafBox.querySelector('.paraf-text');
+                        if (t) t.style.display = "block";
+                    } else {
+                        alert("Gagal menghapus: " + data.message);
+                    }
+                })
+                .catch(err => {
+                    console.error("DELETE ERROR", err);
+                    alert("Terjadi kesalahan saat hapus data.");
+                });
             });
         }
 
-        // Menampilkan gambar yang dipilih ke dalam preview
+        // ==========================================================
+        // UPLOAD PARAF → PREVIEW → KIRIM KE SERVER
+        // ==========================================================
         fileInput.addEventListener("change", (e) => {
             if (e.target.files && e.target.files[0]) {
+                const file = e.target.files[0];
+
+                // -- PREVIEW --
                 const reader = new FileReader();
                 reader.onload = (ev) => {
                     parafImage.src = ev.target.result;
                     parafImage.style.display = "block";
                     parafBox.classList.add("has-image");
+                    const t = parafBox.querySelector('.paraf-text');
+                    if (t) t.style.display = 'none';
                 };
-                reader.readAsDataURL(e.target.files[0]);
+                reader.readAsDataURL(file);
+
+                // -- UPLOAD SERVER --
+                const formData = new FormData();
+                formData.append("image", file);
+
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+                if (!csrfToken) {
+                    console.error("CSRF Token tidak ditemukan!");
+                    return;
+                }
+
+                fetch('/kaprodi/paraf/upload', {
+                    method: "POST",
+                    headers: {
+                        "X-CSRF-TOKEN": csrfToken,
+                        "Accept": "application/json"
+                    },
+                    body: formData
+                })
+                .then(async (response) => {
+                    if (!response.ok) {
+                        const err = await response.json();
+                        throw err;
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status === "success") {
+                        console.log("Paraf berhasil disimpan.");
+                    } else {
+                        alert("Gagal upload: " + data.message);
+                    }
+                })
+                .catch(err => {
+                    console.error("UPLOAD ERROR", err);
+                    alert("Gagal Upload:\n" + (err.message || "Terjadi kesalahan."));
+                });
             }
         });
 
-        // Mengaktifkan fitur drag untuk gambar paraf asal
+        // DRAG PARAF ASAL
         parafImage.addEventListener("dragstart", (e) => {
             if (parafImage.src && parafBox.classList.contains("has-image")) {
                 e.dataTransfer.setData("text/plain", "parafImage");
@@ -87,41 +161,29 @@ document.addEventListener('DOMContentLoaded', function () {
     // ==========================================
     const pageObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
-            // Jika halaman terlihat di layar
             if (entry.isIntersecting) {
                 const pageNum = entry.target.id.split('-')[1];
-                
-                // Update teks di header
-                if (currPageElem) {
-                    currPageElem.innerText = pageNum;
-                }
+                if (currPageElem) currPageElem.innerText = pageNum;
             }
         });
     }, {
-        root: scrollContainer, 
-        rootMargin: '0px',
-        threshold: 0.1 
+        root: scrollContainer,
+        threshold: 0.1
     });
 
     function renderAllPages() {
-        container.innerHTML = ''; 
-        
-        // Reset Observer setiap kali render ulang (biar gak numpuk)
+        container.innerHTML = '';
         pageObserver.disconnect();
 
-        if (!pdfDoc) return;
-
         for (let num = 1; num <= pdfDoc.numPages; num++) {
-            const canvas = document.createElement('canvas');
-            canvas.id = 'page-' + num; 
-            canvas.className = 'pdf-page-canvas';
+            const canvas = document.createElement("canvas");
+            canvas.id = "page-" + num;
+            canvas.className = "pdf-page-canvas";
             canvas.style.marginBottom = "20px";
-            canvas.style.display = "block";
 
             container.appendChild(canvas);
             renderPage(num, canvas);
 
-            // DAFTARKAN CANVAS KE OBSERVER
             pageObserver.observe(canvas);
         }
 
@@ -129,26 +191,21 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function renderPage(num, canvas) {
-        pdfDoc.getPage(num).then(function(page) {
-            const ctx = canvas.getContext('2d');
-            const viewport = page.getViewport({ scale: scale });
+        pdfDoc.getPage(num).then(page => {
+            const ctx = canvas.getContext("2d");
+            const viewport = page.getViewport({ scale });
 
-            canvas.width = Math.floor(viewport.width * outputScale);
-            canvas.height = Math.floor(viewport.height * outputScale);
+            canvas.width = viewport.width * outputScale;
+            canvas.height = viewport.height * outputScale;
 
-            canvas.style.width = Math.floor(viewport.width) + "px";
-            canvas.style.height = Math.floor(viewport.height) + "px";
+            canvas.style.width = viewport.width + "px";
+            canvas.style.height = viewport.height + "px";
 
-            const transform = outputScale !== 1 
-                ? [outputScale, 0, 0, outputScale, 0, 0] 
-                : null;
-
-            const renderContext = {
+            page.render({
                 canvasContext: ctx,
-                transform: transform,
-                viewport: viewport
-            };
-            page.render(renderContext);
+                viewport,
+                transform: outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : null
+            });
         });
     }
 
@@ -156,12 +213,10 @@ document.addEventListener('DOMContentLoaded', function () {
     // 4. LOGIKA DROP ZONE
     // ==========================================
     function setupDropZone(dropZone) {
-        
+
         dropZone.addEventListener("dragover", (e) => {
             e.preventDefault();
-            e.dataTransfer.dropEffect = "copy";
-            // Efek border saat drag over
-            dropZone.style.outline = "2px dashed #1e4ed8"; 
+            dropZone.style.outline = "2px dashed #1e4ed8";
         });
 
         dropZone.addEventListener("dragleave", () => {
@@ -172,109 +227,87 @@ document.addEventListener('DOMContentLoaded', function () {
             e.preventDefault();
             dropZone.style.outline = "none";
 
-            const data = e.dataTransfer.getData("text/plain");
-            if (data !== "parafImage") return;
+            if (e.dataTransfer.getData("text/plain") !== "parafImage") return;
 
-            const originalParaf = document.getElementById("parafImage");
-            if (!originalParaf || !originalParaf.src) return;
+            const original = document.getElementById("parafImage");
+            if (!original || !original.src) return;
 
-            // Clone & Create Logic
-            const newParaf = originalParaf.cloneNode(true);
+            const newParaf = original.cloneNode(true);
             newParaf.id = "paraf-dropped-" + Date.now();
+            newParaf.classList.remove("paraf-image-preview");
             newParaf.classList.add("paraf-dropped");
-            newParaf.classList.remove("paraf-image-preview"); 
 
-            // --- PERHITUNGAN POSISI 
-            const dropRect = dropZone.getBoundingClientRect();
-            const x = e.clientX - dropRect.left;
-            const y = e.clientY - dropRect.top;
-
-            // Styling Posisi
+            const rect = dropZone.getBoundingClientRect();
             newParaf.style.position = "absolute";
-            newParaf.style.left = `${x - 50}px`; // Center cursor (asumsi lebar 100)
-            newParaf.style.top = `${y - 25}px`;  // Center cursor (asumsi tinggi 50)
-            
-            newParaf.style.display = "block";
-            newParaf.style.width = "100px"; // Ukuran default paraf di kertas
-            newParaf.style.zIndex = "100";
+            newParaf.style.left = (e.clientX - rect.left - 50) + "px";
+            newParaf.style.top = (e.clientY - rect.top - 25) + "px";
+            newParaf.style.width = "100px";
             newParaf.style.cursor = "grab";
-            newParaf.style.border = "1px dashed transparent"; // Untuk seleksi
+            newParaf.style.zIndex = "100";
 
             dropZone.appendChild(newParaf);
-            
-            // Pasang Logic Move & Select (Persis Kode Lama)
+
             makeElementMovable(newParaf);
             makeElementSelectable(newParaf);
         });
 
-        // Reset seleksi jika klik area kosong
         dropZone.addEventListener("click", () => {
             if (selectedParaf) {
                 selectedParaf.style.border = "1px dashed transparent";
-                selectedParaf.classList.remove("selected");
                 selectedParaf = null;
             }
         });
     }
 
     // ==========================================
-    // 5. LOGIKA MOVE & SELECT
+    // 5. MOVE & SELECT LOGIC
     // ==========================================
-    function makeElementMovable(element) {
+    function makeElementMovable(el) {
         let isDragging = false;
         let startX, startY, startLeft, startTop;
 
-        element.addEventListener("mousedown", (e) => {
-            e.preventDefault();
+        el.addEventListener("mousedown", (e) => {
             e.stopPropagation();
-
             isDragging = true;
-            selectElement(element);
-            element.style.cursor = "grabbing";
+            selectElement(el);
 
             startX = e.clientX;
             startY = e.clientY;
-            startLeft = element.offsetLeft;
-            startTop = element.offsetTop;
+            startLeft = el.offsetLeft;
+            startTop = el.offsetTop;
 
-            function onMouseMove(moveEvent) {
+            const move = (ev) => {
                 if (!isDragging) return;
+                let dx = ev.clientX - startX;
+                let dy = ev.clientY - startY;
+                el.style.left = (startLeft + dx) + "px";
+                el.style.top = (startTop + dy) + "px";
+            };
 
-                // Hitung Delta
-                let dx = moveEvent.clientX - startX;
-                let dy = moveEvent.clientY - startY;
-
-                element.style.left = `${startLeft + dx}px`;
-                element.style.top = `${startTop + dy}px`;
-            }
-
-            function onMouseUp() {
+            const up = () => {
                 isDragging = false;
-                element.style.cursor = "grab";
-                document.removeEventListener("mousemove", onMouseMove);
-                document.removeEventListener("mouseup", onMouseUp);
-            }
+                document.removeEventListener("mousemove", move);
+                document.removeEventListener("mouseup", up);
+            };
 
-            document.addEventListener("mousemove", onMouseMove);
-            document.addEventListener("mouseup", onMouseUp);
+            document.addEventListener("mousemove", move);
+            document.addEventListener("mouseup", up);
         });
     }
 
-    function makeElementSelectable(element) {
-        element.addEventListener("click", (e) => {
+    function makeElementSelectable(el) {
+        el.addEventListener("click", (e) => {
             e.stopPropagation();
-            selectElement(element);
+            selectElement(el);
         });
     }
 
-    function selectElement(element) {
-        if (selectedParaf && selectedParaf !== element) {
+    function selectElement(el) {
+        if (selectedParaf && selectedParaf !== el) {
             selectedParaf.style.border = "1px dashed transparent";
-            selectedParaf.classList.remove("selected");
         }
-        selectedParaf = element;
-        selectedParaf.classList.add("selected");
-        selectedParaf.style.border = "2px dashed #007bff"; 
+        selectedParaf = el;
+        el.style.border = "2px dashed #007bff";
     }
 
     document.addEventListener("keydown", (e) => {
@@ -284,63 +317,37 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+
     // ==========================================
     // 6. LOAD & ZOOM
     // ==========================================
     function autoFit() {
-        if(!pdfDoc) return;
-        
-        // Ambil lebar scrollContainer (dikurangi sedikit padding biar aman)
-        const containerWidth = scrollContainer.clientWidth - 40; 
+        if (!pdfDoc) return;
+        const w = scrollContainer.clientWidth - 40;
 
-        pdfDoc.getPage(1).then(function(page) {
-            const unscaledViewport = page.getViewport({ scale: 1 });
-            // Hitung skala agar pas lebar
-            let newScale = containerWidth / unscaledViewport.width;
-
-            // Limit minimal dan maksimal zoom agar masuk akal
+        pdfDoc.getPage(1).then(page => {
+            const v = page.getViewport({ scale: 1 });
+            let newScale = w / v.width;
             if (newScale < 0.5) newScale = 0.5;
-            if (newScale > 2.0) newScale = 2.0;
-            
+            if (newScale > 2) newScale = 2;
             scale = newScale;
             renderAllPages();
         });
     }
 
-    pdfjsLib.getDocument(config.pdfUrl).promise.then(function (pdfDoc_) {
-        pdfDoc = pdfDoc_;
-        
-        // Update Total Halaman di Header
-        if (totalPagesElem) {
-            totalPagesElem.innerText = pdfDoc.numPages;
-        }
-        
+    pdfjsLib.getDocument(config.pdfUrl).promise.then((doc) => {
+        pdfDoc = doc;
+        if (totalPagesElem) totalPagesElem.innerText = doc.numPages;
         autoFit();
-    }).catch(function (error) {
-        console.error(error);
     });
 
-    // Zoom Buttons
-    const btnZoomIn = document.getElementById('zoomInBtn');
-    const btnZoomOut = document.getElementById('zoomOutBtn');
+    const zoomIn = document.getElementById("zoomInBtn");
+    const zoomOut = document.getElementById("zoomOutBtn");
 
-    if (btnZoomIn) {
-        btnZoomIn.addEventListener('click', () => {
-            scale += 0.1;
-            renderAllPages();
-        });
-    }
+    if (zoomIn) zoomIn.addEventListener("click", () => { scale += 0.1; renderAllPages(); });
+    if (zoomOut) zoomOut.addEventListener("click", () => { if (scale > 0.4) scale -= 0.1; renderAllPages(); });
 
-    if (btnZoomOut) {
-        btnZoomOut.addEventListener('click', () => {
-            if (scale > 0.4) {
-                scale -= 0.1;
-                renderAllPages();
-            }
-        });
-    }
-
-    window.addEventListener('resize', () => {
+    window.addEventListener("resize", () => {
         clearTimeout(window.resizeTimer);
         window.resizeTimer = setTimeout(autoFit, 200);
     });
