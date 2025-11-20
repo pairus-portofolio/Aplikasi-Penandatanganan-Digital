@@ -50,30 +50,30 @@ class TandatanganController extends Controller
         return view('kajur_sekjur.tandatangan-surat', compact('document'));
     }
 
-     public function submit(Request $request, $documentId)
+        public function submit(Request $request, $documentId)
     {
         $document = Document::findOrFail($documentId);
 
-        // Step aktif = yang statusnya Ditinjau dan urutan terkecil
+        // step aktif
         $activeStep = WorkflowStep::where('document_id', $documentId)
             ->where('status', 'Ditinjau')
             ->orderBy('urutan')
             ->first();
 
-        // Validasi giliran user
+        // Validasi giliran
         if (!$activeStep || $activeStep->user_id != Auth::id()) {
             return back()->withErrors('Bukan giliran Anda untuk menandatangani dokumen ini.');
         }
 
         // ===============================
-        // 1. Update step aktif → Ditandatangani
+        // 1. Update step → Ditandatangani
         // ===============================
         $activeStep->status = 'Ditandatangani';
         $activeStep->tanggal_aksi = now();
         $activeStep->save();
 
         // ===============================
-        // 2. Cek apakah masih ada step lain yg statusnya Ditinjau
+        // 2. Cek apakah masih ada step berikutnya
         // ===============================
         $nextStep = WorkflowStep::where('document_id', $documentId)
             ->where('status', 'Ditinjau')
@@ -81,17 +81,18 @@ class TandatanganController extends Controller
             ->first();
 
         if ($nextStep) {
-            // Masih ada step (berarti ada kajur/sekjur berikutnya)
-            $document->status = 'Diparaf'; 
+            // Masih ada Kaprodi/Kajur lain yang harus tanda tangan
+            $document->status = 'Diparaf';
         } else {
-            // Semua step selesai → dokumen final
+            // Step terakhir → dokumen selesai
             $document->status = 'Ditandatangani';
         }
 
         $document->save();
 
-        return redirect()->route('kajur.tandatangan.index')
-            ->with('success', 'Dokumen berhasil ditandatangani.');
+        return redirect()
+            ->route('kajur.tandatangan.show', $documentId)
+            ->with('success', 'Dokumen berhasil ditandatangani.')
+            ->with('popup', true); // Tampilkan popup notifikasi
     }
-
 }

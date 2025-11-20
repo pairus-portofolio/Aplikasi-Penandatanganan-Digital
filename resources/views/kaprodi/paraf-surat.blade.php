@@ -78,4 +78,13 @@
 
     {{-- 3. File Logic --}}
     <script src="{{ asset('js/kaprodi/paraf-surat.js') }}"></script>
+
+    <script>
+        @if(session('popup'))
+            document.addEventListener("DOMContentLoaded", function () {
+                document.getElementById("parafNotifPopup").classList.add("show");
+            });
+        @endif
+    </script>
+
 @endpush

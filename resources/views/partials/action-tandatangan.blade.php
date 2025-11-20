@@ -1,22 +1,28 @@
-<!-- Kontrol halaman: zoom + tombol kirim notifikasi selesai tanda tangan -->
+<!-- Kontrol bawah halaman untuk tanda tangan -->
 <div class="pv-controls">
 
-    <!-- Include kontrol zoom -->
     @include('partials.shared.zoom-controls')
 
-    <!-- Tombol membuka popup notifikasi tanda tangan -->
-    <button type="button" class="pv-primary-btn btn-blue" id="btnSelesaiTtd">
-        Kirim Notifikasi
-    </button>
+    <!-- Tombol SELESAI untuk TTD -->
+    <form id="workflowSubmitForm"
+          action="{{ route('kajur.tandatangan.submit', $document->id) }}"
+          method="POST"
+          style="display: inline;">
+        @csrf
+        <button type="submit" class="pv-primary-btn btn-blue">
+            Selesai
+        </button>
+    </form>
+
 </div>
 
-<!-- Include popup modal notifikasi email setelah dokumen ditandatangani -->
+<!-- Popup notifikasi -->
 @include('partials.shared.popup-modal', [
     'modalId'       => 'ttdNotifPopup',
-    'title'         => 'Kirim Notifikasi Email', 
+    'title'         => 'Kirim Notifikasi Email',
     'inputIdPrefix' => 'ttd',
     'defaultSubject'=> 'Dokumen Telah Ditandatangani',
-    'showNotes'     => false,    
-    'cancelBtnId'   => 'batalTtd',
-    'confirmBtnId'  => 'kirimTtd'
+    'showNotes'     => false,
+    'cancelBtnId'   => 'batalKirimTTD',
+    'confirmBtnId'  => 'konfirmasiKirimTTD'
 ])

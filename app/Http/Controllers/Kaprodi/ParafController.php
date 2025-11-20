@@ -74,7 +74,10 @@ class ParafController extends Controller
         $document->status = ($sisa > 0) ? 'Ditinjau' : 'Diparaf';
         $document->save();
 
-        return redirect()->route('kaprodi.paraf.index')
-            ->with('success', 'Dokumen berhasil diparaf.');
+        return redirect()
+            ->route('kaprodi.paraf.show', $documentId)
+            ->with('success', 'Dokumen berhasil diparaf.')
+            ->with('popup', true); 
+
     }
 }

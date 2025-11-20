@@ -1,16 +1,22 @@
-<!-- Kontrol bawah halaman: zoom + tombol kirim notifikasi -->
+<!-- Kontrol bawah halaman: zoom + tombol selesai -->
 <div class="pv-controls">
 
-    <!-- Include kontrol zoom -->
     @include('partials.shared.zoom-controls')
 
-    <!-- Tombol untuk membuka popup notifikasi email -->
-    <button type="button" class="pv-primary-btn btn-blue" id="kirimNotifikasiBtn">
-        Kirim Notifikasi
-    </button>
+    <!-- Tombol SELESAI langsung submit Workflow -->
+    <form id="workflowSubmitForm"
+          action="{{ route('kaprodi.paraf.submit', $document->id) }}"
+          method="POST"
+          style="display: inline;">
+        @csrf
+        <button type="submit" class="pv-primary-btn btn-blue">
+            Selesai
+        </button>
+    </form>
+
 </div>
 
-<!-- Include popup modal pengiriman notifikasi email -->
+<!-- Tetap include popup notifikasi -->
 @include('partials.shared.popup-modal', [
     'modalId'       => 'parafNotifPopup',
     'title'         => 'Kirim Notifikasi Email',
