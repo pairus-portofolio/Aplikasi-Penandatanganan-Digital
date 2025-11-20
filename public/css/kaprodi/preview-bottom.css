@@ -18,8 +18,13 @@
     transition: left 0.3s ease, width 0.3s ease;
 }
 
-/* Tombol aksi utama di tengah panel */
-.pv-controls > .pv-primary-btn {
+/* ==================================================== */
+/* PERBAIKAN DI SINI                                    */
+/* Menambahkan selector ".pv-controls > form" agar      */
+/* tombol yang dibungkus form juga ikut ke tengah       */
+/* ==================================================== */
+.pv-controls > .pv-primary-btn,
+.pv-controls > form {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
@@ -34,15 +39,12 @@ html.collapsed .pv-controls {
 
 /* Responsif untuk ukuran layar kecil */
 @media (max-width: 992px) {
-
-  /* Panel menempel penuh di bawah */
   .pv-controls {
     left: 0;
     width: 100%;
     padding-left: 22px;
   }
 
-  /* Jika sidebar mobile sedang dibuka */
   body.show-sb .pv-controls {
     left: 240px;
     width: calc(100% - 240px);
