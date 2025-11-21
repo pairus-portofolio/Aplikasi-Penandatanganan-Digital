@@ -180,8 +180,6 @@ class ParafController extends Controller
 
     public function saveParaf(Request $request, $id)
     {
-        \Log::info('saveParaf request', $request->all());
-
         $request->validate([
             'posisi_x' => 'required|numeric',
             'posisi_y' => 'required|numeric',
@@ -195,7 +193,6 @@ class ParafController extends Controller
         if (!$workflowStep) {
             return response()->json(["status" => "error", "message" => "Workflow step not found"], 404);
         }
-
         $data = [
             'posisi_x' => (int) $request->posisi_x,
             'posisi_y' => (int) $request->posisi_y,
@@ -223,7 +220,7 @@ class ParafController extends Controller
 
         // Pastikan data koordinat & halaman ada
         if (!$workflow || is_null($workflow->posisi_x) || is_null($workflow->posisi_y) || !$workflow->halaman) {
-            return; 
+            return; // Atau log error: 'Koordinat belum diset'
         }
 
         $user = auth()->user();
@@ -255,8 +252,7 @@ class ParafController extends Controller
 
         // ============================================================
         // 3. CARI GAMBAR PARAF
-        // ============================================================
-        
+        // ============================================================       
         $parafPath = storage_path('app/public/' . $user->img_paraf_path);
 
         if (!file_exists($parafPath)) {
@@ -294,16 +290,20 @@ class ParafController extends Controller
 
                 // Logika Paraf: Jika halaman cocok
                 if ($i == $workflow->halaman) {
-                   
-                    $x_mm = $workflow->posisi_x * 0.264583;
+                    
+                    // ============================================================
+                    // PERBAIKAN KOORDINAT (DEBUGGING)
+                    // ============================================================
+    
+                    $x_mm = $workflow->posisi_x * 0.264583; 
                     $y_mm = $workflow->posisi_y * 0.264583;
 
                     // Gunakan koordinat hasil konversi
                     $pdf->Image(
                         $parafPath,
-                        $x_mm, 
-                        $y_mm,
-                        30
+                        $x_mm, // Gunakan hasil konversi
+                        $y_mm, // Gunakan hasil konversi
+                        30     // Ukuran gambar (30mm)
                     );
                 }
             }

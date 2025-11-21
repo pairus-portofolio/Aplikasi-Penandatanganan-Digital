@@ -1,5 +1,3 @@
-paraf-surat.js
-
 document.addEventListener('DOMContentLoaded', function () {
     // ==========================================
     // 1. CONFIG & VARIABEL UTAMA
