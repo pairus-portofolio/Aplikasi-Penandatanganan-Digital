@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Dashboard')</title>
 
     <!-- Memuat ikon Font Awesome dan font Inter -->
@@ -59,6 +59,38 @@
 
   <!-- Script utama dashboard -->
   <script src="{{ asset('js/app.js') }}"></script>
+
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <!-- Notifikasi Global -->
+  @if(session('success'))
+  <script>
+      document.addEventListener("DOMContentLoaded", function () {
+          Swal.fire({
+              toast: true,
+              icon: 'success',
+              title: '{{ session('success') }}',
+              position: 'top-end',
+              timer: 2500,
+              timerProgressBar: true,
+              showConfirmButton: false,
+          });
+      });
+  </script>
+  @endif
+
+  @if ($errors->any())
+  <script>
+      document.addEventListener("DOMContentLoaded", function () {
+          Swal.fire({
+              icon: 'error',
+              title: 'Terjadi Kesalahan',
+              html: `{!! implode('<br>', $errors->all()) !!}`,
+          });
+      });
+  </script>
+  @endif
 
   <!-- Area untuk script tambahan -->
   @stack('scripts')
