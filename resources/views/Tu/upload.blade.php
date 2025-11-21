@@ -4,33 +4,22 @@
 
 @section('content')
 
-<!-- Notifikasi modern pakai SweetAlert2 -->
+<!-- Menampilkan pesan sukses setelah upload berhasil -->
 @if(session('success'))
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        Swal.fire({
-            toast: true,
-            icon: 'success',
-            title: '{{ session('success') }}',
-            position: 'top-end',
-            timer: 2500,
-            timerProgressBar: true,
-            showConfirmButton: false,
-        });
-    });
-</script>
+    <div class="bg-green-200 text-green-700 p-3 rounded mb-4">
+        {{ session('success') }}
+    </div>
 @endif
 
+<!-- Menampilkan daftar error validasi -->
 @if ($errors->any())
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        Swal.fire({
-            icon: 'error',
-            title: 'Validasi Gagal',
-            html: `{!! implode('<br>', $errors->all()) !!}`,
-        });
-    });
-</script>
+    <div class="bg-red-200 text-red-700 p-3 rounded mb-4">
+        <ul class="list-disc ms-5">
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
 @endif
 
 <!-- Load CSS halaman unggah surat -->
@@ -110,13 +99,11 @@
 @endsection
 
 @section('popup')
+    <!-- Popup logout -->
     @include('partials.logout-popup')
 @endsection
 
 @push('scripts')
-    <!-- SweetAlert2 (untuk notifikasi modern) -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
     <!-- Script untuk logika drag-and-drop dan alur sign -->
     <script src="{{ asset('js/tu/upload.js') }}"></script>
 @endpush

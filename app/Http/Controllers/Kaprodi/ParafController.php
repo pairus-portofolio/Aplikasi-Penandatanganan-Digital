@@ -263,8 +263,8 @@ class ParafController extends Controller
         // 4. PROSES FPDI (Tempel Gambar)
         // ============================================================
         
-        // Kita simpan hasilnya di folder PRIVATE/PARAF_OUTPUT agar aman
-        $outputDir = storage_path('app/private/paraf_output');
+        // Kita simpan hasilnya di folder PUBLIC/PARAF_OUTPUT agar bisa didownload user
+        $outputDir = storage_path('app/public/paraf_output');
         
         if (!is_dir($outputDir)) {
             mkdir($outputDir, 0755, true);
@@ -272,7 +272,7 @@ class ParafController extends Controller
 
         // Nama file baru + Timestamp agar tidak kena cache browser
         $newFileName = 'paraf_output/' . $documentId . '_' . time() . '.pdf';
-        $outputFile = storage_path('app/private/' . $newFileName);
+        $outputFile = storage_path('app/public/' . $newFileName);
 
         try {
             $pdf = new \setasign\Fpdi\Fpdi();

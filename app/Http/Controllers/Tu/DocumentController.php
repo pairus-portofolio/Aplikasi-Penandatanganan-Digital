@@ -10,7 +10,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpWord\IOFactory;
 
 class DocumentController extends Controller
@@ -48,65 +47,42 @@ class DocumentController extends Controller
         // Menyimpan file ke storage
         $filePath = $file->storeAs('documents', $filename);
 
+        // Menyimpan data surat ke database
+        $document = Document::create([
+            'judul_surat'      => $validated['judul_surat'],
+            'file_name'        => $file->getClientOriginalName(),
+            'file_path'        => $filePath,
+            'kategori'         => $validated['kategori'],
+            'tanggal_surat'    => $validated['tanggal'],
+            'status'           => 'Ditinjau',
+            'id_user_uploader' => Auth::id(),
+            'id_client_app'    => 1,
+        ]);
+
         // Mengubah string daftar user menjadi array
         $alurUserIds = explode(',', $validated['alur']);
 
-        try {
-            DB::beginTransaction();
+        // Membuat langkah workflow untuk tiap user
+        foreach ($alurUserIds as $index => $userId) {
 
-            // Validasi User sebelum insert apapun
-            foreach ($alurUserIds as $userId) {
-                $user = User::with('role')->find($userId);
-                
-                if (!$user) {
-                    throw new \Exception("User ID '$userId' tidak valid.");
-                }
-
-                if ($user->role && $user->role->nama_role === 'TU') {
-                    throw new \Exception("User '{$user->nama_lengkap}' adalah Staff TU dan tidak boleh menjadi penandatangan.");
-                }
+            // Validasi user penandatangan
+            if (!User::find($userId)) {
+                return redirect()->back()->withErrors("User ID '$userId' tidak valid.");
             }
 
-            // Menyimpan data surat ke database
-            $document = Document::create([
-                'judul_surat'      => $validated['judul_surat'],
-                'file_name'        => $file->getClientOriginalName(),
-                'file_path'        => $filePath,
-                'kategori'         => $validated['kategori'],
-                'tanggal_surat'    => $validated['tanggal'],
-                'status'           => 'Ditinjau',
-                'id_user_uploader' => Auth::id(),
-                'id_client_app'    => 1,
+            // Menambahkan step workflow ke database
+            WorkflowStep::create([
+                'document_id' => $document->id,
+                'user_id'     => $userId,
+                'urutan'      => $index + 1,
+                'status'      => 'Ditinjau',
             ]);
-
-            // Membuat langkah workflow untuk tiap user
-            foreach ($alurUserIds as $index => $userId) {
-                WorkflowStep::create([
-                    'document_id' => $document->id,
-                    'user_id'     => $userId,
-                    'urutan'      => $index + 1,
-                    'status'      => 'Ditinjau',
-                ]);
-            }
-
-            DB::commit();
-
-            // Kembali ke halaman upload dengan pesan sukses
-            return redirect()
-                ->route('tu.upload.create')
-                ->with('success', 'Surat berhasil diunggah dan menunggu peninjauan.');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            
-            // Hapus file fisik jika DB gagal agar tidak nyampah
-            Storage::delete($filePath);
-
-            return redirect()
-                ->back()
-                ->withInput()
-                ->withErrors('Gagal menyimpan dokumen: ' . $e->getMessage());
         }
+
+        // Kembali ke halaman upload dengan pesan sukses
+        return redirect()
+            ->route('tu.upload.create')
+            ->with('success', 'Surat berhasil diunggah dan menunggu peninjauan.');
     }
 
     // Menampilkan detail dokumen beserta status workflow
@@ -128,36 +104,52 @@ class DocumentController extends Controller
         return view('document.show', compact('document', 'currentStep', 'workflowSteps'));
     }
 
+    // Mengupdate status penandatanganan workflow oleh user
+    public function updateStatus(Request $request, $documentId, $stepId)
+    {
+        // Mengambil step yang ingin diperbarui
+        $step = WorkflowStep::find($stepId);
 
+        // Memastikan step sesuai dengan dokumen yang dimaksud
+        if ($step->document_id !== $documentId) {
+            return redirect()->back()->withErrors('Langkah ini tidak valid.');
+        }
 
+        // Menandai step sebagai selesai ditandatangani
+        $step->status = 'signed';
+        $step->tanggal_aksi = now();
+        $step->save();
+
+        // Mengecek apakah semua step sudah ditandatangani
+        $allSigned = WorkflowStep::where('document_id', $documentId)
+                                ->where('status', '!=', 'signed')
+                                ->count() == 0;
+
+        // Jika seluruh step selesai, update status dokumen menjadi completed
+        if ($allSigned) {
+            $document = Document::find($documentId);
+            $document->status = 'completed';
+            $document->save();
+        }
+
+        // Kembali ke halaman upload dengan notifikasi sukses
+        return redirect()
+            ->route('tu.upload.create')
+            ->with('success', 'Langkah penandatanganan selesai.');
+    }
 
     public function download(Document $document)
     {
-        // 1. Security Check (IDOR Fix)
-        // User boleh download jika:
-        // a. Dia adalah uploader
-        // b. Dia ada di dalam list workflow (penandatangan)
-        
-        $userId = Auth::id();
-        $isUploader = $document->id_user_uploader == $userId;
-        $isInWorkflow = WorkflowStep::where('document_id', $document->id)
-            ->where('user_id', $userId)
-            ->exists();
-
-        if (!$isUploader && !$isInWorkflow) {
-            abort(403, 'Anda tidak memiliki hak akses untuk mengunduh dokumen ini.');
-        }
-
         // Path dari database
         $relativePath = $document->file_path;
         
-        // Cek Lokasi 1: Folder Private (Prioritas Utama - Secure)
+        // Cek Lokasi 1: Folder Private (Dokumen Original)
         $privatePath = storage_path('app/private/' . $relativePath);
 
-        // Cek Lokasi 2: Folder Public (Legacy support, tapi sebaiknya dipindah)
+        // Cek Lokasi 2: Folder Public (Dokumen Hasil Paraf)
         $publicPath = storage_path('app/public/' . $relativePath);
 
-        // Cek Lokasi 3: Folder App Default
+        // Cek Lokasi 3: Folder App Default (Jaga-jaga)
         $appPath = storage_path('app/' . $relativePath);
 
         $finalPath = null;
@@ -169,6 +161,8 @@ class DocumentController extends Controller
         } elseif (file_exists($appPath)) {
             $finalPath = $appPath;
         } else {
+            // Debugging: Nyalakan ini kalau masih 404 untuk lihat path yang dicari
+            // dd("File tidak ada di:", $privatePath, $publicPath);
             abort(404, 'File fisik tidak ditemukan.');
         }
 
