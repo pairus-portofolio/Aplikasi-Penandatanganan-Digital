@@ -105,37 +105,37 @@ class DocumentController extends Controller
     }
 
     // Mengupdate status penandatanganan workflow oleh user
-    public function updateStatus(Request $request, $documentId, $stepId)
+   public function updateStatus(Request $request, $documentId, $stepId)
     {
-        // Mengambil step yang ingin diperbarui
         $step = WorkflowStep::find($stepId);
 
-        // Memastikan step sesuai dengan dokumen yang dimaksud
         if ($step->document_id !== $documentId) {
             return redirect()->back()->withErrors('Langkah ini tidak valid.');
         }
 
-        // Menandai step sebagai selesai ditandatangani
         $step->status = 'signed';
         $step->tanggal_aksi = now();
         $step->save();
 
-        // Mengecek apakah semua step sudah ditandatangani
+        // Cek apakah semua step sudah ditandatangani
         $allSigned = WorkflowStep::where('document_id', $documentId)
                                 ->where('status', '!=', 'signed')
                                 ->count() == 0;
 
-        // Jika seluruh step selesai, update status dokumen menjadi completed
+        // Update status dokumen jika semua sudah selesai
         if ($allSigned) {
             $document = Document::find($documentId);
             $document->status = 'completed';
             $document->save();
+
+            return redirect()
+                ->back()
+                ->with('success', 'Dokumen telah selesai ditandatangani semua.');
         }
 
-        // Kembali ke halaman upload dengan notifikasi sukses
         return redirect()
-            ->route('tu.upload.create')
-            ->with('success', 'Langkah penandatanganan selesai.');
+            ->back()
+            ->with('success', 'Paraf berhasil dilakukan. Menunggu penandatangan berikutnya.');
     }
 
     public function download(Document $document)
