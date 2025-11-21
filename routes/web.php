@@ -50,6 +50,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/paraf-surat/{id}', [ParafController::class, 'show'])
         ->name('kaprodi.paraf.show');
 
+    // SAVE PARAF
+    Route::post('/paraf-surat/{id}/save-paraf', [ParafController::class, 'saveParaf'])
+        ->name('kaprodi.paraf.save');
+
     Route::post('/paraf-surat/{id}/submit', [ParafController::class, 'submit'])
         ->name('kaprodi.paraf.submit');
 

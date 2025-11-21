@@ -9,6 +9,7 @@ use App\Models\WorkflowStep;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\Dashboard\TableController;
+use setasign\Fpdi\Fpdi;
 
 class ParafController extends Controller
 {
@@ -141,38 +142,187 @@ class ParafController extends Controller
     // 5. Submit Paraf (Workflow - JANGAN DIUBAH)
     // =====================================================================
     public function submit(Request $request, $documentId)
-{
-    $activeStep = WorkflowStep::where('document_id', $documentId)
-        ->where('status', 'Ditinjau')
-        ->orderBy('urutan')
-        ->first();
+    {
+        $this->applyParafToPdf($documentId);
 
-    if (!$activeStep || $activeStep->user_id != Auth::id()) {
-        return back()->withErrors('Bukan giliran Anda untuk memparaf dokumen ini.');
+        $activeStep = WorkflowStep::where('document_id', $documentId)
+            ->where('status', 'Ditinjau')
+            ->orderBy('urutan')
+            ->first();
+
+        if (!$activeStep || $activeStep->user_id != Auth::id()) {
+            return back()->withErrors('Bukan giliran Anda untuk memparaf dokumen ini.');
+        }
+
+        // Update workflow step
+        $activeStep->status = 'Diparaf';
+        $activeStep->tanggal_aksi = now();
+        $activeStep->save();
+
+        $document = Document::find($documentId);
+
+        // Cek apakah masih ada KAPRODI yang belum paraf
+        $masihBelumParaf = WorkflowStep::where('document_id', $documentId)
+            ->where('status', 'Ditinjau')
+            ->whereHas('user.role', function ($q) {
+                $q->whereIn('nama_role', ['Kaprodi D3', 'Kaprodi D4']);
+            })
+            ->count();
+
+        // Jika masih ada Kaprodi → status tetap Ditinjau
+        // Jika semua Kaprodi selesai → status Dokumen jadi Diparaf
+        $document->status = ($masihBelumParaf > 0) ? 'Ditinjau' : 'Diparaf';
+        $document->save();
+
+        return redirect()->route('kaprodi.paraf.index')
+            ->with('success', 'Dokumen berhasil diparaf.');
     }
 
-    // Update workflow step
-    $activeStep->status = 'Diparaf';
-    $activeStep->tanggal_aksi = now();
-    $activeStep->save();
+    public function saveParaf(Request $request, $id)
+    {
+        \Log::info('saveParaf request', $request->all());
 
-    $document = Document::find($documentId);
+        $request->validate([
+            'posisi_x' => 'required|numeric',
+            'posisi_y' => 'required|numeric',
+            'halaman'  => 'required|integer'
+        ]);
 
-    // Cek apakah masih ada KAPRODI yang belum paraf
-    $masihBelumParaf = WorkflowStep::where('document_id', $documentId)
-        ->where('status', 'Ditinjau')
-        ->whereHas('user.role', function ($q) {
-            $q->whereIn('nama_role', ['Kaprodi D3', 'Kaprodi D4']);
-        })
-        ->count();
+        $workflowStep = WorkflowStep::where('document_id', $id)
+            ->where('user_id', auth()->id())
+            ->first();
 
-    // Jika masih ada Kaprodi → status tetap Ditinjau
-    // Jika semua Kaprodi selesai → status Dokumen jadi Diparaf
-    $document->status = ($masihBelumParaf > 0) ? 'Ditinjau' : 'Diparaf';
-    $document->save();
+        if (!$workflowStep) {
+            return response()->json(["status" => "error", "message" => "Workflow step not found"], 404);
+        }
 
-    return redirect()->route('kaprodi.paraf.index')
-        ->with('success', 'Dokumen berhasil diparaf.');
-}
+        $data = [
+            'posisi_x' => (int) $request->posisi_x,
+            'posisi_y' => (int) $request->posisi_y,
+            'halaman'  => (int) $request->halaman,
+            'tanggal_aksi' => now()
+        ];
+
+        try {
+            $workflowStep->update($data);
+        } catch (\Exception $e) {
+            return response()->json(["status" => "error", "message" => "DB error: ".$e->getMessage()], 500);
+        }
+
+        return response()->json(["status" => "success"]);
+    }
+
+    private function applyParafToPdf($documentId)
+    {
+        $document = Document::findOrFail($documentId);
+
+        // 1. Cek Workflow & User
+        $workflow = WorkflowStep::where('document_id', $documentId)
+            ->where('user_id', auth()->id())
+            ->first();
+
+        // Pastikan data koordinat & halaman ada
+        if (!$workflow || is_null($workflow->posisi_x) || is_null($workflow->posisi_y) || !$workflow->halaman) {
+            return; 
+        }
+
+        $user = auth()->user();
+        if (!$user->img_paraf_path) {
+            throw new \Exception("User belum mengatur gambar paraf.");
+        }
+
+        // ============================================================
+        // 2. CARI PDF SUMBER (Dinamis: Private -> Public)
+        // ============================================================
+        $dbPath = $document->file_path; 
+        $sourcePath = null;
+
+        $pathPrivate = storage_path('app/private/' . $dbPath);
+
+        $pathPublic = storage_path('app/public/' . $dbPath);
+
+        $pathApp = storage_path('app/' . $dbPath);
+
+        if (file_exists($pathPrivate)) {
+            $sourcePath = $pathPrivate;
+        } elseif (file_exists($pathPublic)) {
+            $sourcePath = $pathPublic;
+        } elseif (file_exists($pathApp)) {
+            $sourcePath = $pathApp;
+        } else {
+            throw new \Exception("File fisik surat tidak ditemukan. Dicari di: " . $pathPrivate);
+        }
+
+        // ============================================================
+        // 3. CARI GAMBAR PARAF
+        // ============================================================
+        
+        $parafPath = storage_path('app/public/' . $user->img_paraf_path);
+
+        if (!file_exists($parafPath)) {
+            throw new \Exception("File gambar paraf tidak ditemukan di: " . $parafPath);
+        }
+
+        // ============================================================
+        // 4. PROSES FPDI (Tempel Gambar)
+        // ============================================================
+        
+        // Kita simpan hasilnya di folder PUBLIC/PARAF_OUTPUT agar bisa didownload user
+        $outputDir = storage_path('app/public/paraf_output');
+        
+        if (!is_dir($outputDir)) {
+            mkdir($outputDir, 0755, true);
+        }
+
+        // Nama file baru + Timestamp agar tidak kena cache browser
+        $newFileName = 'paraf_output/' . $documentId . '_' . time() . '.pdf';
+        $outputFile = storage_path('app/public/' . $newFileName);
+
+        try {
+            $pdf = new \setasign\Fpdi\Fpdi();
+            
+            // Load file sumber
+            $pageCount = $pdf->setSourceFile($sourcePath);
+
+            for ($i = 1; $i <= $pageCount; $i++) {
+                $template = $pdf->importPage($i);
+                $size = $pdf->getTemplateSize($template);
+
+                // Tambah halaman sesuai ukuran asli
+                $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
+                $pdf->useTemplate($template);
+
+                // Logika Paraf: Jika halaman cocok
+                if ($i == $workflow->halaman) {
+                   
+                    $x_mm = $workflow->posisi_x * 0.264583;
+                    $y_mm = $workflow->posisi_y * 0.264583;
+
+                    // Gunakan koordinat hasil konversi
+                    $pdf->Image(
+                        $parafPath,
+                        $x_mm, 
+                        $y_mm,
+                        30
+                    );
+                }
+            }
+
+            // Simpan File Baru
+            $pdf->Output($outputFile, 'F');
+
+            // ============================================================
+            // 5. UPDATE DATABASE
+            // ============================================================
+            
+            // Update path dokumen ke file baru di folder public
+            $document->update([
+                'file_path' => $newFileName
+            ]);
+
+        } catch (\Exception $e) {
+            throw new \Exception("Gagal memproses PDF: " . $e->getMessage());
+        }
+    }
 
 }

@@ -27,7 +27,7 @@
     <div class="paraf-layout-container">
 
         <!-- ========================= -->
-        <!--      PARAF SIDEBAR       -->
+        <!--      PARAF SIDEBAR        -->
         <!-- ========================= -->
         <div class="paraf-sidebar">
 
@@ -97,7 +97,14 @@
         window.pdfConfig = {
             pdfUrl: "{{ route('document.download', $document->id) }}",
             workerSrc: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js",
+            // TAMBAHAN BARU: URL untuk simpan posisi & Token keamanan
+            saveUrl: "{{ route('kaprodi.paraf.save', $document->id) }}",
+            csrfToken: "{{ csrf_token() }}"
         };
+    </script>
+
+    <script>
+        window.suratId = "{{ $document->id }}";
     </script>
 
     <!-- Script utama -->

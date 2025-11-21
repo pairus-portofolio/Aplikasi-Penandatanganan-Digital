@@ -1,3 +1,5 @@
+paraf-surat.js
+
 document.addEventListener('DOMContentLoaded', function () {
     // ==========================================
     // 1. CONFIG & VARIABEL UTAMA
@@ -172,23 +174,39 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     function renderAllPages() {
-        container.innerHTML = '';
-        pageObserver.disconnect();
+    container.innerHTML = '';
+    pageObserver.disconnect();
 
-        for (let num = 1; num <= pdfDoc.numPages; num++) {
-            const canvas = document.createElement("canvas");
-            canvas.id = "page-" + num;
-            canvas.className = "pdf-page-canvas";
-            canvas.style.marginBottom = "20px";
+    for (let num = 1; num <= pdfDoc.numPages; num++) {
 
-            container.appendChild(canvas);
-            renderPage(num, canvas);
+        // 1. Bungkus canvas ke dalam drop zone
+        const wrap = document.createElement("div");
+        wrap.className = "pdf-page-wrapper";
+        wrap.dataset.pageNumber = num;
+        wrap.style.position = "relative";
+        wrap.style.marginBottom = "20px";
 
-            pageObserver.observe(canvas);
-        }
+        // 2. Canvas tetap seperti asli (TIDAK DIUBAH)
+        const canvas = document.createElement("canvas");
+        canvas.id = "page-" + num;
+        canvas.className = "pdf-page-canvas";
 
-        if (zoomText) zoomText.innerText = Math.round(scale * 100) + "%";
+        // 3. Susun wrapper → canvas
+        wrap.appendChild(canvas);
+        container.appendChild(wrap);
+
+        // 4. Render halaman
+        renderPage(num, canvas);
+
+        // 5. SETUP DROP ZONE DI WRAP (bukan canvas)
+        setupDropZone(wrap);
+
+        // 6. Observer tetap (TIDAK DIUBAH)
+        pageObserver.observe(canvas);
     }
+
+    if (zoomText) zoomText.innerText = Math.round(scale * 100) + "%";
+}
 
     function renderPage(num, canvas) {
         pdfDoc.getPage(num).then(page => {
@@ -237,7 +255,10 @@ document.addEventListener('DOMContentLoaded', function () {
             newParaf.classList.remove("paraf-image-preview");
             newParaf.classList.add("paraf-dropped");
 
+            const page = parseInt(dropZone.dataset.pageNumber, 10) || 1;
             const rect = dropZone.getBoundingClientRect();
+            const x = Math.round(e.clientX - rect.left - 50);
+            const y = Math.round(e.clientY - rect.top - 25);
             newParaf.style.position = "absolute";
             newParaf.style.left = (e.clientX - rect.left - 50) + "px";
             newParaf.style.top = (e.clientY - rect.top - 25) + "px";
@@ -249,15 +270,55 @@ document.addEventListener('DOMContentLoaded', function () {
 
             makeElementMovable(newParaf);
             makeElementSelectable(newParaf);
-        });
+        // ===============================================
+        // AUTO SAVE POSISI PARAF LANGSUNG KETIKA DROP
+        // ===============================================
+        try {
+            const csrf = document.querySelector('meta[name="csrf-token"]').content;
 
-        dropZone.addEventListener("click", () => {
-            if (selectedParaf) {
-                selectedParaf.style.border = "1px dashed transparent";
-                selectedParaf = null;
-            }
-        });
-    }
+            const x = parseInt(newParaf.style.left.replace("px", ""));
+            const y = parseInt(newParaf.style.top.replace("px", ""));
+
+            fetch(`/paraf-surat/${window.suratId}/save-paraf`, {
+                method: "POST",
+                headers: {
+                    "X-CSRF-TOKEN": csrf,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify({
+                    posisi_x: x,
+                    posisi_y: y,
+                    halaman: page
+                })
+            })
+            .then(async (res) => {
+                const body = await res.json().catch(() => null);
+                console.log("SAVE PARAF STATUS:", res.status, body);
+                if (!res.ok) throw body || new Error('HTTP ' + res.status);
+                return body;
+            })
+            .then(data => {
+                console.log("AUTO SAVE PARAF:", data);
+            })
+            .catch(err => {
+                console.error("ERROR SAVE PARAF:", err);
+                alert("Gagal menyimpan paraf. Cek console atau network tab.");
+            });
+
+
+        } catch (error) {
+            console.error("AUTO SAVE FAILED:", error);
+        }
+    });
+
+    dropZone.addEventListener("click", () => {
+        if (selectedParaf) {
+            selectedParaf.style.border = "1px dashed transparent";
+            selectedParaf = null;
+        }
+    });
+}
 
     // ==========================================
     // 5. MOVE & SELECT LOGIC

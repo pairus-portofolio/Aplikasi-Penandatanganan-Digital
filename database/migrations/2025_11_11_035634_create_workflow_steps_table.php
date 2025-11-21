@@ -17,8 +17,9 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained('users');
             $table->smallInteger('urutan');
             $table->string('status')->default('Ditinjau');
-            $table->integer('posisi_x_ttd')->nullable();
-            $table->integer('posisi_y_ttd')->nullable();
+            $table->integer('posisi_x')->nullable();
+            $table->integer('posisi_y')->nullable();
+            $table->integer('halaman')->nullable();
             $table->timestamp('tanggal_aksi')->nullable();
             $table->timestamps();
         });

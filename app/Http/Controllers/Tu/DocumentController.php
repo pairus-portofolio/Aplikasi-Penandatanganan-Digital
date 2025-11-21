@@ -140,23 +140,36 @@ class DocumentController extends Controller
 
     public function download(Document $document)
     {
-        // Ambil path dari database (misal: documents/abc.pdf)
+        // Path dari database
         $relativePath = $document->file_path;
         
-        // Cek dulu apakah path di database sudah ada 'private/' atau belum
-        if (!str_starts_with($relativePath, 'private/')) {
-            $fullPath = 'private/' . $relativePath;
+        // Cek Lokasi 1: Folder Private (Dokumen Original)
+        $privatePath = storage_path('app/private/' . $relativePath);
+
+        // Cek Lokasi 2: Folder Public (Dokumen Hasil Paraf)
+        $publicPath = storage_path('app/public/' . $relativePath);
+
+        // Cek Lokasi 3: Folder App Default (Jaga-jaga)
+        $appPath = storage_path('app/' . $relativePath);
+
+        $finalPath = null;
+
+        if (file_exists($privatePath)) {
+            $finalPath = $privatePath;
+        } elseif (file_exists($publicPath)) {
+            $finalPath = $publicPath;
+        } elseif (file_exists($appPath)) {
+            $finalPath = $appPath;
         } else {
-            $fullPath = $relativePath;
+            // Debugging: Nyalakan ini kalau masih 404 untuk lihat path yang dicari
+            // dd("File tidak ada di:", $privatePath, $publicPath);
+            abort(404, 'File fisik tidak ditemukan.');
         }
 
-        $absolutePath = storage_path('app/' . $fullPath);
-
-        // 3. Cek Keberadaan File
-        if (!file_exists($absolutePath)) {
-            abort(404);
-        }
-
-        return response()->file($absolutePath);
+        // Return file ke browser (inline = preview)
+        return response()->file($finalPath, [
+            'Content-Type' => 'application/pdf',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0', // Mencegah cache file lama
+        ]);
     }
 }
