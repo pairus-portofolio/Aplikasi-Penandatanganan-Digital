@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpWord\IOFactory;
+use Illuminate\Support\Facades\DB;
+use App\Enums\RoleEnum;
 
 class DocumentController extends Controller
 {
@@ -19,7 +21,7 @@ class DocumentController extends Controller
     {
         // Ambil semua user yang bukan role TU
         $users = User::whereHas('role', function($query) {
-            $query->where('nama_role', '!=', 'TU');
+            $query->where('nama_role', '!=', RoleEnum::TU);
         })->get(['id', 'nama_lengkap']);
 
         return view('tu.upload', ['users' => $users]);
@@ -44,45 +46,67 @@ class DocumentController extends Controller
         // Membuat nama file unik
         $filename = Str::uuid()->toString() . '.' . $ext;
 
-        // Menyimpan file ke storage
-        $filePath = $file->storeAs('documents', $filename);
+        // GUNAKAN TRANSACTION UNTUK MENCEGAH DATA INCONSISTENCY
+        DB::beginTransaction();
+        try {
+            // Menyimpan file ke storage
+            $filePath = $file->storeAs('documents', $filename);
 
-        // Menyimpan data surat ke database
-        $document = Document::create([
-            'judul_surat'      => $validated['judul_surat'],
-            'file_name'        => $file->getClientOriginalName(),
-            'file_path'        => $filePath,
-            'kategori'         => $validated['kategori'],
-            'tanggal_surat'    => $validated['tanggal'],
-            'status'           => 'Ditinjau',
-            'id_user_uploader' => Auth::id(),
-            'id_client_app'    => 1,
-        ]);
+            // Menyimpan data surat ke database
+            $document = Document::create([
+                'judul_surat'      => $validated['judul_surat'],
+                'file_name'        => $file->getClientOriginalName(),
+                'file_path'        => $filePath,
+                'kategori'         => $validated['kategori'],
+                'tanggal_surat'    => $validated['tanggal'],
+                'status'           => 'Ditinjau',
+                'id_user_uploader' => Auth::id(),
+                'id_client_app'    => 1,
+            ]);
 
-        // Mengubah string daftar user menjadi array
-        $alurUserIds = explode(',', $validated['alur']);
+            // Mengubah string daftar user menjadi array
+            $alurUserIds = explode(',', $validated['alur']);
 
-        // Membuat langkah workflow untuk tiap user
-        foreach ($alurUserIds as $index => $userId) {
+            // Membuat langkah workflow untuk tiap user
+            foreach ($alurUserIds as $index => $userId) {
 
-            // Validasi user penandatangan
-            if (!User::find($userId)) {
-                return redirect()->back()->withErrors("User ID '$userId' tidak valid.");
+                // Validasi user penandatangan
+                if (!User::find($userId)) {
+                    throw new \Exception("User ID '$userId' tidak valid.");
+                }
+
+                // Menambahkan step workflow ke database
+                WorkflowStep::create([
+                    'document_id' => $document->id,
+                    'user_id'     => $userId,
+                    'urutan'      => $index + 1,
+                    'status'      => 'Ditinjau',
+                ]);
             }
 
-            // Menambahkan step workflow ke database
-            WorkflowStep::create([
-                'document_id' => $document->id,
-                'user_id'     => $userId,
-                'urutan'      => $index + 1,
-                'status'      => 'Ditinjau',
-            ]);
-        }
+            // Commit transaction jika semua berhasil
+            DB::commit();
 
-        // Kembali ke halaman upload dengan pesan sukses
-        return redirect()
-            ->route('tu.upload.create')
-            ->with('success', 'Surat berhasil diunggah dan menunggu peninjauan.');
+            // Kembali ke halaman upload dengan pesan sukses
+            return redirect()
+                ->route('tu.upload.create')
+                ->with('success', 'Surat berhasil diunggah dan menunggu peninjauan.');
+
+        } catch (\Exception $e) {
+            // Rollback transaction jika terjadi error
+            DB::rollBack();
+
+            // Hapus file yang sudah terupload jika ada
+            if (isset($filePath) && Storage::exists($filePath)) {
+                Storage::delete($filePath);
+            }
+
+            // Kembali dengan error message
+            return redirect()
+                ->back()
+                ->withInput()
+                ->withErrors('Gagal mengupload dokumen: ' . $e->getMessage());
+        }
     }
 
     // Menampilkan detail dokumen beserta status workflow
@@ -105,37 +129,37 @@ class DocumentController extends Controller
     }
 
     // Mengupdate status penandatanganan workflow oleh user
-    public function updateStatus(Request $request, $documentId, $stepId)
+   public function updateStatus(Request $request, $documentId, $stepId)
     {
-        // Mengambil step yang ingin diperbarui
         $step = WorkflowStep::find($stepId);
 
-        // Memastikan step sesuai dengan dokumen yang dimaksud
         if ($step->document_id !== $documentId) {
             return redirect()->back()->withErrors('Langkah ini tidak valid.');
         }
 
-        // Menandai step sebagai selesai ditandatangani
         $step->status = 'signed';
         $step->tanggal_aksi = now();
         $step->save();
 
-        // Mengecek apakah semua step sudah ditandatangani
+        // Cek apakah semua step sudah ditandatangani
         $allSigned = WorkflowStep::where('document_id', $documentId)
                                 ->where('status', '!=', 'signed')
                                 ->count() == 0;
 
-        // Jika seluruh step selesai, update status dokumen menjadi completed
+        // Update status dokumen jika semua sudah selesai
         if ($allSigned) {
             $document = Document::find($documentId);
             $document->status = 'completed';
             $document->save();
+
+            return redirect()
+                ->back()
+                ->with('success', 'Dokumen telah selesai ditandatangani semua.');
         }
 
-        // Kembali ke halaman upload dengan notifikasi sukses
         return redirect()
-            ->route('tu.upload.create')
-            ->with('success', 'Langkah penandatanganan selesai.');
+            ->back()
+            ->with('success', 'Paraf berhasil dilakukan. Menunggu penandatangan berikutnya.');
     }
 
     public function download(Document $document)
@@ -166,10 +190,14 @@ class DocumentController extends Controller
             abort(404, 'File fisik tidak ditemukan.');
         }
 
-        // Return file ke browser (inline = preview)
-        return response()->file($finalPath, [
-            'Content-Type' => 'application/pdf',
-            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0', // Mencegah cache file lama
-        ]);
+        // Return file ke browser (inline = preview) dengan error handling
+        try {
+            return response()->file($finalPath, [
+                'Content-Type' => 'application/pdf',
+                'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0', // Mencegah cache file lama
+            ]);
+        } catch (\Exception $e) {
+            abort(500, 'Gagal membaca file: ' . $e->getMessage());
+        }
     }
 }

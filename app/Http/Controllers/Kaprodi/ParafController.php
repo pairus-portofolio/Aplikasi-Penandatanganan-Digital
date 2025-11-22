@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\Dashboard\TableController;
 use setasign\Fpdi\Fpdi;
+use App\Enums\RoleEnum;
 
 class ParafController extends Controller
 {
@@ -143,8 +144,7 @@ class ParafController extends Controller
     // =====================================================================
     public function submit(Request $request, $documentId)
     {
-        $this->applyParafToPdf($documentId);
-
+        // VALIDASI DULU SEBELUM PROSES PDF (Fix Race Condition)
         $activeStep = WorkflowStep::where('document_id', $documentId)
             ->where('status', 'Ditinjau')
             ->orderBy('urutan')
@@ -153,6 +153,9 @@ class ParafController extends Controller
         if (!$activeStep || $activeStep->user_id != Auth::id()) {
             return back()->withErrors('Bukan giliran Anda untuk memparaf dokumen ini.');
         }
+
+        // BARU PROSES PDF SETELAH VALIDASI
+        $this->applyParafToPdf($documentId);
 
         // Update workflow step
         $activeStep->status = 'Diparaf';
@@ -165,7 +168,7 @@ class ParafController extends Controller
         $masihBelumParaf = WorkflowStep::where('document_id', $documentId)
             ->where('status', 'Ditinjau')
             ->whereHas('user.role', function ($q) {
-                $q->whereIn('nama_role', ['Kaprodi D3', 'Kaprodi D4']);
+                $q->whereIn('nama_role', RoleEnum::getKaprodiRoles());
             })
             ->count();
 
@@ -181,9 +184,9 @@ class ParafController extends Controller
     public function saveParaf(Request $request, $id)
     {
         $request->validate([
-            'posisi_x' => 'required|numeric',
-            'posisi_y' => 'required|numeric',
-            'halaman'  => 'required|integer'
+            'posisi_x' => 'required|numeric|min:0|max:1000',
+            'posisi_y' => 'required|numeric|min:0|max:1500',
+            'halaman'  => 'required|integer|min:1'
         ]);
 
         $workflowStep = WorkflowStep::where('document_id', $id)
@@ -220,7 +223,7 @@ class ParafController extends Controller
 
         // Pastikan data koordinat & halaman ada
         if (!$workflow || is_null($workflow->posisi_x) || is_null($workflow->posisi_y) || !$workflow->halaman) {
-            return; // Atau log error: 'Koordinat belum diset'
+            throw new \Exception("Koordinat paraf belum diatur. Silakan letakkan paraf di dokumen terlebih dahulu.");
         }
 
         $user = auth()->user();
