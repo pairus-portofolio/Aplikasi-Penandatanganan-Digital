@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Document;
 use App\Models\WorkflowStep;
+use App\Enums\DocumentStatusEnum;
 
 class TableController extends Controller
 {
@@ -35,7 +36,7 @@ class TableController extends Controller
             return $docs->filter(function ($doc) use ($user) {
 
                 $activeStep = WorkflowStep::where('document_id', $doc->id)
-                    ->where('status', 'Ditinjau')
+                    ->where('status', DocumentStatusEnum::DITINJAU)
                     ->orderBy('urutan')
                     ->first();
 
@@ -49,7 +50,7 @@ class TableController extends Controller
         if (in_array($roleId, [4,5])) {
 
             $docs = Document::with('uploader')
-                ->where('status', 'Diparaf')
+                ->where('status', DocumentStatusEnum::DIPARAF)
                 ->whereHas('workflowSteps', function ($q) use ($user) {
                     $q->where('user_id', $user->id);
                 })
@@ -58,7 +59,7 @@ class TableController extends Controller
 
             return $docs->filter(function ($doc) use ($user) {
                 $activeStep = WorkflowStep::where('document_id', $doc->id)
-                    ->where('status', 'Ditinjau')
+                    ->where('status', DocumentStatusEnum::DITINJAU)
                     ->orderBy('urutan')
                     ->first();
 
@@ -88,11 +89,11 @@ class TableController extends Controller
         return $documents->map(function ($doc) {
 
             $statusClass = match ($doc->status) {
-            'Ditinjau'       => 'kuning',
-            'Diparaf'        => 'biru',
-            'Ditandatangani' => 'hijau',
-            'Perlu Revisi'   => 'merah',
-            default          => 'abu', 
+            DocumentStatusEnum::DITINJAU       => 'kuning',
+            DocumentStatusEnum::DIPARAF        => 'biru',
+            DocumentStatusEnum::DITANDATANGANI => 'hijau',
+            DocumentStatusEnum::PERLU_REVISI   => 'merah',
+            default                            => 'abu', 
         };
 
 

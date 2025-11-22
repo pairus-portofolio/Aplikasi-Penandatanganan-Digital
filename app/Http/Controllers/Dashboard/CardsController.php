@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Document;
 use App\Models\WorkflowStep;
+use App\Enums\DocumentStatusEnum;
 
 class CardsController extends Controller
 {
@@ -35,7 +36,7 @@ class CardsController extends Controller
             $suratPerluParaf = $docs->filter(function ($doc) use ($user) {
 
                 $activeStep = WorkflowStep::where('document_id', $doc->id)
-                    ->where('status', 'Ditinjau')
+                    ->where('status', DocumentStatusEnum::DITINJAU)
                     ->orderBy('urutan')
                     ->first();
 
@@ -63,7 +64,7 @@ class CardsController extends Controller
 
                 // Ambil step aktif
                 $activeStep = WorkflowStep::where('document_id', $doc->id)
-                    ->where('status', 'Ditinjau')
+                    ->where('status', DocumentStatusEnum::DITINJAU)
                     ->orderBy('urutan')
                     ->first();
 
