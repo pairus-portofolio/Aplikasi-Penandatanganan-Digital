@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const totalPagesElem = document.getElementById('total_pages');
 
     let pdfDoc = null;
-    let scale = 1.0;
+    let scale = 1.0; 
     let selectedParaf = null;
     const outputScale = window.devicePixelRatio || 1;
 
@@ -30,8 +30,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const hapusBtn = document.getElementById("parafHapusBtn");
 
     if (parafBox && parafImage && fileInput) {
-
-        // ---- TRIGGER UPLOAD ----
         const triggerUpload = () => fileInput.click();
 
         parafBox.addEventListener("click", () => {
@@ -45,21 +43,14 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
-        // ==============================================
-        // HAPUS PARAF (UPDATE + HAPUS PERMANEN SERVER)
-        // ==============================================
+        // HAPUS PARAF PERMANEN
         if (hapusBtn) {
             hapusBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
-
                 if (!confirm("Yakin ingin menghapus paraf ini secara permanen?")) return;
 
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-                if (!csrfToken) {
-                    alert("CSRF Token tidak ditemukan.");
-                    return;
-                }
-
+                
                 fetch('/kaprodi/paraf/delete', {
                     method: 'POST',
                     headers: {
@@ -81,22 +72,16 @@ document.addEventListener('DOMContentLoaded', function () {
                         alert("Gagal menghapus: " + data.message);
                     }
                 })
-                .catch(err => {
-                    console.error("DELETE ERROR", err);
-                    alert("Terjadi kesalahan saat hapus data.");
-                });
+                .catch(err => alert("Terjadi kesalahan saat hapus data."));
             });
         }
 
-        // ==========================================================
-        // UPLOAD PARAF → PREVIEW → KIRIM KE SERVER
-        // ==========================================================
+        // UPLOAD PARAF
         fileInput.addEventListener("change", (e) => {
             if (e.target.files && e.target.files[0]) {
                 const file = e.target.files[0];
-
-                // -- PREVIEW --
                 const reader = new FileReader();
+                
                 reader.onload = (ev) => {
                     parafImage.src = ev.target.result;
                     parafImage.style.display = "block";
@@ -106,46 +91,24 @@ document.addEventListener('DOMContentLoaded', function () {
                 };
                 reader.readAsDataURL(file);
 
-                // -- UPLOAD SERVER --
                 const formData = new FormData();
                 formData.append("image", file);
-
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-                if (!csrfToken) {
-                    console.error("CSRF Token tidak ditemukan!");
-                    return;
-                }
 
                 fetch('/kaprodi/paraf/upload', {
                     method: "POST",
-                    headers: {
-                        "X-CSRF-TOKEN": csrfToken,
-                        "Accept": "application/json"
-                    },
+                    headers: { "X-CSRF-TOKEN": csrfToken, "Accept": "application/json" },
                     body: formData
                 })
-                .then(async (response) => {
-                    if (!response.ok) {
-                        const err = await response.json();
-                        throw err;
-                    }
-                    return response.json();
-                })
+                .then(res => res.json())
                 .then(data => {
-                    if (data.status === "success") {
-                        console.log("Paraf berhasil disimpan.");
-                    } else {
-                        alert("Gagal upload: " + data.message);
-                    }
+                    if (data.status !== "success") alert("Gagal upload: " + data.message);
                 })
-                .catch(err => {
-                    console.error("UPLOAD ERROR", err);
-                    alert("Gagal Upload:\n" + (err.message || "Terjadi kesalahan."));
-                });
+                .catch(err => console.error("UPLOAD ERROR", err));
             }
         });
 
-        // DRAG PARAF ASAL
+        // DRAG START DARI SIDEBAR
         parafImage.addEventListener("dragstart", (e) => {
             if (parafImage.src && parafBox.classList.contains("has-image")) {
                 e.dataTransfer.setData("text/plain", "parafImage");
@@ -157,7 +120,47 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ==========================================
-    // 3. LOGIKA RENDER PDF
+    // 3. HELPER: FUNGSI SIMPAN KE DB (PENTING!)
+    // ==========================================
+    function saveParafPosition(element, pageNumber) {
+        try {
+            const csrf = document.querySelector('meta[name="csrf-token"]').content;
+            
+            // Ambil posisi CSS saat ini (dalam pixel Zoomed)
+            const rawLeft = parseFloat(element.style.left);
+            const rawTop = parseFloat(element.style.top);
+
+            // NORMALISASI: Kembalikan ke skala 1.0
+            // Ini KUNCI agar posisi tidak melenceng saat zoom
+            const normalizedX = Math.round(rawLeft / scale);
+            const normalizedY = Math.round(rawTop / scale);
+
+            console.log(`Saving Paraf: Page ${pageNumber}, X=${normalizedX}, Y=${normalizedY} (Scale: ${scale})`);
+
+            fetch(`/paraf-surat/${window.suratId}/save-paraf`, {
+                method: "POST",
+                headers: {
+                    "X-CSRF-TOKEN": csrf,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify({
+                    posisi_x: normalizedX,
+                    posisi_y: normalizedY,
+                    halaman: pageNumber
+                })
+            })
+            .then(res => res.json())
+            .then(data => console.log("DB Updated:", data))
+            .catch(err => console.error("Save Failed:", err));
+
+        } catch (error) {
+            console.error("Auto save error:", error);
+        }
+    }
+
+    // ==========================================
+    // 4. LOGIKA RENDER PDF
     // ==========================================
     const pageObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -166,24 +169,32 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (currPageElem) currPageElem.innerText = pageNum;
             }
         });
-    }, {
-        root: scrollContainer,
-        threshold: 0.1
-    });
+    }, { root: scrollContainer, threshold: 0.1 });
 
     function renderAllPages() {
         container.innerHTML = '';
         pageObserver.disconnect();
 
         for (let num = 1; num <= pdfDoc.numPages; num++) {
+            // Wrapper
+            const wrap = document.createElement("div");
+            wrap.className = "pdf-page-wrapper";
+            wrap.dataset.pageNumber = num;
+            wrap.style.position = "relative";
+            wrap.style.marginBottom = "20px";
+            wrap.style.display = "inline-block";
+
+            // Canvas
             const canvas = document.createElement("canvas");
             canvas.id = "page-" + num;
             canvas.className = "pdf-page-canvas";
-            canvas.style.marginBottom = "20px";
+            canvas.style.display = "block";
 
-            container.appendChild(canvas);
+            wrap.appendChild(canvas);
+            container.appendChild(wrap);
+
             renderPage(num, canvas);
-
+            setupDropZone(wrap);
             pageObserver.observe(canvas);
         }
 
@@ -197,7 +208,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
             canvas.width = viewport.width * outputScale;
             canvas.height = viewport.height * outputScale;
-
             canvas.style.width = viewport.width + "px";
             canvas.style.height = viewport.height + "px";
 
@@ -210,10 +220,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ==========================================
-    // 4. LOGIKA DROP ZONE
+    // 5. LOGIKA DROP ZONE
     // ==========================================
     function setupDropZone(dropZone) {
-
         dropZone.addEventListener("dragover", (e) => {
             e.preventDefault();
             dropZone.style.outline = "2px dashed #1e4ed8";
@@ -229,6 +238,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (e.dataTransfer.getData("text/plain") !== "parafImage") return;
 
+            // Hapus paraf lama jika ada (agar cuma 1 paraf per dokumen/user)
+            const existing = document.querySelector('.paraf-dropped');
+            if (existing) existing.remove();
+
             const original = document.getElementById("parafImage");
             if (!original || !original.src) return;
 
@@ -237,10 +250,16 @@ document.addEventListener('DOMContentLoaded', function () {
             newParaf.classList.remove("paraf-image-preview");
             newParaf.classList.add("paraf-dropped");
 
+            const page = parseInt(dropZone.dataset.pageNumber, 10);
             const rect = dropZone.getBoundingClientRect();
+            
+            // Hitung posisi relatif mouse terhadap canvas
+            const x = e.clientX - rect.left - 50; 
+            const y = e.clientY - rect.top - 25;
+
             newParaf.style.position = "absolute";
-            newParaf.style.left = (e.clientX - rect.left - 50) + "px";
-            newParaf.style.top = (e.clientY - rect.top - 25) + "px";
+            newParaf.style.left = x + "px";
+            newParaf.style.top = y + "px";
             newParaf.style.width = "100px";
             newParaf.style.cursor = "grab";
             newParaf.style.zIndex = "100";
@@ -249,6 +268,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             makeElementMovable(newParaf);
             makeElementSelectable(newParaf);
+
+            // SIMPAN DATA PERTAMA KALI
+            saveParafPosition(newParaf, page);
         });
 
         dropZone.addEventListener("click", () => {
@@ -260,7 +282,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ==========================================
-    // 5. MOVE & SELECT LOGIC
+    // 6. LOGIKA MOVE & SELECT (UPDATE SAAT DILEPAS)
     // ==========================================
     function makeElementMovable(el) {
         let isDragging = false;
@@ -270,6 +292,7 @@ document.addEventListener('DOMContentLoaded', function () {
             e.stopPropagation();
             isDragging = true;
             selectElement(el);
+            el.style.cursor = "grabbing";
 
             startX = e.clientX;
             startY = e.clientY;
@@ -278,16 +301,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const move = (ev) => {
                 if (!isDragging) return;
-                let dx = ev.clientX - startX;
-                let dy = ev.clientY - startY;
+                const dx = ev.clientX - startX;
+                const dy = ev.clientY - startY;
                 el.style.left = (startLeft + dx) + "px";
                 el.style.top = (startTop + dy) + "px";
             };
 
             const up = () => {
-                isDragging = false;
-                document.removeEventListener("mousemove", move);
-                document.removeEventListener("mouseup", up);
+                if (isDragging) {
+                    isDragging = false;
+                    el.style.cursor = "grab";
+                    document.removeEventListener("mousemove", move);
+                    document.removeEventListener("mouseup", up);
+
+                    // Panggil fungsi simpan saat mouse dilepas (selesai geser)
+                    const wrapper = el.closest('.pdf-page-wrapper');
+                    const page = wrapper ? parseInt(wrapper.dataset.pageNumber, 10) : 1;
+                    saveParafPosition(el, page);
+                }
             };
 
             document.addEventListener("mousemove", move);
@@ -317,14 +348,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-
     // ==========================================
-    // 6. LOAD & ZOOM
+    // 7. LOAD & ZOOM
     // ==========================================
     function autoFit() {
         if (!pdfDoc) return;
         const w = scrollContainer.clientWidth - 40;
-
         pdfDoc.getPage(1).then(page => {
             const v = page.getViewport({ scale: 1 });
             let newScale = w / v.width;

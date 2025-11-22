@@ -8,6 +8,7 @@ use App\Models\Document;
 use App\Models\WorkflowStep;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Dashboard\TableController;
+use App\Enums\RoleEnum;
 
 class TandatanganController extends Controller
 {
@@ -79,7 +80,7 @@ class TandatanganController extends Controller
         $nextTtd = WorkflowStep::where('document_id', $documentId)
             ->where('status', 'Ditinjau') // hanya step tanda tangan berikutnya
             ->whereHas('user.role', function ($q) {
-                $q->whereIn('nama_role', ['Kajur', 'Sekjur']);
+                $q->whereIn('nama_role', RoleEnum::getKajurSekjurRoles());
             })
             ->count();
 
