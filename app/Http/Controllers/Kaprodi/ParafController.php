@@ -154,6 +154,11 @@ class ParafController extends Controller
             return back()->withErrors('Bukan giliran Anda untuk memparaf dokumen ini.');
         }
 
+        // VALIDASI: Pastikan user sudah menempatkan paraf (posisi_x, posisi_y, halaman tidak null)
+        if (is_null($activeStep->posisi_x) || is_null($activeStep->posisi_y) || !$activeStep->halaman) {
+            return back()->withErrors('Anda belum menempatkan paraf pada dokumen. Silakan drag & drop paraf Anda ke dokumen terlebih dahulu.');
+        }
+
         // BARU PROSES PDF SETELAH VALIDASI
         $this->applyParafToPdf($documentId);
 
@@ -223,7 +228,7 @@ class ParafController extends Controller
 
         if (!$workflow || is_null($workflow->posisi_x) ||
             is_null($workflow->posisi_y) || !$workflow->halaman) {
-            return;
+            throw new \Exception("Data posisi paraf tidak lengkap.");
         }
 
         $user = auth()->user();
