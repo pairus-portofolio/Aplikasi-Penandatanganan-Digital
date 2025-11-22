@@ -54,7 +54,14 @@
 @section('popup')
 
     <!-- Toolbar bawah halaman (Zoom, navigasi, dll) -->
-    @include('partials.action-tandatangan')
+    @include('partials.shared.action-submit', [
+        'actionUrl'      => route('kajur.tandatangan.submit', $document->id),
+        'modalId'        => 'ttdNotifPopup',
+        'inputIdPrefix'  => 'ttd',
+        'defaultSubject' => 'Dokumen Telah Ditandatangani',
+        'cancelBtnId'    => 'batalKirimTTD',
+        'confirmBtnId'   => 'konfirmasiKirimTTD'
+    ])
 
     <!-- Popup konfirmasi logout -->
     @include('partials.logout-popup')

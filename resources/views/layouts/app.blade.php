@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="{{ asset('css/dashboard/content.css') }}">
     <link rel="stylesheet" href="{{ asset('css/dashboard/cards.css') }}">
     <link rel="stylesheet" href="{{ asset('css/dashboard/tables.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/dashboard/pagination.css') }}">
     <link rel="stylesheet" href="{{ asset('css/dashboard/popup.css') }}">
 
     <!-- Area untuk stylesheet tambahan -->

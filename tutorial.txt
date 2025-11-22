@@ -16,3 +16,7 @@ Tutorial Setup Project Laravel (ttd_surat_digital)
 9. Kembali ke pgAdmin, klik kanan pada database "ttd_surat_digital" lalu pilih "Refresh" untuk melihat apakah tabel dan data sudah masuk.
 10. Terakhir, jalankan perintah "php artisan serve" untuk menyalakan server Laravel, lalu buka alamat [http://127.0.0.1:8000](http://127.0.0.1:8000) di browser.
 
+Syntax :
+1. php artisan migrate:refresh --seed
+2. DB::connection()->getPdo();
+
