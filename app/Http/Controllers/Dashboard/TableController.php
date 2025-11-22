@@ -21,7 +21,7 @@ class TableController extends Controller
 
         // 1. TU → semua dokumen (Collection)
         if ($roleId == RoleEnum::ID_TU) {
-            return Document::with('uploader')->latest()->get();
+            return Document::with('uploader')->latest()->paginate(10);
         }
 
         // 2. Kaprodi → dokumen yang ada di workflow, tapi hanya jika dia urutan aktif
@@ -38,7 +38,7 @@ class TableController extends Controller
                       )', [DocumentStatusEnum::DITINJAU]);
                 })
                 ->latest()
-                ->get();
+                ->paginate(10);
         }
 
         // 3. Kajur / Sekjur → hanya dokumen Diparaf, dan jika dia urutan aktif
@@ -56,11 +56,11 @@ class TableController extends Controller
                       )', [DocumentStatusEnum::DITINJAU]);
                 })
                 ->latest()
-                ->get();
+                ->paginate(10);
         }
 
-        // Default → empty collection
-        return collect();
+        // Default → empty paginator
+        return new \Illuminate\Pagination\LengthAwarePaginator([], 0, 10);
     }
 
 
@@ -74,18 +74,19 @@ class TableController extends Controller
         return self::formatSuratForTable($documents);
     }
 
-    private static function formatSuratForTable($documents)
+    private static function formatSuratForTable($paginator)
     {
-        return $documents->map(function ($doc) {
+        // Gunakan through() untuk memodifikasi item di dalam paginator
+        // tanpa mengubah objek Paginator itu sendiri (agar links() tetap jalan)
+        $paginator->through(function ($doc) {
 
             $statusClass = match ($doc->status) {
-            DocumentStatusEnum::DITINJAU       => 'kuning',
-            DocumentStatusEnum::DIPARAF        => 'biru',
-            DocumentStatusEnum::DITANDATANGANI => 'hijau',
-            DocumentStatusEnum::PERLU_REVISI   => 'merah',
-            default                            => 'abu', 
-        };
-
+                DocumentStatusEnum::DITINJAU       => 'kuning',
+                DocumentStatusEnum::DIPARAF        => 'biru',
+                DocumentStatusEnum::DITANDATANGANI => 'hijau',
+                DocumentStatusEnum::PERLU_REVISI   => 'merah',
+                default                            => 'abu', 
+            };
 
             return [
                 'id_raw'       => $doc->id,
@@ -97,5 +98,7 @@ class TableController extends Controller
                 'status_class' => $statusClass
             ];
         });
+
+        return $paginator;
     }
 }
