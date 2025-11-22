@@ -197,9 +197,9 @@ class ParafController extends Controller
             return response()->json(["status" => "error", "message" => "Workflow step not found"], 404);
         }
         $data = [
-            'posisi_x' => (int) $request->posisi_x,
-            'posisi_y' => (int) $request->posisi_y,
-            'halaman'  => (int) $request->halaman,
+            'posisi_x' => $request->posisi_x,
+            'posisi_y' => $request->posisi_y,
+            'halaman'  => $request->halaman,
             'tanggal_aksi' => now()
         ];
 
@@ -221,9 +221,8 @@ class ParafController extends Controller
             ->where('user_id', auth()->id())
             ->first();
 
-        // Pastikan data koordinat & halaman ada
         if (!$workflow || is_null($workflow->posisi_x) || is_null($workflow->posisi_y) || !$workflow->halaman) {
-            throw new \Exception("Koordinat paraf belum diatur. Silakan letakkan paraf di dokumen terlebih dahulu.");
+            return; 
         }
 
         $user = auth()->user();
@@ -232,15 +231,13 @@ class ParafController extends Controller
         }
 
         // ============================================================
-        // 2. CARI PDF SUMBER (Dinamis: Private -> Public)
+        // 2. CARI FILE (Logika Pencarian yang Robust)
         // ============================================================
         $dbPath = $document->file_path; 
         $sourcePath = null;
 
         $pathPrivate = storage_path('app/private/' . $dbPath);
-
         $pathPublic = storage_path('app/public/' . $dbPath);
-
         $pathApp = storage_path('app/' . $dbPath);
 
         if (file_exists($pathPrivate)) {
@@ -250,75 +247,56 @@ class ParafController extends Controller
         } elseif (file_exists($pathApp)) {
             $sourcePath = $pathApp;
         } else {
-            throw new \Exception("File fisik surat tidak ditemukan. Dicari di: " . $pathPrivate);
+            throw new \Exception("File fisik surat tidak ditemukan.");
         }
 
-        // ============================================================
         // 3. CARI GAMBAR PARAF
-        // ============================================================       
         $parafPath = storage_path('app/public/' . $user->img_paraf_path);
-
         if (!file_exists($parafPath)) {
-            throw new \Exception("File gambar paraf tidak ditemukan di: " . $parafPath);
+            throw new \Exception("File gambar paraf tidak ditemukan.");
         }
 
-        // ============================================================
-        // 4. PROSES FPDI (Tempel Gambar)
-        // ============================================================
-        
-        // Kita simpan hasilnya di folder PUBLIC/PARAF_OUTPUT agar bisa didownload user
+        // 4. PROSES FPDI
         $outputDir = storage_path('app/public/paraf_output');
-        
-        if (!is_dir($outputDir)) {
-            mkdir($outputDir, 0755, true);
-        }
+        if (!is_dir($outputDir)) mkdir($outputDir, 0755, true);
 
-        // Nama file baru + Timestamp agar tidak kena cache browser
         $newFileName = 'paraf_output/' . $documentId . '_' . time() . '.pdf';
         $outputFile = storage_path('app/public/' . $newFileName);
 
         try {
-            $pdf = new \setasign\Fpdi\Fpdi();
+            $pdf = new \setasign\Fpdi\Fpdi(); 
             
-            // Load file sumber
             $pageCount = $pdf->setSourceFile($sourcePath);
 
             for ($i = 1; $i <= $pageCount; $i++) {
                 $template = $pdf->importPage($i);
                 $size = $pdf->getTemplateSize($template);
 
-                // Tambah halaman sesuai ukuran asli
                 $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
                 $pdf->useTemplate($template);
 
-                // Logika Paraf: Jika halaman cocok
                 if ($i == $workflow->halaman) {
                     
                     // ============================================================
-                    // PERBAIKAN KOORDINAT (DEBUGGING)
+                    // KEMBALIKAN LOGIKA KONVERSI DARI KODE LAMA KAMU
                     // ============================================================
-    
-                    $x_mm = $workflow->posisi_x * 0.264583; 
-                    $y_mm = $workflow->posisi_y * 0.264583;
 
-                    // Gunakan koordinat hasil konversi
+                    $x_mm = $workflow->posisi_x * 0.352778; 
+                    $y_mm = $workflow->posisi_y * 0.352778;
+
+                    $lebar_mm = 100 * 0.352778; 
+
                     $pdf->Image(
                         $parafPath,
-                        $x_mm, // Gunakan hasil konversi
-                        $y_mm, // Gunakan hasil konversi
-                        30     // Ukuran gambar (30mm)
+                        $x_mm, 
+                        $y_mm, 
+                        $lebar_mm
                     );
                 }
             }
 
-            // Simpan File Baru
             $pdf->Output($outputFile, 'F');
 
-            // ============================================================
-            // 5. UPDATE DATABASE
-            // ============================================================
-            
-            // Update path dokumen ke file baru di folder public
             $document->update([
                 'file_path' => $newFileName
             ]);
@@ -327,5 +305,4 @@ class ParafController extends Controller
             throw new \Exception("Gagal memproses PDF: " . $e->getMessage());
         }
     }
-
 }
