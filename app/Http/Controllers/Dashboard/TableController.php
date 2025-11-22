@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Document;
 use App\Models\WorkflowStep;
+use App\Enums\DocumentStatusEnum;
+use App\Enums\RoleEnum;
 
 class TableController extends Controller
 {
@@ -18,58 +20,47 @@ class TableController extends Controller
         $roleId = $user->role_id;
 
         // 1. TU → semua dokumen (Collection)
-        if ($roleId == 1) {
-            return Document::with('uploader')->latest()->get();
+        if ($roleId == RoleEnum::ID_TU) {
+            return Document::with('uploader')->latest()->paginate(10);
         }
 
         // 2. Kaprodi → dokumen yang ada di workflow, tapi hanya jika dia urutan aktif
-        if (in_array($roleId, [2,3])) {
-
-            $docs = Document::with('uploader')
+        if (in_array($roleId, [RoleEnum::ID_KAPRODI_D3, RoleEnum::ID_KAPRODI_D4])) {
+            return Document::with('uploader')
                 ->whereHas('workflowSteps', function ($q) use ($user) {
-                    $q->where('user_id', $user->id);
+                    $q->where('user_id', $user->id)
+                      ->where('status', DocumentStatusEnum::DITINJAU)
+                      ->whereRaw('urutan = (
+                          SELECT MIN(urutan) 
+                          FROM workflow_steps as w2 
+                          WHERE w2.document_id = workflow_steps.document_id 
+                          AND w2.status = ?
+                      )', [DocumentStatusEnum::DITINJAU]);
                 })
                 ->latest()
-                ->get();
-
-            return $docs->filter(function ($doc) use ($user) {
-
-                $activeStep = WorkflowStep::where('document_id', $doc->id)
-                    ->where('status', 'Ditinjau')
-                    ->orderBy('urutan')
-                    ->first();
-
-                if (!$activeStep) return false;
-
-                return $activeStep->user_id == $user->id;
-            });
+                ->paginate(10);
         }
 
         // 3. Kajur / Sekjur → hanya dokumen Diparaf, dan jika dia urutan aktif
-        if (in_array($roleId, [4,5])) {
-
-            $docs = Document::with('uploader')
-                ->where('status', 'Diparaf')
+        if (in_array($roleId, [RoleEnum::ID_KAJUR, RoleEnum::ID_SEKJUR])) {
+            return Document::with('uploader')
+                ->where('status', DocumentStatusEnum::DIPARAF)
                 ->whereHas('workflowSteps', function ($q) use ($user) {
-                    $q->where('user_id', $user->id);
+                    $q->where('user_id', $user->id)
+                      ->where('status', DocumentStatusEnum::DITINJAU)
+                      ->whereRaw('urutan = (
+                          SELECT MIN(urutan) 
+                          FROM workflow_steps as w2 
+                          WHERE w2.document_id = workflow_steps.document_id 
+                          AND w2.status = ?
+                      )', [DocumentStatusEnum::DITINJAU]);
                 })
                 ->latest()
-                ->get();
-
-            return $docs->filter(function ($doc) use ($user) {
-                $activeStep = WorkflowStep::where('document_id', $doc->id)
-                    ->where('status', 'Ditinjau')
-                    ->orderBy('urutan')
-                    ->first();
-
-                if (!$activeStep) return false;
-
-                return $activeStep->user_id == $user->id;
-            });
+                ->paginate(10);
         }
 
-        // Default → empty collection
-        return collect();
+        // Default → empty paginator
+        return new \Illuminate\Pagination\LengthAwarePaginator([], 0, 10);
     }
 
 
@@ -83,18 +74,19 @@ class TableController extends Controller
         return self::formatSuratForTable($documents);
     }
 
-    private static function formatSuratForTable($documents)
+    private static function formatSuratForTable($paginator)
     {
-        return $documents->map(function ($doc) {
+        // Gunakan through() untuk memodifikasi item di dalam paginator
+        // tanpa mengubah objek Paginator itu sendiri (agar links() tetap jalan)
+        $paginator->through(function ($doc) {
 
             $statusClass = match ($doc->status) {
-            'Ditinjau'       => 'kuning',
-            'Diparaf'        => 'biru',
-            'Ditandatangani' => 'hijau',
-            'Perlu Revisi'   => 'merah',
-            default          => 'abu', 
-        };
-
+                DocumentStatusEnum::DITINJAU       => 'kuning',
+                DocumentStatusEnum::DIPARAF        => 'biru',
+                DocumentStatusEnum::DITANDATANGANI => 'hijau',
+                DocumentStatusEnum::PERLU_REVISI   => 'merah',
+                default                            => 'abu', 
+            };
 
             return [
                 'id_raw'       => $doc->id,
@@ -106,5 +98,7 @@ class TableController extends Controller
                 'status_class' => $statusClass
             ];
         });
+
+        return $paginator;
     }
 }

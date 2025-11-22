@@ -5,29 +5,17 @@ namespace App\Http\Controllers\Kajur_Sekjur;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Document;
-use App\Models\WorkflowStep;
-use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Dashboard\TableController;
-use App\Enums\RoleEnum;
+use App\Services\WorkflowService;
+use App\Enums\DocumentStatusEnum;
 
 class TandatanganController extends Controller
 {
-    // =========================
-    // CEK AKSES WORKFLOW
-    // =========================
-    private function checkWorkflowAccess($documentId)
+    protected $workflowService;
+
+    public function __construct(WorkflowService $workflowService)
     {
-        // Step aktif = step dengan urutan terkecil yg belum selesai
-        $activeStep = WorkflowStep::where('document_id', $documentId)
-            ->whereIn('status', ['Ditinjau']) 
-            ->orderBy('urutan')
-            ->first();
-
-        if (!$activeStep) {
-            return false;
-        }
-
-        return $activeStep->user_id == Auth::id();
+        $this->workflowService = $workflowService;
     }
 
     // ======================================================
@@ -46,7 +34,7 @@ class TandatanganController extends Controller
     {
         $document = Document::findOrFail($id);
 
-        if (!$this->checkWorkflowAccess($document->id)) {
+        if (!$this->workflowService->checkAccess($document->id)) {
             return redirect()->route('kajur.tandatangan.index')
                 ->withErrors('Belum giliran Anda untuk menandatangani dokumen ini.');
         }
@@ -59,43 +47,23 @@ class TandatanganController extends Controller
     // ======================================================
     public function submit(Request $request, $documentId)
     {
-        $document = Document::findOrFail($documentId);
-
-        // Step aktif tanda tangan
-        $activeStep = WorkflowStep::where('document_id', $documentId)
-            ->where('status', 'Ditinjau')
-            ->orderBy('urutan')
-            ->first();
-
-        if (!$activeStep || $activeStep->user_id != Auth::id()) {
+        if (!$this->workflowService->checkAccess($documentId)) {
             return back()->withErrors('Bukan giliran Anda untuk menandatangani dokumen ini.');
         }
 
-        // 1. UPDATE STEP
-        $activeStep->status = 'Ditandatangani';
-        $activeStep->tanggal_aksi = now();
-        $activeStep->save();
+        try {
+            // 1. Update Step Status
+            $this->workflowService->completeStep($documentId, DocumentStatusEnum::DITANDATANGANI);
 
-        // 2. CEK APAKAH MASIH ADA STEP TTD LAIN YG BELUM SELESAI
-        $nextTtd = WorkflowStep::where('document_id', $documentId)
-            ->where('status', 'Ditinjau') // hanya step tanda tangan berikutnya
-            ->whereHas('user.role', function ($q) {
-                $q->whereIn('nama_role', RoleEnum::getKajurSekjurRoles());
-            })
-            ->count();
+            // 2. Update Document Status
+            $this->workflowService->updateDocumentStatus($documentId);
 
-        if ($nextTtd > 0) {
-            // Masih ada Kajur/Sekjur lain → dokumen tetap "Diparaf"
-            $document->status = 'Diparaf';
-        } else {
-            // Semua tanda tangan selesai → FINAL
-            $document->status = 'Ditandatangani';
+            return redirect()
+                ->route('kajur.tandatangan.index')
+                ->with('success', 'Dokumen berhasil ditandatangani.');
+
+        } catch (\Exception $e) {
+            return back()->withErrors('Gagal memproses: ' . $e->getMessage());
         }
-
-        $document->save();
-
-        return redirect()
-            ->route('kajur.tandatangan.index')
-            ->with('success', 'Dokumen berhasil ditandatangani.');
     }
 }

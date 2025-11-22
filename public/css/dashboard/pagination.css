@@ -1,0 +1,67 @@
+/* Container pagination */
+.pagination-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-top: 24px;
+    margin-bottom: 24px;
+}
+
+/* List ul */
+.pagination {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    gap: 6px;
+    background: #fff;
+    padding: 6px;
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    border: 1px solid #e2e8f0;
+}
+
+/* Item li */
+.page-item {
+    margin: 0;
+}
+
+/* Link a / span */
+.page-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+/* Hover state */
+.page-link:hover {
+    background-color: #f1f5f9;
+    color: #334155;
+}
+
+/* Active state */
+.page-item.active .page-link {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: #fff;
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+}
+
+/* Disabled state */
+.page-item.disabled .page-link {
+    color: #cbd5e1;
+    pointer-events: none;
+    background: transparent;
+}
+
+/* Arrow icons adjustment */
+.page-link i {
+    font-size: 12px;
+}
