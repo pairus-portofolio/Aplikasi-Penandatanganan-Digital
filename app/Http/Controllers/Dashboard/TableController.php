@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Document;
 use App\Models\WorkflowStep;
 use App\Enums\DocumentStatusEnum;
+use App\Enums\RoleEnum;
 
 class TableController extends Controller
 {
@@ -19,54 +20,43 @@ class TableController extends Controller
         $roleId = $user->role_id;
 
         // 1. TU → semua dokumen (Collection)
-        if ($roleId == 1) {
+        if ($roleId == RoleEnum::ID_TU) {
             return Document::with('uploader')->latest()->get();
         }
 
         // 2. Kaprodi → dokumen yang ada di workflow, tapi hanya jika dia urutan aktif
-        if (in_array($roleId, [2,3])) {
-
-            $docs = Document::with('uploader')
+        if (in_array($roleId, [RoleEnum::ID_KAPRODI_D3, RoleEnum::ID_KAPRODI_D4])) {
+            return Document::with('uploader')
                 ->whereHas('workflowSteps', function ($q) use ($user) {
-                    $q->where('user_id', $user->id);
+                    $q->where('user_id', $user->id)
+                      ->where('status', DocumentStatusEnum::DITINJAU)
+                      ->whereRaw('urutan = (
+                          SELECT MIN(urutan) 
+                          FROM workflow_steps as w2 
+                          WHERE w2.document_id = workflow_steps.document_id 
+                          AND w2.status = ?
+                      )', [DocumentStatusEnum::DITINJAU]);
                 })
                 ->latest()
                 ->get();
-
-            return $docs->filter(function ($doc) use ($user) {
-
-                $activeStep = WorkflowStep::where('document_id', $doc->id)
-                    ->where('status', DocumentStatusEnum::DITINJAU)
-                    ->orderBy('urutan')
-                    ->first();
-
-                if (!$activeStep) return false;
-
-                return $activeStep->user_id == $user->id;
-            });
         }
 
         // 3. Kajur / Sekjur → hanya dokumen Diparaf, dan jika dia urutan aktif
-        if (in_array($roleId, [4,5])) {
-
-            $docs = Document::with('uploader')
+        if (in_array($roleId, [RoleEnum::ID_KAJUR, RoleEnum::ID_SEKJUR])) {
+            return Document::with('uploader')
                 ->where('status', DocumentStatusEnum::DIPARAF)
                 ->whereHas('workflowSteps', function ($q) use ($user) {
-                    $q->where('user_id', $user->id);
+                    $q->where('user_id', $user->id)
+                      ->where('status', DocumentStatusEnum::DITINJAU)
+                      ->whereRaw('urutan = (
+                          SELECT MIN(urutan) 
+                          FROM workflow_steps as w2 
+                          WHERE w2.document_id = workflow_steps.document_id 
+                          AND w2.status = ?
+                      )', [DocumentStatusEnum::DITINJAU]);
                 })
                 ->latest()
                 ->get();
-
-            return $docs->filter(function ($doc) use ($user) {
-                $activeStep = WorkflowStep::where('document_id', $doc->id)
-                    ->where('status', DocumentStatusEnum::DITINJAU)
-                    ->orderBy('urutan')
-                    ->first();
-
-                if (!$activeStep) return false;
-
-                return $activeStep->user_id == $user->id;
-            });
         }
 
         // Default → empty collection

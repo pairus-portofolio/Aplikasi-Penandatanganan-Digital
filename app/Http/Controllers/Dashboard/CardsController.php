@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Document;
 use App\Models\WorkflowStep;
 use App\Enums\DocumentStatusEnum;
+use App\Enums\RoleEnum;
 
 class CardsController extends Controller
 {
@@ -21,7 +22,7 @@ class CardsController extends Controller
         // =============================
         // CARD UNTUK ROLE TU
         // =============================
-        $suratKeluarCount = ($roleId == 1)
+        $suratKeluarCount = ($roleId == RoleEnum::ID_TU)
             ? $docs->count()
             : 0;
 
@@ -31,7 +32,7 @@ class CardsController extends Controller
         // - dia urutan aktif
         // - status step = Ditinjau
         // =============================
-        if (in_array($roleId, [2,3])) {
+        if (in_array($roleId, [RoleEnum::ID_KAPRODI_D3, RoleEnum::ID_KAPRODI_D4])) {
 
             $suratPerluParaf = $docs->filter(function ($doc) use ($user) {
 
@@ -58,7 +59,7 @@ class CardsController extends Controller
         // - status dokumen = Diparaf
         // - dia adalah urutan aktif
         // =============================
-        if (in_array($roleId, [4,5])) {
+        if (in_array($roleId, [RoleEnum::ID_KAJUR, RoleEnum::ID_SEKJUR])) {
 
             $suratPerluTtd = $docs->filter(function ($doc) use ($user) {
 
