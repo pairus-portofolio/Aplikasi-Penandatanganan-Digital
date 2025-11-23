@@ -227,23 +227,32 @@ class TandatanganController extends Controller
 
         // Proses FPDI
         try {
-            $pdf = new Fpdi();
+            // FIX: Gunakan satuan 'pt' (points) agar sesuai dengan getTemplateSize()
+            // Default FPDI adalah 'mm', yang menyebabkan ukuran halaman membengkak (1 pt != 1 mm)
+            $pdf = new Fpdi('P', 'pt'); 
             $pageCount = $pdf->setSourceFile($sourcePath);
 
             for ($i = 1; $i <= $pageCount; $i++) {
                 $template = $pdf->importPage($i);
                 $size = $pdf->getTemplateSize($template);
 
+                // AddPage dengan ukuran asli (dalam pt)
                 $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
                 $pdf->useTemplate($template);
 
                 // Stamp TTD di halaman yang sesuai
                 if ($i == $workflow->halaman) {
-                    $x_mm = $workflow->posisi_x * 0.352778; // px to mm
-                    $y_mm = $workflow->posisi_y * 0.352778;
-                    $width_mm = 100 * 0.352778; // Asumsi lebar 100px
+                    // Karena PDF sudah dalam 'pt', tidak perlu konversi * 0.352778
+                    // Koordinat dari Frontend (PDF.js) biasanya sudah dalam skala 72 DPI (points)
+                    
+                    $x = $workflow->posisi_x; 
+                    $y = $workflow->posisi_y;
+                    
+                    // Lebar tanda tangan (misal 100px di frontend ~= 100pt di PDF)
+                    // Sesuaikan jika dirasa terlalu besar/kecil
+                    $width = 100; 
 
-                    $pdf->Image($ttdPath, $x_mm, $y_mm, $width_mm);
+                    $pdf->Image($ttdPath, $x, $y, $width);
                 }
             }
 
