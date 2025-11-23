@@ -51,37 +51,71 @@ document.addEventListener('DOMContentLoaded', function () {
         if (hapusBtn) {
             hapusBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
-                if (!confirm("Yakin ingin menghapus paraf ini secara permanen?")) return;
-
-                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
                 
-                fetch('/kaprodi/paraf/delete', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        // Reset UI Sidebar
-                        parafImage.src = "";
-                        parafImage.style.display = "none";
-                        fileInput.value = "";
-                        parafBox.classList.remove("has-image");
-                        const t = parafBox.querySelector('.paraf-text');
-                        if (t) t.style.display = "block";
+                Swal.fire({
+                    title: 'Hapus Paraf?',
+                    text: 'Paraf akan dihapus secara permanen dari sistem.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Ya, Hapus',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (!result.isConfirmed) return;
 
-                        // Hapus dari Canvas & State
-                        removeSignatureFromCanvas();
-                        signatureData = null;
-                    } else {
-                        alert("Gagal menghapus: " + data.message);
-                    }
-                })
-                .catch(err => alert("Terjadi kesalahan saat hapus data."));
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+                    
+                    fetch('/kaprodi/paraf/delete', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            // Reset UI Sidebar
+                            parafImage.src = "";
+                            parafImage.style.display = "none";
+                            fileInput.value = "";
+                            parafBox.classList.remove("has-image");
+                            const t = parafBox.querySelector('.paraf-text');
+                            if (t) t.style.display = "block";
+
+                            // Hapus dari Canvas & State
+                            removeSignatureFromCanvas();
+                            signatureData = null;
+
+                            // Success notification
+                            Swal.fire({
+                                toast: true,
+                                icon: 'success',
+                                title: 'Paraf berhasil dihapus',
+                                position: 'top-end',
+                                timer: 2500,
+                                timerProgressBar: true,
+                                showConfirmButton: false,
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Gagal Menghapus',
+                                text: data.message || 'Terjadi kesalahan saat menghapus paraf'
+                            });
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Delete error:', err);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Kesalahan Jaringan',
+                            text: 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.'
+                        });
+                    });
+                });
             });
         }
 
@@ -111,9 +145,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 })
                 .then(res => res.json())
                 .then(data => {
-                    if (data.status !== "success") alert("Gagal upload: " + data.message);
+                    if (data.status !== "success") {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Upload Gagal',
+                            text: data.message || 'Terjadi kesalahan saat mengupload paraf'
+                        });
+                    }
                 })
-                .catch(err => console.error("UPLOAD ERROR", err));
+                .catch(err => {
+                    console.error("UPLOAD ERROR", err);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Kesalahan Jaringan',
+                        text: 'Tidak dapat mengupload file. Periksa koneksi internet Anda.'
+                    });
+                });
             }
         });
 

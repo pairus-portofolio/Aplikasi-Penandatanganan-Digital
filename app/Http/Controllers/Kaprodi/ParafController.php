@@ -8,27 +8,20 @@ use App\Models\Document;
 use App\Models\WorkflowStep;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Dashboard\TableController;
 use setasign\Fpdi\Fpdi;
 use App\Enums\RoleEnum;
+use App\Enums\DocumentStatusEnum;
+use App\Services\WorkflowService;
 
 class ParafController extends Controller
 {
-    // =====================================================================
-    // Cek apakah user ini adalah step aktif (Ditinjau)
-    // =====================================================================
-    private function checkWorkflowAccess($documentId)
+    protected $workflowService;
+
+    public function __construct(WorkflowService $workflowService)
     {
-        $activeStep = WorkflowStep::where('document_id', $documentId)
-            ->where('status', 'Ditinjau')
-            ->orderBy('urutan')
-            ->first();
-
-        if (!$activeStep) {
-            return false;
-        }
-
-        return $activeStep->user_id == Auth::id();
+        $this->workflowService = $workflowService;
     }
 
     // =====================================================================
@@ -48,7 +41,7 @@ class ParafController extends Controller
         $document = Document::findOrFail($id);
 
         // Akses workflow (jangan dihapus)
-        if (!$this->checkWorkflowAccess($document->id)) {
+        if (!$this->workflowService->checkAccess($document->id)) {
             return redirect()->route('kaprodi.paraf.index')
                 ->withErrors('Belum giliran Anda untuk memparaf dokumen ini.');
         }
@@ -100,9 +93,14 @@ class ParafController extends Controller
             try {
                 if ($user->img_paraf_path && Storage::disk('public')->exists($user->img_paraf_path)) {
                     Storage::disk('public')->delete($user->img_paraf_path);
+                    Log::info('Old paraf deleted', ['user_id' => $user->id, 'path' => $user->img_paraf_path]);
                 }
             } catch (\Exception $e) {
-                // safe ignore
+                Log::warning('Failed to delete old paraf', [
+                    'user_id' => $user->id,
+                    'path' => $user->img_paraf_path,
+                    'error' => $e->getMessage()
+                ]);
             }
 
             // Simpan file baru
@@ -111,6 +109,8 @@ class ParafController extends Controller
             // Update DB
             $user->update(['img_paraf_path' => $path]);
 
+            Log::info('Paraf uploaded successfully', ['user_id' => $user->id, 'path' => $path]);
+
             return response()->json([
                 'status' => 'success',
                 'path' => asset('storage/' . $path),
@@ -118,6 +118,7 @@ class ParafController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Paraf upload failed', ['user_id' => Auth::id(), 'error' => $e->getMessage()]);
             return response()->json([
                 'status' => 'error',
                 'message' => 'Server Error: ' . $e->getMessage()
@@ -135,6 +136,7 @@ class ParafController extends Controller
 
             if ($user->img_paraf_path && Storage::disk('public')->exists($user->img_paraf_path)) {
                 Storage::disk('public')->delete($user->img_paraf_path);
+                Log::info('Paraf deleted', ['user_id' => $user->id, 'path' => $user->img_paraf_path]);
             }
 
             $user->update(['img_paraf_path' => null]);
@@ -145,6 +147,7 @@ class ParafController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Paraf delete failed', ['user_id' => Auth::id(), 'error' => $e->getMessage()]);
             return response()->json([
                 'status' => 'error',
                 'message' => 'Gagal hapus: ' . $e->getMessage()
@@ -158,45 +161,36 @@ class ParafController extends Controller
     public function submit(Request $request, $documentId)
     {
         // VALIDASI DULU SEBELUM PROSES PDF (Fix Race Condition)
-        $activeStep = WorkflowStep::where('document_id', $documentId)
-            ->where('status', 'Ditinjau')
-            ->orderBy('urutan')
-            ->first();
-
-        if (!$activeStep || $activeStep->user_id != Auth::id()) {
+        if (!$this->workflowService->checkAccess($documentId)) {
             return back()->withErrors('Bukan giliran Anda untuk memparaf dokumen ini.');
         }
+
+        $activeStep = WorkflowStep::where('document_id', $documentId)
+            ->where('user_id', Auth::id())
+            ->first();
 
         // VALIDASI: Pastikan user sudah menempatkan paraf (posisi_x, posisi_y, halaman tidak null)
         if (is_null($activeStep->posisi_x) || is_null($activeStep->posisi_y) || !$activeStep->halaman) {
             return back()->withErrors('Anda belum menempatkan paraf pada dokumen. Silakan drag & drop paraf Anda ke dokumen terlebih dahulu.');
         }
 
-        // BARU PROSES PDF SETELAH VALIDASI
-        $this->applyParafToPdf($documentId);
+        try {
+            // BARU PROSES PDF SETELAH VALIDASI
+            $this->applyParafToPdf($documentId);
 
-        // Update workflow step
-        $activeStep->status = 'Diparaf';
-        $activeStep->tanggal_aksi = now();
-        $activeStep->save();
+            // Update workflow step & Document Status via Service
+            $this->workflowService->completeStep($documentId, DocumentStatusEnum::DIPARAF);
+            $this->workflowService->updateDocumentStatus($documentId);
 
-        $document = Document::find($documentId);
+            Log::info('Document paraf submitted', ['document_id' => $documentId, 'user_id' => Auth::id()]);
 
-        // Cek apakah masih ada KAPRODI yang belum paraf
-        $masihBelumParaf = WorkflowStep::where('document_id', $documentId)
-            ->where('status', 'Ditinjau')
-            ->whereHas('user.role', function ($q) {
-                $q->whereIn('nama_role', RoleEnum::getKaprodiRoles());
-            })
-            ->count();
+            return redirect()->route('kaprodi.paraf.index')
+                ->with('success', 'Dokumen berhasil diparaf.');
 
-        // Jika masih ada Kaprodi → status tetap Ditinjau
-        // Jika semua Kaprodi selesai → status Dokumen jadi Diparaf
-        $document->status = ($masihBelumParaf > 0) ? 'Ditinjau' : 'Diparaf';
-        $document->save();
-
-        return redirect()->route('kaprodi.paraf.index')
-            ->with('success', 'Dokumen berhasil diparaf.');
+        } catch (\Exception $e) {
+            Log::error('Paraf submission failed', ['document_id' => $documentId, 'user_id' => Auth::id(), 'error' => $e->getMessage()]);
+            return back()->withErrors('Gagal memproses: ' . $e->getMessage());
+        }
     }
 
     public function saveParaf(Request $request, $id)
@@ -283,7 +277,8 @@ class ParafController extends Controller
         // ============================================================
 
         try {
-            $pdf = new \setasign\Fpdi\Fpdi();
+            // FIX: Gunakan satuan 'pt' (points) agar konsisten dengan TandatanganController
+            $pdf = new \setasign\Fpdi\Fpdi('P', 'pt');
             $pageCount = $pdf->setSourceFile($sourcePath);
 
             for ($i = 1; $i <= $pageCount; $i++) {
@@ -297,15 +292,18 @@ class ParafController extends Controller
                 // Tambah paraf hanya pada halaman yang ditentukan user
                 if ($i == $workflow->halaman) {
 
-                    $x_mm      = $workflow->posisi_x * 0.352778;
-                    $y_mm      = $workflow->posisi_y * 0.352778;
-                    $width_mm  = 100 * 0.352778;
+                    // Karena PDF sudah dalam 'pt', tidak perlu konversi * 0.352778
+                    $x = $workflow->posisi_x;
+                    $y = $workflow->posisi_y;
+                    
+                    // Lebar paraf (misal 100px di frontend ~= 100pt di PDF)
+                    $width = 100;
 
                     $pdf->Image(
                         $parafPath,
-                        $x_mm,
-                        $y_mm,
-                        $width_mm
+                        $x,
+                        $y,
+                        $width
                     );
                 }
             }

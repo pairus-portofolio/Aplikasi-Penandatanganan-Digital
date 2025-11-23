@@ -7,6 +7,7 @@ use App\Models\WorkflowStep;
 use App\Enums\DocumentStatusEnum;
 use App\Enums\RoleEnum;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class WorkflowService
 {
@@ -45,6 +46,13 @@ class WorkflowService
         $activeStep->tanggal_aksi = now();
         $activeStep->save();
 
+        Log::info('Workflow step completed', [
+            'document_id' => $documentId,
+            'step_id' => $activeStep->id,
+            'user_id' => Auth::id(),
+            'status' => $status
+        ]);
+
         return $activeStep;
     }
 
@@ -82,6 +90,17 @@ class WorkflowService
             $document->status = DocumentStatusEnum::DITANDATANGANI;
         }
 
-        $document->save();
+        if ($document->isDirty('status')) {
+            $oldStatus = $document->getOriginal('status');
+            $document->save();
+            
+            Log::info('Document status updated', [
+                'document_id' => $documentId,
+                'old_status' => $oldStatus,
+                'new_status' => $document->status
+            ]);
+        } else {
+            $document->save();
+        }
     }
 }

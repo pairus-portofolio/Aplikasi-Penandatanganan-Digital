@@ -16,16 +16,23 @@ class TableController extends Controller
      */
     public static function getBaseQueryByRole()
     {
+        // Load relationship role agar bisa cek nama_role
         $user = Auth::user();
-        $roleId = $user->role_id;
+        
+        // Pastikan role terload
+        if (!$user->relationLoaded('role')) {
+            $user->load('role');
+        }
+
+        $roleName = $user->role->nama_role ?? '';
 
         // 1. TU → semua dokumen (Collection)
-        if ($roleId == RoleEnum::ID_TU) {
+        if ($roleName === RoleEnum::TU) {
             return Document::with('uploader')->latest()->paginate(10);
         }
 
         // 2. Kaprodi → dokumen yang ada di workflow, tapi hanya jika dia urutan aktif
-        if (in_array($roleId, [RoleEnum::ID_KAPRODI_D3, RoleEnum::ID_KAPRODI_D4])) {
+        if (in_array($roleName, RoleEnum::getKaprodiRoles())) {
             return Document::with('uploader')
                 ->whereHas('workflowSteps', function ($q) use ($user) {
                     $q->where('user_id', $user->id)
@@ -42,7 +49,7 @@ class TableController extends Controller
         }
 
         // 3. Kajur / Sekjur → hanya dokumen Diparaf, dan jika dia urutan aktif
-        if (in_array($roleId, [RoleEnum::ID_KAJUR, RoleEnum::ID_SEKJUR])) {
+        if (in_array($roleName, RoleEnum::getKajurSekjurRoles())) {
             return Document::with('uploader')
                 ->where('status', DocumentStatusEnum::DIPARAF)
                 ->whereHas('workflowSteps', function ($q) use ($user) {

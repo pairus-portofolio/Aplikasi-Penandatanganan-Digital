@@ -11,6 +11,7 @@ use App\Services\WorkflowService;
 use App\Enums\DocumentStatusEnum;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use setasign\Fpdi\Fpdi;
 
 class TandatanganController extends Controller
@@ -76,13 +77,24 @@ class TandatanganController extends Controller
             $user = Auth::user();
 
             // Hapus file lama jika ada
-            if ($user->img_ttd_path && Storage::disk('public')->exists($user->img_ttd_path)) {
-                Storage::disk('public')->delete($user->img_ttd_path);
+            try {
+                if ($user->img_ttd_path && Storage::disk('public')->exists($user->img_ttd_path)) {
+                    Storage::disk('public')->delete($user->img_ttd_path);
+                    Log::info('Old tandatangan deleted', ['user_id' => $user->id, 'path' => $user->img_ttd_path]);
+                }
+            } catch (\Exception $e) {
+                Log::warning('Failed to delete old tandatangan', [
+                    'user_id' => $user->id,
+                    'path' => $user->img_ttd_path,
+                    'error' => $e->getMessage()
+                ]);
             }
 
             // Simpan file baru
             $path = $request->file('image')->store('tandatangan', 'public');
             $user->update(['img_ttd_path' => $path]);
+
+            Log::info('Tandatangan uploaded successfully', ['user_id' => $user->id, 'path' => $path]);
 
             return response()->json([
                 'status' => 'success',
@@ -91,6 +103,7 @@ class TandatanganController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Tandatangan upload failed', ['user_id' => Auth::id(), 'error' => $e->getMessage()]);
             return response()->json(['status' => 'error', 'message' => 'Server Error: ' . $e->getMessage()], 500);
         }
     }
@@ -105,6 +118,7 @@ class TandatanganController extends Controller
 
             if ($user->img_ttd_path && Storage::disk('public')->exists($user->img_ttd_path)) {
                 Storage::disk('public')->delete($user->img_ttd_path);
+                Log::info('Tandatangan deleted', ['user_id' => $user->id, 'path' => $user->img_ttd_path]);
             }
 
             $user->update(['img_ttd_path' => null]);
@@ -112,6 +126,7 @@ class TandatanganController extends Controller
             return response()->json(['status' => 'success', 'message' => 'Tanda tangan dihapus!']);
 
         } catch (\Exception $e) {
+            Log::error('Tandatangan delete failed', ['user_id' => Auth::id(), 'error' => $e->getMessage()]);
             return response()->json(['status' => 'error', 'message' => 'Gagal hapus: ' . $e->getMessage()], 500);
         }
     }
@@ -177,11 +192,14 @@ class TandatanganController extends Controller
             // 3. Update Document Status
             $this->workflowService->updateDocumentStatus($documentId);
 
+            Log::info('Document tandatangan submitted', ['document_id' => $documentId, 'user_id' => Auth::id()]);
+
             return redirect()
                 ->route('kajur.tandatangan.index')
                 ->with('success', 'Dokumen berhasil ditandatangani.');
 
         } catch (\Exception $e) {
+            Log::error('Tandatangan submission failed', ['document_id' => $documentId, 'user_id' => Auth::id(), 'error' => $e->getMessage()]);
             return back()->withErrors('Gagal memproses: ' . $e->getMessage());
         }
     }
