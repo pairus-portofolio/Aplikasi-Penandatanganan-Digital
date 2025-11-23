@@ -14,6 +14,10 @@ document.addEventListener('DOMContentLoaded', function () {
     let selectedParaf = null;
     const outputScale = window.devicePixelRatio || 1;
 
+    // DATA PARAF (In-Memory State)
+    // Format: { page: 1, x: 100, y: 200 } (Normalized Coordinates)
+    let signatureData = config.savedParaf || null;
+
     if (!config || !window.pdfjsLib) {
         console.error("PDF Configuration missing!");
         return;
@@ -47,32 +51,71 @@ document.addEventListener('DOMContentLoaded', function () {
         if (hapusBtn) {
             hapusBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
-                if (!confirm("Yakin ingin menghapus paraf ini secara permanen?")) return;
-
-                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
                 
-                fetch('/kaprodi/paraf/delete', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        parafImage.src = "";
-                        parafImage.style.display = "none";
-                        fileInput.value = "";
-                        parafBox.classList.remove("has-image");
-                        const t = parafBox.querySelector('.paraf-text');
-                        if (t) t.style.display = "block";
-                    } else {
-                        alert("Gagal menghapus: " + data.message);
-                    }
-                })
-                .catch(err => alert("Terjadi kesalahan saat hapus data."));
+                Swal.fire({
+                    title: 'Hapus Paraf?',
+                    text: 'Paraf akan dihapus secara permanen dari sistem.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Ya, Hapus',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (!result.isConfirmed) return;
+
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+                    
+                    fetch('/kaprodi/paraf/delete', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            // Reset UI Sidebar
+                            parafImage.src = "";
+                            parafImage.style.display = "none";
+                            fileInput.value = "";
+                            parafBox.classList.remove("has-image");
+                            const t = parafBox.querySelector('.paraf-text');
+                            if (t) t.style.display = "block";
+
+                            // Hapus dari Canvas & State
+                            removeSignatureFromCanvas();
+                            signatureData = null;
+
+                            // Success notification
+                            Swal.fire({
+                                toast: true,
+                                icon: 'success',
+                                title: 'Paraf berhasil dihapus',
+                                position: 'top-end',
+                                timer: 2500,
+                                timerProgressBar: true,
+                                showConfirmButton: false,
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Gagal Menghapus',
+                                text: data.message || 'Terjadi kesalahan saat menghapus paraf'
+                            });
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Delete error:', err);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Kesalahan Jaringan',
+                            text: 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.'
+                        });
+                    });
+                });
             });
         }
 
@@ -102,9 +145,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 })
                 .then(res => res.json())
                 .then(data => {
-                    if (data.status !== "success") alert("Gagal upload: " + data.message);
+                    if (data.status !== "success") {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Upload Gagal',
+                            text: data.message || 'Terjadi kesalahan saat mengupload paraf'
+                        });
+                    }
                 })
-                .catch(err => console.error("UPLOAD ERROR", err));
+                .catch(err => {
+                    console.error("UPLOAD ERROR", err);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Kesalahan Jaringan',
+                        text: 'Tidak dapat mengupload file. Periksa koneksi internet Anda.'
+                    });
+                });
             }
         });
 
@@ -120,8 +176,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ==========================================
-    // 3. HELPER: FUNGSI SIMPAN KE DB (PENTING!)
+    // 3. HELPER: STATE MANAGEMENT & DB SAVE
     // ==========================================
+    
+    function removeSignatureFromCanvas() {
+        const existing = document.querySelector('.paraf-dropped');
+        if (existing) existing.remove();
+    }
+
     function saveParafPosition(element, pageNumber) {
         try {
             const csrf = document.querySelector('meta[name="csrf-token"]').content;
@@ -131,9 +193,15 @@ document.addEventListener('DOMContentLoaded', function () {
             const rawTop = parseFloat(element.style.top);
 
             // NORMALISASI: Kembalikan ke skala 1.0
-            // Ini KUNCI agar posisi tidak melenceng saat zoom
             const normalizedX = Math.round(rawLeft / scale);
             const normalizedY = Math.round(rawTop / scale);
+
+            // UPDATE LOCAL STATE (Agar tidak hilang saat zoom)
+            signatureData = {
+                page: pageNumber,
+                x: normalizedX,
+                y: normalizedY
+            };
 
             console.log(`Saving Paraf: Page ${pageNumber}, X=${normalizedX}, Y=${normalizedY} (Scale: ${scale})`);
 
@@ -160,7 +228,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ==========================================
-    // 4. LOGIKA RENDER PDF
+    // 4. LOGIKA RENDER PDF & OVERLAY
     // ==========================================
     const pageObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -195,6 +263,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
             renderPage(num, canvas);
             setupDropZone(wrap);
+            
+            // RENDER SIGNATURE IF EXISTS ON THIS PAGE
+            if (signatureData && signatureData.page == num) {
+                renderSignatureOverlay(wrap, signatureData);
+            }
+
             pageObserver.observe(canvas);
         }
 
@@ -219,6 +293,34 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function renderSignatureOverlay(wrapper, data) {
+        const original = document.getElementById("parafImage");
+        if (!original || !original.src) return; // Tidak ada gambar master
+
+        const newParaf = original.cloneNode(true);
+        newParaf.id = "paraf-dropped-saved";
+        newParaf.classList.remove("paraf-image-preview");
+        newParaf.classList.add("paraf-dropped");
+
+        // Hitung posisi berdasarkan Scale saat ini
+        const left = data.x * scale;
+        const top = data.y * scale;
+        
+        // Scale width juga
+        const width = 100 * scale; 
+
+        newParaf.style.position = "absolute";
+        newParaf.style.left = left + "px";
+        newParaf.style.top = top + "px";
+        newParaf.style.width = width + "px"; 
+        newParaf.style.cursor = "grab";
+        newParaf.style.zIndex = "100";
+
+        wrapper.appendChild(newParaf);
+        makeElementMovable(newParaf);
+        makeElementSelectable(newParaf);
+    }
+
     // ==========================================
     // 5. LOGIKA DROP ZONE
     // ==========================================
@@ -238,9 +340,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (e.dataTransfer.getData("text/plain") !== "parafImage") return;
 
-            // Hapus paraf lama jika ada (agar cuma 1 paraf per dokumen/user)
-            const existing = document.querySelector('.paraf-dropped');
-            if (existing) existing.remove();
+            // Hapus paraf lama jika ada
+            removeSignatureFromCanvas();
 
             const original = document.getElementById("parafImage");
             if (!original || !original.src) return;
@@ -254,13 +355,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const rect = dropZone.getBoundingClientRect();
             
             // Hitung posisi relatif mouse terhadap canvas
-            const x = e.clientX - rect.left - 50; 
-            const y = e.clientY - rect.top - 25;
+            const x = e.clientX - rect.left - (50 * scale); 
+            const y = e.clientY - rect.top - (25 * scale);
 
             newParaf.style.position = "absolute";
             newParaf.style.left = x + "px";
             newParaf.style.top = y + "px";
-            newParaf.style.width = "100px";
+            newParaf.style.width = (100 * scale) + "px";
             newParaf.style.cursor = "grab";
             newParaf.style.zIndex = "100";
 
@@ -343,6 +444,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.addEventListener("keydown", (e) => {
         if ((e.key === "Delete" || e.key === "Backspace") && selectedParaf) {
+            // Hapus dari state
+            signatureData = null;
+            // Hapus dari UI
             selectedParaf.remove();
             selectedParaf = null;
         }

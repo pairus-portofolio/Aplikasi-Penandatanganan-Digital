@@ -80,5 +80,15 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/tandatangan-surat/{id}/submit', [TandatanganController::class, 'submit'])
         ->name('kajur.tandatangan.submit');
+
+    // SAVE TTD POSITION
+    Route::post('/tandatangan-surat/{id}/save', [TandatanganController::class, 'saveTandatangan'])
+        ->name('kajur.tandatangan.save');
+
+    // Upload / Delete Tanda Tangan
+    Route::post('/kajur/tandatangan/upload', [TandatanganController::class, 'uploadTandatangan'])
+        ->name('kajur.tandatangan.upload');
+    Route::post('/kajur/tandatangan/delete', [TandatanganController::class, 'deleteTandatangan'])
+        ->name('kajur.tandatangan.delete');
 });
 
