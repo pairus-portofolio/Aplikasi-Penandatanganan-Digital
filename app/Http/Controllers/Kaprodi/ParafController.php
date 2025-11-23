@@ -53,7 +53,20 @@ class ParafController extends Controller
                 ->withErrors('Belum giliran Anda untuk memparaf dokumen ini.');
         }
 
-        return view('kaprodi.paraf-surat', compact('document'));
+        $activeStep = WorkflowStep::where('document_id', $id)
+            ->where('user_id', Auth::id())
+            ->first();
+
+        $savedParaf = null;
+        if ($activeStep && $activeStep->posisi_x && $activeStep->posisi_y && $activeStep->halaman) {
+            $savedParaf = [
+                'x' => $activeStep->posisi_x,
+                'y' => $activeStep->posisi_y,
+                'page' => $activeStep->halaman
+            ];
+        }
+
+        return view('kaprodi.paraf-surat', compact('document', 'savedParaf'));
     }
 
     // =====================================================================
