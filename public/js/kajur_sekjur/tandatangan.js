@@ -34,18 +34,21 @@ document.addEventListener('DOMContentLoaded', function () {
     const hapusBtn = document.getElementById("parafHapusBtn");
 
     if (parafBox && parafImage && fileInput) {
-        const triggerUpload = () => fileInput.click();
 
-        parafBox.addEventListener("click", () => {
-            if (!parafBox.classList.contains("has-image")) triggerUpload();
-        });
-
-        if (gantiBtn) {
-            gantiBtn.addEventListener("click", (e) => {
-                e.stopPropagation();
-                triggerUpload();
-            });
+    // KLIK PARAFBOX → tampilkan captcha, TIDAK langsung upload
+    parafBox.addEventListener("click", () => {
+        if (!parafBox.classList.contains("has-image")) {
+            document.getElementById("captchaBox").style.display = "block";
         }
+    });
+
+    // Tombol ganti tetap sama, tapi diarahkan ke captcha
+    if (gantiBtn) {
+        gantiBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            document.getElementById("captchaBox").style.display = "block";
+        });
+    }
 
         // HAPUS TTD PERMANEN
         if (hapusBtn) {
