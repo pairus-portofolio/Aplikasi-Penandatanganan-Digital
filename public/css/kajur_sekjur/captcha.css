@@ -1,97 +1,12 @@
-/* Container utama popup captcha */
-#captchaPopup .popup-content {
-    width: 320px;
-    padding: 30px 20px;
-    background: #fff;
-    border-radius: 15px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 15px;
-    text-align: center;
-}
-
-/* Area tampilan angka captcha */
-.captcha-visual {
-    position: relative;
-    padding: 5px 10px;
-    font-family: 'Comic Sans MS', cursive, sans-serif;
-    font-size: 28px;
-    letter-spacing: 2px;
-}
-
-/* Garis tipis dekorasi pada captcha */
-.captcha-scratch {
-    position: absolute;
+#captchaBox {
+    display: none;
+    position: fixed;
     top: 50%;
-    left: -10%;
-    width: 120%;
-    height: 2px;
-    background: rgba(0, 0, 0, 0.15);
-    transform: rotate(-3deg);
-    pointer-events: none;
-}
-
-/* Warna angka pink */
-.num-pink { 
-    color: #d63384; 
-    font-weight: bold; 
-}
-
-/* Warna angka orange */
-.num-orange { 
-    color: #fd7e14; 
-    font-weight: bold; 
-}
-
-/* Input untuk memasukkan captcha */
-.captcha-input {
-    width: 100%;
-    max-width: 240px;
-    padding: 12px 0;
-    border-radius: 50px;
-    border: none;
-    background: #e5e7eb;
-    text-align: center;
-    outline: none;
-    font-weight: 600;
-    color: #374151;
-    font-size: 14px;
-}
-
-/* Placeholder input captcha */
-.captcha-input::placeholder {
-    color: #9ca3af;
-}
-
-/* Garis pemisah antara captcha dan tombol */
-.captcha-divider {
-    width: 100%;
-    height: 1px;
-    background: #f3f4f6;
-    margin: 5px 0;
-}
-
-/* Tombol kirim captcha */
-.captcha-btn {
-    background: #10b981;
-    color: white;
-    border: none;
-    padding: 10px 40px;
-    border-radius: 50px;
-    font-weight: bold;
-    cursor: pointer;
-    font-size: 14px;
-    transition: transform 0.1s, background 0.2s;
-    box-shadow: 0 2px 5px rgba(16, 185, 129, 0.3);
-}
-
-/* Hover tombol captcha */
-.captcha-btn:hover {
-    background: #059669;
-}
-
-/* Efek klik tombol captcha */
-.captcha-btn:active {
-    transform: scale(0.95);
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 25px;
+    z-index: 100000;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
 }
