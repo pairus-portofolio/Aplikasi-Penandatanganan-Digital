@@ -282,14 +282,19 @@ class PdfSigner {
         }
     }
 
-    deletePosition() {
+    deletePosition(emitEvent = true) {
         this.savedData = null;
+        
+        // Remove ANY dropped signature, not just the selected one
+        const dropped = document.querySelector('.paraf-dropped');
+        if (dropped) dropped.remove();
+
         if (this.selectedElement) {
             this.selectedElement.remove();
             this.selectedElement = null;
         }
         
-        if (this.config.onDelete) {
+        if (emitEvent && this.config.onDelete) {
             this.config.onDelete();
         }
     }

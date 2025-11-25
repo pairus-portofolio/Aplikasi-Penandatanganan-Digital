@@ -185,63 +185,9 @@ class ParafController extends Controller
             // BARU PROSES PDF SETELAH VALIDASI
             $this->pdfService->stampPdf($documentId, Auth::id(), 'paraf');
 
-            // 3. UPDATE STEP SAAT INI (Manual Update sesuai Logic HEAD)
-            $activeStep->status = 'Diparaf';
-            $activeStep->tanggal_aksi = now();
-            $activeStep->save();
-
-            $document = Document::find($documentId);
-
-            // ============================================================
-            // 4. CEK ESTAFET & KIRIM EMAIL (LOGIKA UTAMA DARI HEAD)
-            // ============================================================
-            
-            // Cari langkah workflow SELANJUTNYA
-            $nextStep = WorkflowStep::where('document_id', $documentId)
-                ->where('urutan', $activeStep->urutan + 1)
-                ->first();
-
-            if ($nextStep && $nextStep->user) {
-                // --- KASUS A: ADA ESTAFET KE USER LAIN ---
-                
-                // ID 4 = Kajur, ID 5 = Sekjur
-                $nextRoleId = $nextStep->user->role_id;
-
-                // Jika user berikutnya adalah Kajur/Sekjur, status HARUS 'Diparaf'
-                // agar muncul di dashboard mereka.
-                if (in_array($nextRoleId, [4, 5])) {
-                    $document->status = 'Diparaf';
-                } else {
-                    // Jika user berikutnya masih sesama Kaprodi/Dosen (Paraf), status tetap 'Ditinjau'
-                    $document->status = 'Ditinjau'; 
-                }
-                
-                $document->save();
-                
-                // Kirim Email ke User Selanjutnya
-                try {
-                    Mail::to($nextStep->user->email)
-                        ->send(new DocumentWorkflowNotification($document, $nextStep->user, 'next_turn'));
-                } catch (\Exception $e) {
-                    \Log::error("Gagal kirim email estafet: " . $e->getMessage());
-                }
-
-            } else {
-                // --- KASUS B: TIDAK ADA LAGI (FINISH) ---
-                
-                $document->status = 'Diparaf';
-                $document->save();
-                
-                // Kirim Email ke Pengunggah (TU)
-                if ($document->uploader && $document->uploader->email) {
-                    try {
-                        Mail::to($document->uploader->email)
-                            ->send(new DocumentWorkflowNotification($document, $document->uploader, 'completed'));
-                    } catch (\Exception $e) {
-                        \Log::error("Gagal kirim email selesai ke TU: " . $e->getMessage());
-                    }
-                }
-            }
+            // 3. UPDATE STEP SAAT INI DAN PROSES WORKFLOW SELANJUTNYA
+            $this->workflowService->completeStep($documentId, 'Diparaf');
+            $this->workflowService->processNextStep($documentId);
             
             Log::info('Document paraf submitted', ['document_id' => $documentId, 'user_id' => Auth::id()]);
 

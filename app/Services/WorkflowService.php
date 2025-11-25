@@ -8,6 +8,8 @@ use App\Enums\DocumentStatusEnum;
 use App\Enums\RoleEnum;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\DocumentWorkflowNotification;
 
 class WorkflowService
 {
@@ -101,6 +103,65 @@ class WorkflowService
             ]);
         } else {
             $document->save();
+        }
+    }
+
+    /**
+     * Process the next step in the workflow after completing the current step.
+     * Updates document status and sends email notifications.
+     */
+    public function processNextStep($documentId)
+    {
+        // 1. Update document status based on remaining workflow steps
+        $this->updateDocumentStatus($documentId);
+
+        $document = Document::findOrFail($documentId);
+
+        // 2. Find the next pending step (first step with status 'Ditinjau')
+        $nextStep = WorkflowStep::where('document_id', $documentId)
+            ->where('status', DocumentStatusEnum::DITINJAU)
+            ->orderBy('urutan')
+            ->first();
+
+        if ($nextStep && $nextStep->user) {
+            // There is a next step - send notification to the next user
+            try {
+                Mail::to($nextStep->user->email)
+                    ->send(new DocumentWorkflowNotification($document, $nextStep->user, 'next_turn'));
+                
+                Log::info('Next step notification sent', [
+                    'document_id' => $documentId,
+                    'next_user_id' => $nextStep->user_id,
+                    'next_user_email' => $nextStep->user->email
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to send next step notification', [
+                    'document_id' => $documentId,
+                    'next_user_id' => $nextStep->user_id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        } else {
+            // No more pending steps - workflow is complete
+            // Send completion notification to the uploader
+            if ($document->uploader && $document->uploader->email) {
+                try {
+                    Mail::to($document->uploader->email)
+                        ->send(new DocumentWorkflowNotification($document, $document->uploader, 'completed'));
+                    
+                    Log::info('Workflow completion notification sent', [
+                        'document_id' => $documentId,
+                        'uploader_id' => $document->uploader->id,
+                        'uploader_email' => $document->uploader->email
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to send completion notification', [
+                        'document_id' => $documentId,
+                        'uploader_id' => $document->uploader->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
         }
     }
 }

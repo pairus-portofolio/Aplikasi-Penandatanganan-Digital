@@ -188,8 +188,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     const t = parafBox.querySelector('.paraf-text');
                     if (t) t.style.display = "block";
 
-                    // Remove from Canvas via Signer
-                    signer.deletePosition(); 
+                    // Remove from Canvas via Signer (Silent, no callback)
+                    signer.deletePosition(false); 
                     
                     Swal.fire('Sukses', 'Tanda tangan dihapus', 'success');
                 } else {

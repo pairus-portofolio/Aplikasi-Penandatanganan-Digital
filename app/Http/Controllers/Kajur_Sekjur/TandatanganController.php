@@ -205,40 +205,9 @@ class TandatanganController extends Controller
             // 1. Apply TTD ke PDF
             $this->pdfService->stampPdf($documentId, Auth::id(), 'tandatangan');
 
-            // 2. Update Step Status
+            // 2. Update Step Status dan Proses Workflow Selanjutnya
             $this->workflowService->completeStep($documentId, DocumentStatusEnum::DITANDATANGANI);
-
-            // [MERGE FIX] Logika Penentuan Status Akhir & Email (Menggantikan/Melengkapi Service)
-            $document = Document::findOrFail($documentId);
-
-            // CEK APAKAH MASIH ADA STEP TTD LAIN YG BELUM SELESAI
-            $nextTtd = WorkflowStep::where('document_id', $documentId)
-                ->where('status', 'Ditinjau')
-                ->whereHas('user.role', function ($q) {
-                    $q->whereIn('nama_role', RoleEnum::getKajurSekjurRoles());
-                })
-                ->count();
-
-            if ($nextTtd > 0) {
-                // Masih ada Kajur/Sekjur lain → dokumen tetap "Diparaf"
-                $document->status = 'Diparaf';
-            } else {
-                // Semua tanda tangan selesai → FINAL
-                $document->status = 'Ditandatangani';
-
-                // KIRIM EMAIL NOTIFIKASI KE TU (PENGUNGGAH)
-                if ($document->uploader && $document->uploader->email) {
-                    try {
-                        Mail::to($document->uploader->email)
-                            ->send(new DocumentWorkflowNotification($document, $document->uploader, 'completed'));
-                    } catch (\Exception $e) {
-                        Log::error("Gagal kirim email selesai ke TU: " . $e->getMessage());
-                    }
-                }
-            }
-
-            // Simpan status dokumen (Penting untuk memastikan status sesuai logika "nextTtd")
-            $document->save();
+            $this->workflowService->processNextStep($documentId);
 
             Log::info('Document tandatangan submitted', ['document_id' => $documentId, 'user_id' => Auth::id()]);
 

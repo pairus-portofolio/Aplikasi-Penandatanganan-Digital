@@ -76,13 +76,10 @@ document.addEventListener('DOMContentLoaded', function () {
     // API CALLS
     // ==========================================
     function saveParafToDB(data) {
-        const csrf = document.querySelector('meta[name="csrf-token"]').content;
-        // Endpoint: /paraf-surat/{id}/save-paraf
-        // window.suratId is defined in blade
-        fetch(`/paraf-surat/${window.suratId}/save-paraf`, {
+        fetch(config.saveUrl, {
             method: "POST",
             headers: {
-                "X-CSRF-TOKEN": csrf,
+                "X-CSRF-TOKEN": config.csrfToken,
                 "Content-Type": "application/json",
                 "Accept": "application/json"
             },
@@ -98,17 +95,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function deleteParafFromDB() {
-        // Since ParafController.saveParaf might not handle nulls yet?
-        // Wait, I only updated TandatanganController to handle nulls.
-        // I MUST update ParafController to handle nulls too!
-        // Or I can use the same logic if I update ParafController.
-        // Let's assume I will update ParafController next.
-        
-        const csrf = document.querySelector('meta[name="csrf-token"]').content;
-        fetch(`/paraf-surat/${window.suratId}/save-paraf`, {
+        fetch(config.saveUrl, {
             method: "POST",
             headers: {
-                "X-CSRF-TOKEN": csrf,
+                "X-CSRF-TOKEN": config.csrfToken,
                 "Content-Type": "application/json",
                 "Accept": "application/json"
             },
@@ -185,8 +175,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     const t = parafBox.querySelector('.paraf-text');
                     if (t) t.style.display = "block";
 
-                    // Remove from Canvas via Signer
-                    signer.deletePosition();
+                    // Remove from Canvas via Signer (Silent, no callback)
+                    signer.deletePosition(false);
                     
                     Swal.fire('Sukses', 'Paraf dihapus', 'success');
                 } else {
