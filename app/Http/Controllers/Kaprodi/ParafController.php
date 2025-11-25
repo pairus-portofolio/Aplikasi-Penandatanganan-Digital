@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\Dashboard\TableController;
 use setasign\Fpdi\Fpdi;
 use App\Enums\RoleEnum;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\DocumentWorkflowNotification;
 
 class ParafController extends Controller
 {
@@ -47,7 +49,7 @@ class ParafController extends Controller
     {
         $document = Document::findOrFail($id);
 
-        // Akses workflow (jangan dihapus)
+        // Akses workflow
         if (!$this->checkWorkflowAccess($document->id)) {
             return redirect()->route('kaprodi.paraf.index')
                 ->withErrors('Belum giliran Anda untuk memparaf dokumen ini.');
@@ -57,7 +59,7 @@ class ParafController extends Controller
     }
 
     // =====================================================================
-    // 3. Upload Paraf Image (BARU)
+    // 3. Upload Paraf Image
     // =====================================================================
     public function uploadParaf(Request $request)
     {
@@ -113,7 +115,7 @@ class ParafController extends Controller
     }
 
     // =====================================================================
-    // 4. Hapus Paraf Permanen (BARU)
+    // 4. Hapus Paraf Permanen
     // =====================================================================
     public function deleteParaf()
     {
@@ -140,11 +142,11 @@ class ParafController extends Controller
     }
 
     // =====================================================================
-    // 5. Submit Paraf (Workflow - JANGAN DIUBAH)
+    // 5. Submit Paraf
     // =====================================================================
     public function submit(Request $request, $documentId)
     {
-        // VALIDASI DULU SEBELUM PROSES PDF (Fix Race Condition)
+        // 1. VALIDASI DULU SEBELUM PROSES PDF
         $activeStep = WorkflowStep::where('document_id', $documentId)
             ->where('status', 'Ditinjau')
             ->orderBy('urutan')
@@ -154,29 +156,72 @@ class ParafController extends Controller
             return back()->withErrors('Bukan giliran Anda untuk memparaf dokumen ini.');
         }
 
-        // BARU PROSES PDF SETELAH VALIDASI
-        $this->applyParafToPdf($documentId);
+        // 2. PROSES PDF
+        try {
+            $this->applyParafToPdf($documentId);
+        } catch (\Exception $e) {
+            return back()->withErrors('Gagal memproses PDF: ' . $e->getMessage());
+        }
 
-        // Update workflow step
+        // 3. UPDATE STEP SAAT INI
         $activeStep->status = 'Diparaf';
         $activeStep->tanggal_aksi = now();
         $activeStep->save();
 
         $document = Document::find($documentId);
 
-        // Cek apakah masih ada KAPRODI yang belum paraf
-        $masihBelumParaf = WorkflowStep::where('document_id', $documentId)
-            ->where('status', 'Ditinjau')
-            ->whereHas('user.role', function ($q) {
-                $q->whereIn('nama_role', RoleEnum::getKaprodiRoles());
-            })
-            ->count();
+        // ============================================================
+        // 4. CEK ESTAFET & KIRIM EMAIL
+        // ============================================================
+        
+        // Cari langkah workflow SELANJUTNYA
+        $nextStep = WorkflowStep::where('document_id', $documentId)
+            ->where('urutan', $activeStep->urutan + 1)
+            ->first();
 
-        // Jika masih ada Kaprodi → status tetap Ditinjau
-        // Jika semua Kaprodi selesai → status Dokumen jadi Diparaf
-        $document->status = ($masihBelumParaf > 0) ? 'Ditinjau' : 'Diparaf';
-        $document->save();
+        if ($nextStep && $nextStep->user) {
+            // --- KASUS A: ADA ESTAFET KE USER LAIN ---
+            
+            // ID 4 = Kajur, ID 5 = Sekjur
+            $nextRoleId = $nextStep->user->role_id;
 
+            // Jika user berikutnya adalah Kajur/Sekjur, status HARUS 'Diparaf'
+            // agar muncul di dashboard mereka.
+            if (in_array($nextRoleId, [4, 5])) {
+                $document->status = 'Diparaf';
+            } else {
+                // Jika user berikutnya masih sesama Kaprodi/Dosen (Paraf), status tetap 'Ditinjau'
+                $document->status = 'Ditinjau'; 
+            }
+            
+            $document->save();
+            
+            // Kirim Email ke User Selanjutnya
+            try {
+                Mail::to($nextStep->user->email)
+                    ->send(new DocumentWorkflowNotification($document, $nextStep->user, 'next_turn'));
+            } catch (\Exception $e) {
+                \Log::error("Gagal kirim email estafet: " . $e->getMessage());
+            }
+
+        } else {
+            // --- KASUS B: TIDAK ADA LAGI (FINISH) ---
+            // Logika jika setelah ini tidak ada step lagi
+            
+            $document->status = 'Diparaf';
+            $document->save();
+            
+            // Kirim Email ke Pengunggah (TU)
+            if ($document->uploader && $document->uploader->email) {
+                try {
+                    Mail::to($document->uploader->email)
+                        ->send(new DocumentWorkflowNotification($document, $document->uploader, 'completed'));
+                } catch (\Exception $e) {
+                    \Log::error("Gagal kirim email selesai ke TU: " . $e->getMessage());
+                }
+            }
+        }
+        
         return redirect()->route('kaprodi.paraf.index')
             ->with('success', 'Dokumen berhasil diparaf.');
     }
@@ -231,7 +276,7 @@ class ParafController extends Controller
         }
 
         // ============================================================
-        // 2. CARI FILE (Logika Pencarian yang Robust)
+        // 2. CARI FILE 
         // ============================================================
         $dbPath = $document->file_path; 
         $sourcePath = null;
@@ -276,10 +321,6 @@ class ParafController extends Controller
                 $pdf->useTemplate($template);
 
                 if ($i == $workflow->halaman) {
-                    
-                    // ============================================================
-                    // KEMBALIKAN LOGIKA KONVERSI DARI KODE LAMA KAMU
-                    // ============================================================
 
                     $x_mm = $workflow->posisi_x * 0.352778; 
                     $y_mm = $workflow->posisi_y * 0.352778;

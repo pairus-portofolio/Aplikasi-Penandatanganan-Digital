@@ -9,6 +9,8 @@ use App\Models\WorkflowStep;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Dashboard\TableController;
 use App\Enums\RoleEnum;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\DocumentWorkflowNotification;
 
 class TandatanganController extends Controller
 {
@@ -78,7 +80,7 @@ class TandatanganController extends Controller
 
         // 2. CEK APAKAH MASIH ADA STEP TTD LAIN YG BELUM SELESAI
         $nextTtd = WorkflowStep::where('document_id', $documentId)
-            ->where('status', 'Ditinjau') // hanya step tanda tangan berikutnya
+            ->where('status', 'Ditinjau')
             ->whereHas('user.role', function ($q) {
                 $q->whereIn('nama_role', RoleEnum::getKajurSekjurRoles());
             })
@@ -90,6 +92,16 @@ class TandatanganController extends Controller
         } else {
             // Semua tanda tangan selesai → FINAL
             $document->status = 'Ditandatangani';
+
+            // KIRIM EMAIL NOTIFIKASI KE TU (PENGUNGGAH)
+            if ($document->uploader && $document->uploader->email) {
+                try {
+                    Mail::to($document->uploader->email)
+                        ->send(new DocumentWorkflowNotification($document, $document->uploader, 'completed'));
+                } catch (\Exception $e) {
+                    \Log::error("Gagal kirim email selesai ke TU: " . $e->getMessage());
+                }
+            }
         }
 
         $document->save();

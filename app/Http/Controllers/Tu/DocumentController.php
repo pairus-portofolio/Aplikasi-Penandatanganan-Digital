@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpWord\IOFactory;
 use Illuminate\Support\Facades\DB;
 use App\Enums\RoleEnum;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\DocumentWorkflowNotification;
 
 class DocumentController extends Controller
 {
@@ -86,6 +88,21 @@ class DocumentController extends Controller
 
             // Commit transaction jika semua berhasil
             DB::commit();
+
+            // --- LOGIKA EMAIL NOTIFIKASI (USER PERTAMA) ---
+            // Ambil user urutan ke-1
+            $firstStep = WorkflowStep::where('document_id', $document->id)
+                ->where('urutan', 1)
+                ->first();
+
+            if ($firstStep && $firstStep->user) {
+                try {
+                    Mail::to($firstStep->user->email)
+                        ->send(new DocumentWorkflowNotification($document, $firstStep->user, 'next_turn'));
+                } catch (\Exception $e) {
+                    \Log::error("Gagal kirim email ke user pertama: " . $e->getMessage());
+                }
+            }
 
             // Kembali ke halaman upload dengan pesan sukses
             return redirect()
@@ -185,8 +202,6 @@ class DocumentController extends Controller
         } elseif (file_exists($appPath)) {
             $finalPath = $appPath;
         } else {
-            // Debugging: Nyalakan ini kalau masih 404 untuk lihat path yang dicari
-            // dd("File tidak ada di:", $privatePath, $publicPath);
             abort(404, 'File fisik tidak ditemukan.');
         }
 
@@ -194,7 +209,7 @@ class DocumentController extends Controller
         try {
             return response()->file($finalPath, [
                 'Content-Type' => 'application/pdf',
-                'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0', // Mencegah cache file lama
+                'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0', 
             ]);
         } catch (\Exception $e) {
             abort(500, 'Gagal membaca file: ' . $e->getMessage());
