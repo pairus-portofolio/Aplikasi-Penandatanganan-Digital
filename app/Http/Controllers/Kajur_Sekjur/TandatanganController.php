@@ -12,6 +12,7 @@ use App\Enums\DocumentStatusEnum;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 use setasign\Fpdi\Fpdi;
 
 class TandatanganController extends Controller
@@ -67,7 +68,19 @@ class TandatanganController extends Controller
     {
         $request->validate([
             'image' => 'required|image|mimes:png,jpg,jpeg|max:2048',
+            'g-recaptcha-response' => 'required',
         ]);
+
+        // VERIFIKASI RECAPTCHA KE GOOGLE
+        $response = Http::asForm()->post('https://www.google.com/recaptcha/api/siteverify', [
+            'secret' => env('RECAPTCHA_SECRET_KEY'),
+            'response' => $request->input('g-recaptcha-response'),
+            'remoteip' => $request->ip(),
+        ]);
+
+        if (!$response->json()['success']) {
+            return response()->json(['status' => 'error', 'message' => 'Validasi Captcha Gagal. Silakan coba lagi.'], 400);
+        }
 
         if (!$request->hasFile('image')) {
             return response()->json(['status' => 'error', 'message' => 'File tidak terbaca.'], 400);
@@ -137,9 +150,9 @@ class TandatanganController extends Controller
     public function saveTandatangan(Request $request, $id)
     {
         $request->validate([
-            'posisi_x' => 'required|numeric',
-            'posisi_y' => 'required|numeric',
-            'halaman'  => 'required|integer|min:1'
+            'posisi_x' => 'nullable|numeric',
+            'posisi_y' => 'nullable|numeric',
+            'halaman'  => 'nullable|integer|min:1'
         ]);
 
         $workflowStep = WorkflowStep::where('document_id', $id)

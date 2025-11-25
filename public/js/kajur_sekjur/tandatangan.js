@@ -139,6 +139,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const formData = new FormData();
                 formData.append("image", file);
+                
+                // Tambahkan Token Captcha
+                if (window.lastCaptchaToken) {
+                    formData.append("g-recaptcha-response", window.lastCaptchaToken);
+                }
+                
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
 
                 fetch('/kajur/tandatangan/upload', {
@@ -163,6 +169,12 @@ document.addEventListener('DOMContentLoaded', function () {
                         title: 'Kesalahan Jaringan',
                         text: 'Tidak dapat mengupload file. Periksa koneksi internet Anda.'
                     });
+                })
+                .finally(() => {
+                    if (window.grecaptcha) {
+                        grecaptcha.reset();
+                        window.lastCaptchaToken = null;
+                    }
                 });
             }
         });
@@ -227,6 +239,34 @@ document.addEventListener('DOMContentLoaded', function () {
 
         } catch (error) {
             console.error("Auto save error:", error);
+        }
+    }
+
+    function deleteParafPositionFromDB() {
+        try {
+            const csrf = document.querySelector('meta[name="csrf-token"]').content;
+            
+            console.log("Clearing TTD from DB...");
+
+            fetch(config.saveUrl, {
+                method: "POST",
+                headers: {
+                    "X-CSRF-TOKEN": csrf,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify({
+                    posisi_x: null,
+                    posisi_y: null,
+                    halaman: null
+                })
+            })
+            .then(res => res.json())
+            .then(data => console.log("DB Cleared:", data))
+            .catch(err => console.error("Clear Failed:", err));
+
+        } catch (error) {
+            console.error("Delete error:", error);
         }
     }
 
@@ -459,13 +499,8 @@ document.addEventListener('DOMContentLoaded', function () {
             selectedParaf.remove();
             selectedParaf = null;
             
-            // Hapus dari DB (Opsional, tapi sebaiknya sinkron)
-            // Kita bisa panggil endpoint delete atau biarkan user klik tombol hapus di sidebar.
-            // Untuk konsistensi dengan tombol sidebar, kita biarkan tombol sidebar yang handle delete permanen.
-            // Tapi di sini kita hanya hapus posisi? 
-            // Requirement tidak spesifik, tapi biasanya delete di canvas = delete posisi.
-            // Mari kita trigger save dengan null? Atau biarkan saja visual delete.
-            // Untuk amannya, visual delete saja dulu.
+            // Hapus dari DB
+            deleteParafPositionFromDB();
         }
     });
 
