@@ -76,10 +76,20 @@ document.addEventListener('DOMContentLoaded', function () {
     // API CALLS
     // ==========================================
     function saveParafToDB(data) {
+        const csrfElement = document.querySelector('meta[name="csrf-token"]');
+        
+        if (!csrfElement || !csrfElement.content) {
+            Swal.fire('Error', 'CSRF token tidak ditemukan. Silakan refresh halaman.', 'error');
+            console.error('CSRF token missing from page');
+            return;
+        }
+        
+        const csrf = csrfElement.content;
+        
         fetch(config.saveUrl, {
             method: "POST",
             headers: {
-                "X-CSRF-TOKEN": config.csrfToken,
+                "X-CSRF-TOKEN": csrf,
                 "Content-Type": "application/json",
                 "Accept": "application/json"
             },
@@ -90,15 +100,30 @@ document.addEventListener('DOMContentLoaded', function () {
             })
         })
         .then(res => res.json())
-        .then(resData => console.log("DB Updated:", resData))
-        .catch(err => console.error("Save Failed:", err));
+        .then(resData => {
+            if (config.debug) console.log("DB Updated:", resData);
+        })
+        .catch(err => {
+            console.error("Save Failed:", err);
+            Swal.fire('Error', 'Gagal menyimpan posisi paraf', 'error');
+        });
     }
 
     function deleteParafFromDB() {
+        const csrfElement = document.querySelector('meta[name="csrf-token"]');
+        
+        if (!csrfElement || !csrfElement.content) {
+            Swal.fire('Error', 'CSRF token tidak ditemukan. Silakan refresh halaman.', 'error');
+            console.error('CSRF token missing from page');
+            return;
+        }
+        
+        const csrf = csrfElement.content;
+        
         fetch(config.saveUrl, {
             method: "POST",
             headers: {
-                "X-CSRF-TOKEN": config.csrfToken,
+                "X-CSRF-TOKEN": csrf,
                 "Content-Type": "application/json",
                 "Accept": "application/json"
             },
@@ -109,12 +134,35 @@ document.addEventListener('DOMContentLoaded', function () {
             })
         })
         .then(res => res.json())
-        .then(resData => console.log("DB Cleared:", resData))
-        .catch(err => console.error("Clear Failed:", err));
+        .then(resData => {
+            if (config.debug) console.log("DB Cleared:", resData);
+        })
+        .catch(err => {
+            console.error("Clear Failed:", err);
+            Swal.fire('Error', 'Gagal menghapus posisi paraf', 'error');
+        });
     }
 
     function handleFileUpload(file) {
         if (!file) return;
+
+        // Validasi ukuran file (max 2MB)
+        const maxSize = 2 * 1024 * 1024; // 2MB in bytes
+        if (file.size > maxSize) {
+            Swal.fire({
+                icon: 'error',
+                title: 'File Terlalu Besar',
+                text: `Ukuran file maksimal 2MB. File Anda: ${(file.size / 1024 / 1024).toFixed(2)}MB`,
+            });
+            return;
+        }
+
+        // Validasi tipe file
+        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+        if (!allowedTypes.includes(file.type)) {
+            Swal.fire('Error', 'Format file harus PNG, JPG, atau JPEG', 'error');
+            return;
+        }
 
         const reader = new FileReader();
         reader.onload = (ev) => {
@@ -130,6 +178,21 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append("image", file);
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
 
+        if (!csrfToken) {
+            Swal.fire('Error', 'CSRF token tidak ditemukan. Silakan refresh halaman.', 'error');
+            return;
+        }
+
+        // Show loading
+        Swal.fire({
+            title: 'Mengupload...',
+            text: 'Mohon tunggu',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
         fetch('/kaprodi/paraf/upload', {
             method: "POST",
             headers: { "X-CSRF-TOKEN": csrfToken, "Accept": "application/json" },
@@ -137,11 +200,18 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .then(res => res.json())
         .then(data => {
-            if (data.status !== "success") {
+            Swal.close();
+            if (data.status === "success") {
+                Swal.fire('Sukses', 'Paraf berhasil diupload', 'success');
+            } else {
                 Swal.fire('Error', data.message || 'Upload gagal', 'error');
             }
         })
-        .catch(err => Swal.fire('Error', 'Gagal upload', 'error'));
+        .catch(err => {
+            Swal.close();
+            console.error('Upload error:', err);
+            Swal.fire('Error', 'Gagal upload paraf', 'error');
+        });
     }
 
     function confirmDelete() {
@@ -156,6 +226,22 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!result.isConfirmed) return;
 
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+            
+            if (!csrfToken) {
+                Swal.fire('Error', 'CSRF token tidak ditemukan. Silakan refresh halaman.', 'error');
+                return;
+            }
+
+            // Show loading
+            Swal.fire({
+                title: 'Menghapus...',
+                text: 'Mohon tunggu',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
             fetch('/kaprodi/paraf/delete', {
                 method: 'POST',
                 headers: {
@@ -166,6 +252,7 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .then(res => res.json())
             .then(data => {
+                Swal.close();
                 if (data.status === 'success') {
                     // Reset UI
                     parafImage.src = "";
@@ -178,12 +265,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     // Remove from Canvas via Signer (Silent, no callback)
                     signer.deletePosition(false);
                     
-                    Swal.fire('Sukses', 'Paraf dihapus', 'success');
+                    Swal.fire('Sukses', 'Paraf berhasil dihapus', 'success');
                 } else {
                     Swal.fire('Error', data.message, 'error');
                 }
             })
-            .catch(err => Swal.fire('Error', 'Gagal menghapus', 'error'));
+            .catch(err => {
+                Swal.close();
+                console.error('Delete error:', err);
+                Swal.fire('Error', 'Gagal menghapus paraf', 'error');
+            });
         });
     }
 });
