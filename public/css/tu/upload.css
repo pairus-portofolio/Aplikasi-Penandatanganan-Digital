@@ -82,36 +82,68 @@ h1 {
     display: flex;
     flex-direction: column;
     gap: 20px;
+    padding-bottom: 150px; /* Tambahan ruang agar dropdown bisa terbuka ke bawah */
 }
 
-/* Kotak field dengan styling */
+/* Kotak field dengan styling (Container Label) */
 .detail-field-box {
     display: flex;
-    align-items: center;
-    background: #dddcdc;
-    border-radius: 25px;
-    padding: 0 16px;
-    border: 1px solid transparent;
-    transition: border-color 0.2s, box-shadow 0.2s;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    flex-direction: column; /* Ubah jadi column agar label di atas input */
+    gap: 8px;
+    background: transparent; /* Hapus background abu-abu */
+    padding: 0;
+    border: none;
+    box-shadow: none;
 }
 
-/* Efek fokus pada field */
+/* Label styling */
+.detail-field-box label {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #374151;
+}
+
+/* Hapus efek fokus pada container lama */
 .detail-field-box:focus-within {
-    border-color: #0d6efd;
-    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15);
+    border-color: transparent;
+    box-shadow: none;
 }
 
 /* Input dalam field */
 .detail-input-inner {
     flex: 1;
     width: 100%;
-    padding: 14px 0;
-    border: none;
+    padding: 14px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
     outline: none;
-    background: transparent;
+    background: #ffffff;
     font-size: 0.95rem;
     color: #1a1a1a;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    appearance: none; /* Menghilangkan arrow default browser */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    background-size: 16px;
+    box-sizing: border-box; /* Pastikan padding tidak menambah lebar elemen */
+}
+
+/* Khusus untuk input type date agar icon kalender tidak tertimpa */
+input[type="date"].detail-input-inner {
+    background-image: none;
+}
+
+/* Efek fokus pada input */
+.detail-input-inner:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* Styling option yang disabled */
+.detail-input-inner option:disabled {
+    color: #9ca3af;
+    background-color: #f3f4f6;
 }
 
 /* Wrapper daftar alur penandatangan */

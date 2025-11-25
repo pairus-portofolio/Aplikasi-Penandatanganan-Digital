@@ -12,10 +12,19 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use App\Enums\RoleEnum;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\DocumentWorkflowNotification;
 use App\Enums\DocumentStatusEnum;
+use App\Services\WorkflowService;
 
 class DocumentController extends Controller
 {
+    protected $workflowService;
+
+    public function __construct(WorkflowService $workflowService)
+    {
+        $this->workflowService = $workflowService;
+    }
     // Menampilkan halaman upload surat beserta daftar user penandatangan
     public function create()
     {
@@ -87,6 +96,21 @@ class DocumentController extends Controller
             // Commit transaction jika semua berhasil
             DB::commit();
 
+            // --- LOGIKA EMAIL NOTIFIKASI (USER PERTAMA) ---
+            // Ambil user urutan ke-1
+            $firstStep = WorkflowStep::where('document_id', $document->id)
+                ->where('urutan', 1)
+                ->first();
+
+            if ($firstStep && $firstStep->user) {
+                try {
+                    Mail::to($firstStep->user->email)
+                        ->send(new DocumentWorkflowNotification($document, $firstStep->user, 'next_turn'));
+                } catch (\Exception $e) {
+                    \Log::error("Gagal kirim email ke user pertama: " . $e->getMessage());
+                }
+            }
+
             // Kembali ke halaman upload dengan pesan sukses
             return redirect()
                 ->route('tu.upload.create')
@@ -129,38 +153,21 @@ class DocumentController extends Controller
     }
 
     // Mengupdate status penandatanganan workflow oleh user
-   public function updateStatus(Request $request, $documentId, $stepId)
+    public function updateStatus(Request $request, $documentId, $stepId)
     {
-        $step = WorkflowStep::find($stepId);
-
-        if ($step->document_id !== $documentId) {
-            return redirect()->back()->withErrors('Langkah ini tidak valid.');
-        }
-
-        $step->status = DocumentStatusEnum::DIPARAF; // Standardized
-        $step->tanggal_aksi = now();
-        $step->save();
-
-        // Cek apakah semua step sudah ditandatangani
-        $allSigned = WorkflowStep::where('document_id', $documentId)
-                                ->where('status', '!=', DocumentStatusEnum::DIPARAF)
-                                ->where('status', '!=', DocumentStatusEnum::DITANDATANGANI)
-                                ->count() == 0;
-
-        // Update status dokumen jika semua sudah selesai
-        if ($allSigned) {
-            $document = Document::find($documentId);
-            $document->status = DocumentStatusEnum::DITANDATANGANI;
-            $document->save();
+        try {
+            
+            // Ini adalah endpoint untuk user melakukan aksi (paraf/ttd)
+            $this->workflowService->completeStep($documentId, DocumentStatusEnum::DIPARAF);
+            $this->workflowService->updateDocumentStatus($documentId);
 
             return redirect()
                 ->back()
-                ->with('success', 'Dokumen telah selesai ditandatangani semua.');
-        }
+                ->with('success', 'Status berhasil diperbarui.');
 
-        return redirect()
-            ->back()
-            ->with('success', 'Paraf berhasil dilakukan. Menunggu penandatangan berikutnya.');
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors($e->getMessage());
+        }
     }
 
     public function download(Document $document)
@@ -193,7 +200,7 @@ class DocumentController extends Controller
         try {
             return response()->file($finalPath, [
                 'Content-Type' => 'application/pdf',
-                'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0', // Mencegah cache file lama
+                'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0', 
             ]);
         } catch (\Exception $e) {
             abort(500, 'Gagal membaca file: ' . $e->getMessage());
