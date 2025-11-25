@@ -18,10 +18,12 @@ use setasign\Fpdi\Fpdi;
 class TandatanganController extends Controller
 {
     protected $workflowService;
+    protected $pdfService;
 
-    public function __construct(WorkflowService $workflowService)
+    public function __construct(WorkflowService $workflowService, \App\Services\PdfService $pdfService)
     {
         $this->workflowService = $workflowService;
+        $this->pdfService = $pdfService;
     }
 
     // ======================================================
@@ -197,7 +199,7 @@ class TandatanganController extends Controller
 
         try {
             // 1. Apply TTD ke PDF
-            $this->applyTandatanganToPdf($documentId);
+            $this->pdfService->stampPdf($documentId, Auth::id(), 'tandatangan');
 
             // 2. Update Step Status
             $this->workflowService->completeStep($documentId, DocumentStatusEnum::DITANDATANGANI);
@@ -220,77 +222,5 @@ class TandatanganController extends Controller
     // ======================================================
     // 7. PRIVATE: APPLY TTD TO PDF (FPDI)
     // ======================================================
-    private function applyTandatanganToPdf($documentId)
-    {
-        $document = Document::findOrFail($documentId);
-        $user = Auth::user();
-
-        // Cek Workflow
-        $workflow = WorkflowStep::where('document_id', $documentId)
-            ->where('user_id', $user->id)
-            ->first();
-
-        if (!$workflow || is_null($workflow->posisi_x) || is_null($workflow->posisi_y)) {
-            throw new \Exception("Posisi tanda tangan belum diatur.");
-        }
-
-        if (!$user->img_ttd_path) {
-            throw new \Exception("Anda belum mengupload gambar tanda tangan.");
-        }
-
-        // Path File PDF
-        $dbPath = $document->file_path;
-        $sourcePath = null;
-        $pathPrivate = storage_path('app/private/' . $dbPath);
-        $pathPublic  = storage_path('app/public/' . $dbPath);
-        $pathApp     = storage_path('app/' . $dbPath);
-
-        if (file_exists($pathPrivate)) $sourcePath = $pathPrivate;
-        elseif (file_exists($pathPublic)) $sourcePath = $pathPublic;
-        elseif (file_exists($pathApp)) $sourcePath = $pathApp;
-        else throw new \Exception("File fisik dokumen tidak ditemukan.");
-
-        // Path Gambar TTD
-        $ttdPath = storage_path('app/public/' . $user->img_ttd_path);
-        if (!file_exists($ttdPath)) {
-            throw new \Exception("File gambar tanda tangan tidak ditemukan.");
-        }
-
-        // Proses FPDI
-        try {
-            // FIX: Gunakan satuan 'pt' (points) agar sesuai dengan getTemplateSize()
-            // Default FPDI adalah 'mm', yang menyebabkan ukuran halaman membengkak (1 pt != 1 mm)
-            $pdf = new Fpdi('P', 'pt'); 
-            $pageCount = $pdf->setSourceFile($sourcePath);
-
-            for ($i = 1; $i <= $pageCount; $i++) {
-                $template = $pdf->importPage($i);
-                $size = $pdf->getTemplateSize($template);
-
-                // AddPage dengan ukuran asli (dalam pt)
-                $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
-                $pdf->useTemplate($template);
-
-                // Stamp TTD di halaman yang sesuai
-                if ($i == $workflow->halaman) {
-                    // Karena PDF sudah dalam 'pt', tidak perlu konversi * 0.352778
-                    // Koordinat dari Frontend (PDF.js) biasanya sudah dalam skala 72 DPI (points)
-                    
-                    $x = $workflow->posisi_x; 
-                    $y = $workflow->posisi_y;
-                    
-                    // Lebar tanda tangan (misal 100px di frontend ~= 100pt di PDF)
-                    // Sesuaikan jika dirasa terlalu besar/kecil
-                    $width = 100; 
-
-                    $pdf->Image($ttdPath, $x, $y, $width);
-                }
-            }
-
-            $pdf->Output($sourcePath, 'F'); // Overwrite file asli
-
-        } catch (\Exception $e) {
-            throw new \Exception("Gagal memproses PDF: " . $e->getMessage());
-        }
-    }
+    // Private method applyTandatanganToPdf removed as it is now handled by PdfService
 }

@@ -18,10 +18,12 @@ use App\Services\WorkflowService;
 class ParafController extends Controller
 {
     protected $workflowService;
+    protected $pdfService;
 
-    public function __construct(WorkflowService $workflowService)
+    public function __construct(WorkflowService $workflowService, \App\Services\PdfService $pdfService)
     {
         $this->workflowService = $workflowService;
+        $this->pdfService = $pdfService;
     }
 
     // =====================================================================
@@ -176,7 +178,7 @@ class ParafController extends Controller
 
         try {
             // BARU PROSES PDF SETELAH VALIDASI
-            $this->applyParafToPdf($documentId);
+            $this->pdfService->stampPdf($documentId, Auth::id(), 'paraf');
 
             // Update workflow step & Document Status via Service
             $this->workflowService->completeStep($documentId, DocumentStatusEnum::DIPARAF);
@@ -196,9 +198,9 @@ class ParafController extends Controller
     public function saveParaf(Request $request, $id)
     {
         $request->validate([
-            'posisi_x' => 'required|numeric|min:0|max:1000',
-            'posisi_y' => 'required|numeric|min:0|max:1500',
-            'halaman'  => 'required|integer|min:1'
+            'posisi_x' => 'nullable|numeric|min:0|max:1000',
+            'posisi_y' => 'nullable|numeric|min:0|max:1500',
+            'halaman'  => 'nullable|integer|min:1'
         ]);
 
         $workflowStep = WorkflowStep::where('document_id', $id)
@@ -224,94 +226,5 @@ class ParafController extends Controller
         return response()->json(["status" => "success"]);
     }
 
-    private function applyParafToPdf($documentId)
-    {
-        $document = Document::findOrFail($documentId);
-
-        // 1. Check workflow step dari user ini
-        $workflow = WorkflowStep::where('document_id', $documentId)
-            ->where('user_id', auth()->id())
-            ->first();
-
-        if (!$workflow || is_null($workflow->posisi_x) ||
-            is_null($workflow->posisi_y) || !$workflow->halaman) {
-            throw new \Exception("Data posisi paraf tidak lengkap.");
-        }
-
-        $user = auth()->user();
-
-        if (!$user->img_paraf_path) {
-            throw new \Exception("User belum mengatur gambar paraf.");
-        }
-
-        // ============================================================
-        // 2. Tentukan PATH file PDF asli (bisa private/public/app)
-        // ============================================================
-
-        $dbPath = $document->file_path;
-        $sourcePath = null;
-
-        $pathPrivate = storage_path('app/private/' . $dbPath);
-        $pathPublic  = storage_path('app/public/' . $dbPath);
-        $pathApp     = storage_path('app/' . $dbPath);
-
-        if (file_exists($pathPrivate)) {
-            $sourcePath = $pathPrivate;
-        } elseif (file_exists($pathPublic)) {
-            $sourcePath = $pathPublic;
-        } elseif (file_exists($pathApp)) {
-            $sourcePath = $pathApp;
-        } else {
-            throw new \Exception("File fisik dokumen tidak ditemukan.");
-        }
-
-        // 3. Ambil gambar paraf user
-        $parafPath = storage_path('app/public/' . $user->img_paraf_path);
-
-        if (!file_exists($parafPath)) {
-            throw new \Exception("File gambar paraf tidak ditemukan.");
-        }
-
-        // ============================================================
-        // 4. PROSES FPDI — PARAF + OVERWRITE FILE LAMA
-        // ============================================================
-
-        try {
-            // FIX: Gunakan satuan 'pt' (points) agar konsisten dengan TandatanganController
-            $pdf = new \setasign\Fpdi\Fpdi('P', 'pt');
-            $pageCount = $pdf->setSourceFile($sourcePath);
-
-            for ($i = 1; $i <= $pageCount; $i++) {
-
-                $template = $pdf->importPage($i);
-                $size = $pdf->getTemplateSize($template);
-
-                $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
-                $pdf->useTemplate($template);
-
-                // Tambah paraf hanya pada halaman yang ditentukan user
-                if ($i == $workflow->halaman) {
-
-                    // Karena PDF sudah dalam 'pt', tidak perlu konversi * 0.352778
-                    $x = $workflow->posisi_x;
-                    $y = $workflow->posisi_y;
-                    
-                    // Lebar paraf (misal 100px di frontend ~= 100pt di PDF)
-                    $width = 100;
-
-                    $pdf->Image(
-                        $parafPath,
-                        $x,
-                        $y,
-                        $width
-                    );
-                }
-            }
-
-            $pdf->Output($sourcePath, 'F');
-
-        } catch (\Exception $e) {
-            throw new \Exception("Gagal memproses PDF: " . $e->getMessage());
-        }
-    }
+    // Private method applyParafToPdf removed as it is now handled by PdfService
 }
