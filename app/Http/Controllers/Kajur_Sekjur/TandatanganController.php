@@ -7,6 +7,9 @@ use Illuminate\Http\Request;
 use App\Models\Document;
 use App\Models\WorkflowStep;
 use App\Http\Controllers\Dashboard\TableController;
+use App\Enums\RoleEnum;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\DocumentWorkflowNotification;
 use App\Services\WorkflowService;
 use App\Enums\DocumentStatusEnum;
 use Illuminate\Support\Facades\Auth;
@@ -193,6 +196,7 @@ class TandatanganController extends Controller
             ->where('user_id', Auth::id())
             ->first();
 
+        // [MERGE FIX] Validasi harus dijalankan sebelum proses PDF
         if (is_null($activeStep->posisi_x) || is_null($activeStep->posisi_y) || !$activeStep->halaman) {
             return back()->withErrors('Anda belum menempatkan tanda tangan pada dokumen.');
         }
@@ -204,8 +208,37 @@ class TandatanganController extends Controller
             // 2. Update Step Status
             $this->workflowService->completeStep($documentId, DocumentStatusEnum::DITANDATANGANI);
 
-            // 3. Update Document Status
-            $this->workflowService->updateDocumentStatus($documentId);
+            // [MERGE FIX] Logika Penentuan Status Akhir & Email (Menggantikan/Melengkapi Service)
+            $document = Document::findOrFail($documentId);
+
+            // CEK APAKAH MASIH ADA STEP TTD LAIN YG BELUM SELESAI
+            $nextTtd = WorkflowStep::where('document_id', $documentId)
+                ->where('status', 'Ditinjau')
+                ->whereHas('user.role', function ($q) {
+                    $q->whereIn('nama_role', RoleEnum::getKajurSekjurRoles());
+                })
+                ->count();
+
+            if ($nextTtd > 0) {
+                // Masih ada Kajur/Sekjur lain → dokumen tetap "Diparaf"
+                $document->status = 'Diparaf';
+            } else {
+                // Semua tanda tangan selesai → FINAL
+                $document->status = 'Ditandatangani';
+
+                // KIRIM EMAIL NOTIFIKASI KE TU (PENGUNGGAH)
+                if ($document->uploader && $document->uploader->email) {
+                    try {
+                        Mail::to($document->uploader->email)
+                            ->send(new DocumentWorkflowNotification($document, $document->uploader, 'completed'));
+                    } catch (\Exception $e) {
+                        Log::error("Gagal kirim email selesai ke TU: " . $e->getMessage());
+                    }
+                }
+            }
+
+            // Simpan status dokumen (Penting untuk memastikan status sesuai logika "nextTtd")
+            $document->save();
 
             Log::info('Document tandatangan submitted', ['document_id' => $documentId, 'user_id' => Auth::id()]);
 

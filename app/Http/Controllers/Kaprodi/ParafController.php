@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Dashboard\TableController;
 use setasign\Fpdi\Fpdi;
 use App\Enums\RoleEnum;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\DocumentWorkflowNotification;
 use App\Enums\DocumentStatusEnum;
 use App\Services\WorkflowService;
 
@@ -42,7 +44,7 @@ class ParafController extends Controller
     {
         $document = Document::findOrFail($id);
 
-        // Akses workflow (jangan dihapus)
+        // Akses workflow (menggunakan Service agar lebih bersih)
         if (!$this->workflowService->checkAccess($document->id)) {
             return redirect()->route('kaprodi.paraf.index')
                 ->withErrors('Belum giliran Anda untuk memparaf dokumen ini.');
@@ -65,7 +67,7 @@ class ParafController extends Controller
     }
 
     // =====================================================================
-    // 3. Upload Paraf Image (BARU)
+    // 3. Upload Paraf Image
     // =====================================================================
     public function uploadParaf(Request $request)
     {
@@ -129,7 +131,7 @@ class ParafController extends Controller
     }
 
     // =====================================================================
-    // 4. Hapus Paraf Permanen (BARU)
+    // 4. Hapus Paraf Permanen
     // =====================================================================
     public function deleteParaf()
     {
@@ -158,11 +160,12 @@ class ParafController extends Controller
     }
 
     // =====================================================================
-    // 5. Submit Paraf (Workflow - JANGAN DIUBAH)
+    // 5. Submit Paraf
     // =====================================================================
     public function submit(Request $request, $documentId)
     {
-        // VALIDASI DULU SEBELUM PROSES PDF (Fix Race Condition)
+        // 1. VALIDASI DULU SEBELUM PROSES PDF
+        // Menggunakan Service Check Access agar konsisten
         if (!$this->workflowService->checkAccess($documentId)) {
             return back()->withErrors('Bukan giliran Anda untuk memparaf dokumen ini.');
         }
@@ -172,18 +175,74 @@ class ParafController extends Controller
             ->first();
 
         // VALIDASI: Pastikan user sudah menempatkan paraf (posisi_x, posisi_y, halaman tidak null)
+        // [PENTING] Validasi ini dari branch bawah, harus dipertahankan agar FPDI tidak error
         if (is_null($activeStep->posisi_x) || is_null($activeStep->posisi_y) || !$activeStep->halaman) {
             return back()->withErrors('Anda belum menempatkan paraf pada dokumen. Silakan drag & drop paraf Anda ke dokumen terlebih dahulu.');
         }
 
+        // 2. PROSES PDF
         try {
             // BARU PROSES PDF SETELAH VALIDASI
             $this->pdfService->stampPdf($documentId, Auth::id(), 'paraf');
 
-            // Update workflow step & Document Status via Service
-            $this->workflowService->completeStep($documentId, DocumentStatusEnum::DIPARAF);
-            $this->workflowService->updateDocumentStatus($documentId);
+            // 3. UPDATE STEP SAAT INI (Manual Update sesuai Logic HEAD)
+            $activeStep->status = 'Diparaf';
+            $activeStep->tanggal_aksi = now();
+            $activeStep->save();
 
+            $document = Document::find($documentId);
+
+            // ============================================================
+            // 4. CEK ESTAFET & KIRIM EMAIL (LOGIKA UTAMA DARI HEAD)
+            // ============================================================
+            
+            // Cari langkah workflow SELANJUTNYA
+            $nextStep = WorkflowStep::where('document_id', $documentId)
+                ->where('urutan', $activeStep->urutan + 1)
+                ->first();
+
+            if ($nextStep && $nextStep->user) {
+                // --- KASUS A: ADA ESTAFET KE USER LAIN ---
+                
+                // ID 4 = Kajur, ID 5 = Sekjur
+                $nextRoleId = $nextStep->user->role_id;
+
+                // Jika user berikutnya adalah Kajur/Sekjur, status HARUS 'Diparaf'
+                // agar muncul di dashboard mereka.
+                if (in_array($nextRoleId, [4, 5])) {
+                    $document->status = 'Diparaf';
+                } else {
+                    // Jika user berikutnya masih sesama Kaprodi/Dosen (Paraf), status tetap 'Ditinjau'
+                    $document->status = 'Ditinjau'; 
+                }
+                
+                $document->save();
+                
+                // Kirim Email ke User Selanjutnya
+                try {
+                    Mail::to($nextStep->user->email)
+                        ->send(new DocumentWorkflowNotification($document, $nextStep->user, 'next_turn'));
+                } catch (\Exception $e) {
+                    \Log::error("Gagal kirim email estafet: " . $e->getMessage());
+                }
+
+            } else {
+                // --- KASUS B: TIDAK ADA LAGI (FINISH) ---
+                
+                $document->status = 'Diparaf';
+                $document->save();
+                
+                // Kirim Email ke Pengunggah (TU)
+                if ($document->uploader && $document->uploader->email) {
+                    try {
+                        Mail::to($document->uploader->email)
+                            ->send(new DocumentWorkflowNotification($document, $document->uploader, 'completed'));
+                    } catch (\Exception $e) {
+                        \Log::error("Gagal kirim email selesai ke TU: " . $e->getMessage());
+                    }
+                }
+            }
+            
             Log::info('Document paraf submitted', ['document_id' => $documentId, 'user_id' => Auth::id()]);
 
             return redirect()->route('kaprodi.paraf.index')
@@ -191,7 +250,7 @@ class ParafController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Paraf submission failed', ['document_id' => $documentId, 'user_id' => Auth::id(), 'error' => $e->getMessage()]);
-            return back()->withErrors('Gagal memproses: ' . $e->getMessage());
+            return back()->withErrors('Gagal memproses PDF: ' . $e->getMessage());
         }
     }
 

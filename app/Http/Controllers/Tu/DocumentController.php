@@ -12,8 +12,9 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use App\Enums\RoleEnum;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\DocumentWorkflowNotification;
 use App\Enums\DocumentStatusEnum;
-
 use App\Services\WorkflowService;
 
 class DocumentController extends Controller
@@ -95,6 +96,21 @@ class DocumentController extends Controller
             // Commit transaction jika semua berhasil
             DB::commit();
 
+            // --- LOGIKA EMAIL NOTIFIKASI (USER PERTAMA) ---
+            // Ambil user urutan ke-1
+            $firstStep = WorkflowStep::where('document_id', $document->id)
+                ->where('urutan', 1)
+                ->first();
+
+            if ($firstStep && $firstStep->user) {
+                try {
+                    Mail::to($firstStep->user->email)
+                        ->send(new DocumentWorkflowNotification($document, $firstStep->user, 'next_turn'));
+                } catch (\Exception $e) {
+                    \Log::error("Gagal kirim email ke user pertama: " . $e->getMessage());
+                }
+            }
+
             // Kembali ke halaman upload dengan pesan sukses
             return redirect()
                 ->route('tu.upload.create')
@@ -140,14 +156,8 @@ class DocumentController extends Controller
     public function updateStatus(Request $request, $documentId, $stepId)
     {
         try {
-            // Gunakan Service untuk update step & dokumen
-            // Catatan: completeStep di service secara default set ke 'Diparaf', 
-            // tapi kita bisa sesuaikan jika butuh status lain.
-            // Di sini sepertinya TU melakukan "updateStatus" manual? 
-            // Jika ini fitur "Force Update" oleh TU, mungkin butuh penyesuaian di Service.
-            // Tapi jika ini simulasi paraf, gunakan service.
             
-            // Asumsi: Ini adalah endpoint untuk user melakukan aksi (paraf/ttd)
+            // Ini adalah endpoint untuk user melakukan aksi (paraf/ttd)
             $this->workflowService->completeStep($documentId, DocumentStatusEnum::DIPARAF);
             $this->workflowService->updateDocumentStatus($documentId);
 
@@ -190,7 +200,7 @@ class DocumentController extends Controller
         try {
             return response()->file($finalPath, [
                 'Content-Type' => 'application/pdf',
-                'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0', // Mencegah cache file lama
+                'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0', 
             ]);
         } catch (\Exception $e) {
             abort(500, 'Gagal membaca file: ' . $e->getMessage());
