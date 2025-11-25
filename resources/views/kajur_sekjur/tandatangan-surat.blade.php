@@ -12,6 +12,8 @@
     <link rel="stylesheet" href="{{ asset('css/kaprodi/notif-button.css') }}">
     <link rel="stylesheet" href="{{ asset('css/kaprodi/paraf-layout.css') }}">
     <link rel="stylesheet" href="{{ asset('css/kaprodi/popup.css') }}?v=3">
+    <!-- CSS khusus untuk reCAPTCHA -->
+    <link rel="stylesheet" href="{{ asset('css/kajur_sekjur/captcha.css') }}">
     <!-- CSS Paraf kita pakai ulang untuk styling box upload -->
     <link rel="stylesheet" href="{{ asset('css/kaprodi/paraf.css') }}">
 @endpush
@@ -20,7 +22,7 @@
     @include('partials.doc-header', [
         'judulSurat'  => 'Pratinjau: ' . $document->judul_surat,
         'currentPage' => 1,
-        'totalPages'  => 1, 
+        'totalPages'  => 1,
     ])
 @endsection
 
@@ -80,6 +82,8 @@
 
 @section('popup')
 
+    @include('partials.captcha-popup')
+
     <!-- Toolbar bawah halaman (Zoom, navigasi, dll) -->
     @include('partials.shared.action-submit', [
         'actionUrl'      => route('kajur.tandatangan.submit', $document->id),
@@ -112,7 +116,12 @@
     </script>
 
     {{-- 3. Panggil Script yang dibuat --}}
+    <script src="{{ asset('js/pdf-signer.js') }}"></script>
     <script src="{{ asset('js/kajur_sekjur/tandatangan.js') }}"></script>
+    <script src="{{ asset('js/kajur_sekjur/captcha.js') }}"></script>
+
+    {{-- 4. Load Google reCAPTCHA --}}
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 
     <script>
         @if(session('popup'))

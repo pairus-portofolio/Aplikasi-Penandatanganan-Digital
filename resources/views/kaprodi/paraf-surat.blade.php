@@ -115,6 +115,8 @@
         window.suratId = "{{ $document->id }}";
     </script>
 
+    {{-- 3. Panggil Script yang dibuat --}}
+    <script src="{{ asset('js/pdf-signer.js') }}"></script>
     <!-- Script utama -->
     <script src="{{ asset('js/kaprodi/paraf-surat.js') }}"></script>
 

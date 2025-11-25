@@ -14,7 +14,11 @@ class CardsController extends Controller
     public function index()
     {
         $user = Auth::user();
-        $roleId = $user->role_id;
+        
+        if (!$user->relationLoaded('role')) {
+            $user->load('role');
+        }
+        $roleName = $user->role->nama_role ?? '';
 
         // Ambil dokumen yang boleh dilihat user (sudah Collection!)
         $docs = TableController::getBaseQueryByRole();
@@ -22,7 +26,7 @@ class CardsController extends Controller
         // =============================
         // CARD UNTUK ROLE TU
         // =============================
-        $suratKeluarCount = ($roleId == RoleEnum::ID_TU)
+        $suratKeluarCount = ($roleName === RoleEnum::TU)
             ? $docs->count()
             : 0;
 
@@ -32,7 +36,7 @@ class CardsController extends Controller
         // - dia urutan aktif
         // - status step = Ditinjau
         // =============================
-        if (in_array($roleId, [RoleEnum::ID_KAPRODI_D3, RoleEnum::ID_KAPRODI_D4])) {
+        if (in_array($roleName, RoleEnum::getKaprodiRoles())) {
 
             $suratPerluParaf = $docs->filter(function ($doc) use ($user) {
 
@@ -59,7 +63,7 @@ class CardsController extends Controller
         // - status dokumen = Diparaf
         // - dia adalah urutan aktif
         // =============================
-        if (in_array($roleId, [RoleEnum::ID_KAJUR, RoleEnum::ID_SEKJUR])) {
+        if (in_array($roleName, RoleEnum::getKajurSekjurRoles())) {
 
             $suratPerluTtd = $docs->filter(function ($doc) use ($user) {
 
