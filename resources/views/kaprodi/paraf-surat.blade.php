@@ -83,7 +83,14 @@
 @endsection
 
 @section('popup')
-    @include('partials.action-paraf')
+    @include('partials.shared.action-submit', [
+        'actionUrl'      => route('kaprodi.paraf.submit', $document->id),
+        'modalId'        => 'parafNotifPopup',
+        'inputIdPrefix'  => 'paraf',
+        'defaultSubject' => 'Dokumen Selesai Diparaf',
+        'cancelBtnId'    => 'batalKirim',
+        'confirmBtnId'   => 'konfirmasiKirim'
+    ])
     @include('partials.logout-popup')
 @endsection
 
@@ -99,7 +106,8 @@
             workerSrc: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js",
             // TAMBAHAN BARU: URL untuk simpan posisi & Token keamanan
             saveUrl: "{{ route('kaprodi.paraf.save', $document->id) }}",
-            csrfToken: "{{ csrf_token() }}"
+            csrfToken: "{{ csrf_token() }}",
+            savedParaf: @json($savedParaf ?? null)
         };
     </script>
 

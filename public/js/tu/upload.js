@@ -90,9 +90,18 @@ document.addEventListener("DOMContentLoaded", function () {
     // Menambahkan user ke daftar alur ketika dipilih
     userSelect.addEventListener("change", function () {
         const userId = this.value;
-        const userName = this.options[this.selectedIndex].text;
+        const selectedOption = this.options[this.selectedIndex];
+        const userName = selectedOption.text;
 
         if (userId) {
+            // Cek apakah user sudah ada di list (preventif)
+            const existingItem = alurList.querySelector(`li[data-user-id="${userId}"]`);
+            if (existingItem) {
+                alert("User ini sudah ada dalam alur.");
+                this.value = "";
+                return;
+            }
+
             const listItem = document.createElement("li");
             listItem.classList.add("alur-item");
             listItem.textContent = userName;
@@ -106,12 +115,23 @@ document.addEventListener("DOMContentLoaded", function () {
             removeButton.onclick = function () {
                 alurList.removeChild(listItem);
                 updateAlurInput();
+                
+                // Re-enable option di dropdown saat dihapus
+                const optionToEnable = userSelect.querySelector(`option[value="${userId}"]`);
+                if (optionToEnable) {
+                    optionToEnable.disabled = false;
+                }
             };
 
             listItem.appendChild(removeButton);
             alurList.appendChild(listItem);
 
             updateAlurInput();
+            
+            // Disable option yang dipilih agar tidak bisa dipilih lagi
+            selectedOption.disabled = true;
+            
+            // Reset dropdown ke default
             this.value = "";
         }
     });

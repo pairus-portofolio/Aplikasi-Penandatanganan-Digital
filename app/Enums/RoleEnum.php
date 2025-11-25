@@ -10,6 +10,13 @@ class RoleEnum
     const KAJUR = 'Kajur';
     const SEKJUR = 'Sekjur';
 
+    // ID Constants
+    const ID_TU = 1;
+    const ID_KAPRODI_D3 = 2;
+    const ID_KAPRODI_D4 = 3;
+    const ID_KAJUR = 4;
+    const ID_SEKJUR = 5;
+
     /**
      * Get all Kaprodi roles
      */

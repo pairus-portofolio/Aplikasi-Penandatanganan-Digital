@@ -8,29 +8,22 @@ use App\Models\Document;
 use App\Models\WorkflowStep;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Dashboard\TableController;
 use setasign\Fpdi\Fpdi;
 use App\Enums\RoleEnum;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\DocumentWorkflowNotification;
+use App\Enums\DocumentStatusEnum;
+use App\Services\WorkflowService;
 
 class ParafController extends Controller
 {
-    // =====================================================================
-    // 0. Cek apakah user ini adalah step aktif (Ditinjau)
-    // =====================================================================
-    private function checkWorkflowAccess($documentId)
+    protected $workflowService;
+
+    public function __construct(WorkflowService $workflowService)
     {
-        $activeStep = WorkflowStep::where('document_id', $documentId)
-            ->where('status', 'Ditinjau')
-            ->orderBy('urutan')
-            ->first();
-
-        if (!$activeStep) {
-            return false;
-        }
-
-        return $activeStep->user_id == Auth::id();
+        $this->workflowService = $workflowService;
     }
 
     // =====================================================================
@@ -49,13 +42,26 @@ class ParafController extends Controller
     {
         $document = Document::findOrFail($id);
 
-        // Akses workflow
-        if (!$this->checkWorkflowAccess($document->id)) {
+        // Akses workflow (menggunakan Service agar lebih bersih)
+        if (!$this->workflowService->checkAccess($document->id)) {
             return redirect()->route('kaprodi.paraf.index')
                 ->withErrors('Belum giliran Anda untuk memparaf dokumen ini.');
         }
 
-        return view('kaprodi.paraf-surat', compact('document'));
+        $activeStep = WorkflowStep::where('document_id', $id)
+            ->where('user_id', Auth::id())
+            ->first();
+
+        $savedParaf = null;
+        if ($activeStep && $activeStep->posisi_x && $activeStep->posisi_y && $activeStep->halaman) {
+            $savedParaf = [
+                'x' => $activeStep->posisi_x,
+                'y' => $activeStep->posisi_y,
+                'page' => $activeStep->halaman
+            ];
+        }
+
+        return view('kaprodi.paraf-surat', compact('document', 'savedParaf'));
     }
 
     // =====================================================================
@@ -89,9 +95,14 @@ class ParafController extends Controller
             try {
                 if ($user->img_paraf_path && Storage::disk('public')->exists($user->img_paraf_path)) {
                     Storage::disk('public')->delete($user->img_paraf_path);
+                    Log::info('Old paraf deleted', ['user_id' => $user->id, 'path' => $user->img_paraf_path]);
                 }
             } catch (\Exception $e) {
-                // safe ignore
+                Log::warning('Failed to delete old paraf', [
+                    'user_id' => $user->id,
+                    'path' => $user->img_paraf_path,
+                    'error' => $e->getMessage()
+                ]);
             }
 
             // Simpan file baru
@@ -100,6 +111,8 @@ class ParafController extends Controller
             // Update DB
             $user->update(['img_paraf_path' => $path]);
 
+            Log::info('Paraf uploaded successfully', ['user_id' => $user->id, 'path' => $path]);
+
             return response()->json([
                 'status' => 'success',
                 'path' => asset('storage/' . $path),
@@ -107,6 +120,7 @@ class ParafController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Paraf upload failed', ['user_id' => Auth::id(), 'error' => $e->getMessage()]);
             return response()->json([
                 'status' => 'error',
                 'message' => 'Server Error: ' . $e->getMessage()
@@ -124,6 +138,7 @@ class ParafController extends Controller
 
             if ($user->img_paraf_path && Storage::disk('public')->exists($user->img_paraf_path)) {
                 Storage::disk('public')->delete($user->img_paraf_path);
+                Log::info('Paraf deleted', ['user_id' => $user->id, 'path' => $user->img_paraf_path]);
             }
 
             $user->update(['img_paraf_path' => null]);
@@ -134,6 +149,7 @@ class ParafController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Paraf delete failed', ['user_id' => Auth::id(), 'error' => $e->getMessage()]);
             return response()->json([
                 'status' => 'error',
                 'message' => 'Gagal hapus: ' . $e->getMessage()
@@ -147,83 +163,92 @@ class ParafController extends Controller
     public function submit(Request $request, $documentId)
     {
         // 1. VALIDASI DULU SEBELUM PROSES PDF
+        // Menggunakan Service Check Access agar konsisten
+        if (!$this->workflowService->checkAccess($documentId)) {
+            return back()->withErrors('Bukan giliran Anda untuk memparaf dokumen ini.');
+        }
+
         $activeStep = WorkflowStep::where('document_id', $documentId)
-            ->where('status', 'Ditinjau')
-            ->orderBy('urutan')
+            ->where('user_id', Auth::id())
             ->first();
 
-        if (!$activeStep || $activeStep->user_id != Auth::id()) {
-            return back()->withErrors('Bukan giliran Anda untuk memparaf dokumen ini.');
+        // VALIDASI: Pastikan user sudah menempatkan paraf (posisi_x, posisi_y, halaman tidak null)
+        // [PENTING] Validasi ini dari branch bawah, harus dipertahankan agar FPDI tidak error
+        if (is_null($activeStep->posisi_x) || is_null($activeStep->posisi_y) || !$activeStep->halaman) {
+            return back()->withErrors('Anda belum menempatkan paraf pada dokumen. Silakan drag & drop paraf Anda ke dokumen terlebih dahulu.');
         }
 
         // 2. PROSES PDF
         try {
             $this->applyParafToPdf($documentId);
-        } catch (\Exception $e) {
-            return back()->withErrors('Gagal memproses PDF: ' . $e->getMessage());
-        }
 
-        // 3. UPDATE STEP SAAT INI
-        $activeStep->status = 'Diparaf';
-        $activeStep->tanggal_aksi = now();
-        $activeStep->save();
+            // 3. UPDATE STEP SAAT INI (Manual Update sesuai Logic HEAD)
+            $activeStep->status = 'Diparaf';
+            $activeStep->tanggal_aksi = now();
+            $activeStep->save();
 
-        $document = Document::find($documentId);
+            $document = Document::find($documentId);
 
-        // ============================================================
-        // 4. CEK ESTAFET & KIRIM EMAIL
-        // ============================================================
-        
-        // Cari langkah workflow SELANJUTNYA
-        $nextStep = WorkflowStep::where('document_id', $documentId)
-            ->where('urutan', $activeStep->urutan + 1)
-            ->first();
-
-        if ($nextStep && $nextStep->user) {
-            // --- KASUS A: ADA ESTAFET KE USER LAIN ---
+            // ============================================================
+            // 4. CEK ESTAFET & KIRIM EMAIL (LOGIKA UTAMA DARI HEAD)
+            // ============================================================
             
-            // ID 4 = Kajur, ID 5 = Sekjur
-            $nextRoleId = $nextStep->user->role_id;
+            // Cari langkah workflow SELANJUTNYA
+            $nextStep = WorkflowStep::where('document_id', $documentId)
+                ->where('urutan', $activeStep->urutan + 1)
+                ->first();
 
-            // Jika user berikutnya adalah Kajur/Sekjur, status HARUS 'Diparaf'
-            // agar muncul di dashboard mereka.
-            if (in_array($nextRoleId, [4, 5])) {
-                $document->status = 'Diparaf';
-            } else {
-                // Jika user berikutnya masih sesama Kaprodi/Dosen (Paraf), status tetap 'Ditinjau'
-                $document->status = 'Ditinjau'; 
-            }
-            
-            $document->save();
-            
-            // Kirim Email ke User Selanjutnya
-            try {
-                Mail::to($nextStep->user->email)
-                    ->send(new DocumentWorkflowNotification($document, $nextStep->user, 'next_turn'));
-            } catch (\Exception $e) {
-                \Log::error("Gagal kirim email estafet: " . $e->getMessage());
-            }
+            if ($nextStep && $nextStep->user) {
+                // --- KASUS A: ADA ESTAFET KE USER LAIN ---
+                
+                // ID 4 = Kajur, ID 5 = Sekjur
+                $nextRoleId = $nextStep->user->role_id;
 
-        } else {
-            // --- KASUS B: TIDAK ADA LAGI (FINISH) ---
-            // Logika jika setelah ini tidak ada step lagi
-            
-            $document->status = 'Diparaf';
-            $document->save();
-            
-            // Kirim Email ke Pengunggah (TU)
-            if ($document->uploader && $document->uploader->email) {
+                // Jika user berikutnya adalah Kajur/Sekjur, status HARUS 'Diparaf'
+                // agar muncul di dashboard mereka.
+                if (in_array($nextRoleId, [4, 5])) {
+                    $document->status = 'Diparaf';
+                } else {
+                    // Jika user berikutnya masih sesama Kaprodi/Dosen (Paraf), status tetap 'Ditinjau'
+                    $document->status = 'Ditinjau'; 
+                }
+                
+                $document->save();
+                
+                // Kirim Email ke User Selanjutnya
                 try {
-                    Mail::to($document->uploader->email)
-                        ->send(new DocumentWorkflowNotification($document, $document->uploader, 'completed'));
+                    Mail::to($nextStep->user->email)
+                        ->send(new DocumentWorkflowNotification($document, $nextStep->user, 'next_turn'));
                 } catch (\Exception $e) {
-                    \Log::error("Gagal kirim email selesai ke TU: " . $e->getMessage());
+                    \Log::error("Gagal kirim email estafet: " . $e->getMessage());
+                }
+
+            } else {
+                // --- KASUS B: TIDAK ADA LAGI (FINISH) ---
+                
+                $document->status = 'Diparaf';
+                $document->save();
+                
+                // Kirim Email ke Pengunggah (TU)
+                if ($document->uploader && $document->uploader->email) {
+                    try {
+                        Mail::to($document->uploader->email)
+                            ->send(new DocumentWorkflowNotification($document, $document->uploader, 'completed'));
+                    } catch (\Exception $e) {
+                        \Log::error("Gagal kirim email selesai ke TU: " . $e->getMessage());
+                    }
                 }
             }
+            
+            Log::info('Document paraf submitted', ['document_id' => $documentId, 'user_id' => Auth::id()]);
+
+            return redirect()->route('kaprodi.paraf.index')
+                ->with('success', 'Dokumen berhasil diparaf.');
+
+        } catch (\Exception $e) {
+            Log::error('Paraf submission failed', ['document_id' => $documentId, 'user_id' => Auth::id(), 'error' => $e->getMessage()]);
+            return back()->withErrors('Gagal memproses PDF: ' . $e->getMessage());
         }
-        
-        return redirect()->route('kaprodi.paraf.index')
-            ->with('success', 'Dokumen berhasil diparaf.');
     }
 
     public function saveParaf(Request $request, $id)
@@ -261,29 +286,32 @@ class ParafController extends Controller
     {
         $document = Document::findOrFail($documentId);
 
-        // 1. Cek Workflow & User
+        // 1. Check workflow step dari user ini
         $workflow = WorkflowStep::where('document_id', $documentId)
             ->where('user_id', auth()->id())
             ->first();
 
-        if (!$workflow || is_null($workflow->posisi_x) || is_null($workflow->posisi_y) || !$workflow->halaman) {
-            return; 
+        if (!$workflow || is_null($workflow->posisi_x) ||
+            is_null($workflow->posisi_y) || !$workflow->halaman) {
+            throw new \Exception("Data posisi paraf tidak lengkap.");
         }
 
         $user = auth()->user();
+
         if (!$user->img_paraf_path) {
             throw new \Exception("User belum mengatur gambar paraf.");
         }
 
         // ============================================================
-        // 2. CARI FILE 
+        // 2. Tentukan PATH file PDF asli (bisa private/public/app)
         // ============================================================
-        $dbPath = $document->file_path; 
+
+        $dbPath = $document->file_path;
         $sourcePath = null;
 
         $pathPrivate = storage_path('app/private/' . $dbPath);
-        $pathPublic = storage_path('app/public/' . $dbPath);
-        $pathApp = storage_path('app/' . $dbPath);
+        $pathPublic  = storage_path('app/public/' . $dbPath);
+        $pathApp     = storage_path('app/' . $dbPath);
 
         if (file_exists($pathPrivate)) {
             $sourcePath = $pathPrivate;
@@ -292,55 +320,54 @@ class ParafController extends Controller
         } elseif (file_exists($pathApp)) {
             $sourcePath = $pathApp;
         } else {
-            throw new \Exception("File fisik surat tidak ditemukan.");
+            throw new \Exception("File fisik dokumen tidak ditemukan.");
         }
 
-        // 3. CARI GAMBAR PARAF
+        // 3. Ambil gambar paraf user
         $parafPath = storage_path('app/public/' . $user->img_paraf_path);
+
         if (!file_exists($parafPath)) {
             throw new \Exception("File gambar paraf tidak ditemukan.");
         }
 
-        // 4. PROSES FPDI
-        $outputDir = storage_path('app/public/paraf_output');
-        if (!is_dir($outputDir)) mkdir($outputDir, 0755, true);
-
-        $newFileName = 'paraf_output/' . $documentId . '_' . time() . '.pdf';
-        $outputFile = storage_path('app/public/' . $newFileName);
+        // ============================================================
+        // 4. PROSES FPDI — PARAF + OVERWRITE FILE LAMA
+        // ============================================================
 
         try {
-            $pdf = new \setasign\Fpdi\Fpdi(); 
-            
+            // FIX: Gunakan satuan 'pt' (points) agar konsisten dengan TandatanganController
+            // Ini lebih akurat dan tidak perlu konversi matematika
+            $pdf = new \setasign\Fpdi\Fpdi('P', 'pt');
             $pageCount = $pdf->setSourceFile($sourcePath);
 
             for ($i = 1; $i <= $pageCount; $i++) {
+
                 $template = $pdf->importPage($i);
                 $size = $pdf->getTemplateSize($template);
 
                 $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
                 $pdf->useTemplate($template);
 
+                // Tambah paraf hanya pada halaman yang ditentukan user
                 if ($i == $workflow->halaman) {
 
-                    $x_mm = $workflow->posisi_x * 0.352778; 
-                    $y_mm = $workflow->posisi_y * 0.352778;
-
-                    $lebar_mm = 100 * 0.352778; 
+                    // Karena PDF sudah dalam 'pt', tidak perlu konversi * 0.352778
+                    $x = $workflow->posisi_x;
+                    $y = $workflow->posisi_y;
+                    
+                    // Lebar paraf (misal 100px di frontend ~= 100pt di PDF)
+                    $width = 100;
 
                     $pdf->Image(
                         $parafPath,
-                        $x_mm, 
-                        $y_mm, 
-                        $lebar_mm
+                        $x,
+                        $y,
+                        $width
                     );
                 }
             }
 
-            $pdf->Output($outputFile, 'F');
-
-            $document->update([
-                'file_path' => $newFileName
-            ]);
+            $pdf->Output($sourcePath, 'F');
 
         } catch (\Exception $e) {
             throw new \Exception("Gagal memproses PDF: " . $e->getMessage());

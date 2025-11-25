@@ -6,13 +6,19 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Document;
 use App\Models\WorkflowStep;
+use App\Enums\DocumentStatusEnum;
+use App\Enums\RoleEnum;
 
 class CardsController extends Controller
 {
     public function index()
     {
         $user = Auth::user();
-        $roleId = $user->role_id;
+        
+        if (!$user->relationLoaded('role')) {
+            $user->load('role');
+        }
+        $roleName = $user->role->nama_role ?? '';
 
         // Ambil dokumen yang boleh dilihat user (sudah Collection!)
         $docs = TableController::getBaseQueryByRole();
@@ -20,7 +26,7 @@ class CardsController extends Controller
         // =============================
         // CARD UNTUK ROLE TU
         // =============================
-        $suratKeluarCount = ($roleId == 1)
+        $suratKeluarCount = ($roleName === RoleEnum::TU)
             ? $docs->count()
             : 0;
 
@@ -30,12 +36,12 @@ class CardsController extends Controller
         // - dia urutan aktif
         // - status step = Ditinjau
         // =============================
-        if (in_array($roleId, [2,3])) {
+        if (in_array($roleName, RoleEnum::getKaprodiRoles())) {
 
             $suratPerluParaf = $docs->filter(function ($doc) use ($user) {
 
                 $activeStep = WorkflowStep::where('document_id', $doc->id)
-                    ->where('status', 'Ditinjau')
+                    ->where('status', DocumentStatusEnum::DITINJAU)
                     ->orderBy('urutan')
                     ->first();
 
@@ -57,13 +63,13 @@ class CardsController extends Controller
         // - status dokumen = Diparaf
         // - dia adalah urutan aktif
         // =============================
-        if (in_array($roleId, [4,5])) {
+        if (in_array($roleName, RoleEnum::getKajurSekjurRoles())) {
 
             $suratPerluTtd = $docs->filter(function ($doc) use ($user) {
 
                 // Ambil step aktif
                 $activeStep = WorkflowStep::where('document_id', $doc->id)
-                    ->where('status', 'Ditinjau')
+                    ->where('status', DocumentStatusEnum::DITINJAU)
                     ->orderBy('urutan')
                     ->first();
 

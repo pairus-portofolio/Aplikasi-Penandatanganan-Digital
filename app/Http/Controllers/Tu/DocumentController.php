@@ -10,14 +10,21 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
-use PhpOffice\PhpWord\IOFactory;
 use Illuminate\Support\Facades\DB;
 use App\Enums\RoleEnum;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\DocumentWorkflowNotification;
+use App\Enums\DocumentStatusEnum;
+use App\Services\WorkflowService;
 
 class DocumentController extends Controller
 {
+    protected $workflowService;
+
+    public function __construct(WorkflowService $workflowService)
+    {
+        $this->workflowService = $workflowService;
+    }
     // Menampilkan halaman upload surat beserta daftar user penandatangan
     public function create()
     {
@@ -61,7 +68,7 @@ class DocumentController extends Controller
                 'file_path'        => $filePath,
                 'kategori'         => $validated['kategori'],
                 'tanggal_surat'    => $validated['tanggal'],
-                'status'           => 'Ditinjau',
+                'status'           => DocumentStatusEnum::DITINJAU,
                 'id_user_uploader' => Auth::id(),
                 'id_client_app'    => 1,
             ]);
@@ -82,7 +89,7 @@ class DocumentController extends Controller
                     'document_id' => $document->id,
                     'user_id'     => $userId,
                     'urutan'      => $index + 1,
-                    'status'      => 'Ditinjau',
+                    'status'      => DocumentStatusEnum::DITINJAU,
                 ]);
             }
 
@@ -146,37 +153,21 @@ class DocumentController extends Controller
     }
 
     // Mengupdate status penandatanganan workflow oleh user
-   public function updateStatus(Request $request, $documentId, $stepId)
+    public function updateStatus(Request $request, $documentId, $stepId)
     {
-        $step = WorkflowStep::find($stepId);
-
-        if ($step->document_id !== $documentId) {
-            return redirect()->back()->withErrors('Langkah ini tidak valid.');
-        }
-
-        $step->status = 'signed';
-        $step->tanggal_aksi = now();
-        $step->save();
-
-        // Cek apakah semua step sudah ditandatangani
-        $allSigned = WorkflowStep::where('document_id', $documentId)
-                                ->where('status', '!=', 'signed')
-                                ->count() == 0;
-
-        // Update status dokumen jika semua sudah selesai
-        if ($allSigned) {
-            $document = Document::find($documentId);
-            $document->status = 'completed';
-            $document->save();
+        try {
+            
+            // Ini adalah endpoint untuk user melakukan aksi (paraf/ttd)
+            $this->workflowService->completeStep($documentId, DocumentStatusEnum::DIPARAF);
+            $this->workflowService->updateDocumentStatus($documentId);
 
             return redirect()
                 ->back()
-                ->with('success', 'Dokumen telah selesai ditandatangani semua.');
-        }
+                ->with('success', 'Status berhasil diperbarui.');
 
-        return redirect()
-            ->back()
-            ->with('success', 'Paraf berhasil dilakukan. Menunggu penandatangan berikutnya.');
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors($e->getMessage());
+        }
     }
 
     public function download(Document $document)

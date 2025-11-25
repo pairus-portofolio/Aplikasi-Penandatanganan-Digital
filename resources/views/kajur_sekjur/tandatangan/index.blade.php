@@ -48,6 +48,11 @@
     </table>
   </div>
 
+  <!-- Pagination Links -->
+  <div style="margin-top: 20px;">
+      {{ $daftarSurat->links('partials.pagination') }}
+  </div>
+
 @endsection
 
 @section('popup')
