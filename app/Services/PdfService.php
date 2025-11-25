@@ -8,15 +8,31 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use setasign\Fpdi\Fpdi;
 
+/**
+ * Service untuk mengelola operasi PDF.
+ * 
+ * Menangani proses stamping (penempelan) gambar paraf atau
+ * tanda tangan ke dalam file PDF menggunakan library FPDI.
+ * 
+ * @package App\Services
+ */
 class PdfService
 {
     /**
-     * Stamp the PDF with a signature or paraf image.
+     * Stamp gambar paraf atau tanda tangan ke dalam PDF.
+     * 
+     * Proses:
+     * 1. Validasi workflow step dan posisi
+     * 2. Ambil path gambar berdasarkan tipe (paraf/tandatangan)
+     * 3. Resolve path file PDF
+     * 4. Gunakan FPDI untuk stamp gambar ke halaman yang sesuai
+     * 5. Overwrite file PDF original
      *
-     * @param int $documentId
-     * @param int $userId
-     * @param string $type 'paraf' or 'tandatangan'
-     * @throws \Exception
+     * @param int $documentId ID dokumen
+     * @param int $userId ID user yang melakukan stamp
+     * @param string $type Tipe stamp: 'paraf' atau 'tandatangan'
+     * @return void
+     * @throws \Exception Jika posisi belum diatur, gambar tidak ada, atau PDF tidak ditemukan
      */
     public function stampPdf($documentId, $userId, $type)
     {

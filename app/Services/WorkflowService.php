@@ -11,10 +11,24 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\DocumentWorkflowNotification;
 
+/**
+ * Service untuk mengelola workflow dokumen.
+ * 
+ * Menangani validasi akses, update status workflow step,
+ * update status dokumen, dan pengiriman notifikasi email.
+ * 
+ * @package App\Services
+ */
 class WorkflowService
 {
     /**
-     * Check if the current user has access to process the document at the current step.
+     * Cek apakah user yang sedang login memiliki akses untuk memproses dokumen.
+     * 
+     * User memiliki akses jika workflow step yang aktif (status 'Ditinjau')
+     * dengan urutan terkecil adalah milik user tersebut.
+     *
+     * @param int $documentId ID dokumen
+     * @return bool True jika user memiliki akses, false jika tidak
      */
     public function checkAccess($documentId)
     {
@@ -31,9 +45,17 @@ class WorkflowService
     }
 
     /**
-     * Update the workflow step status for the current user.
+     * Tandai workflow step saat ini sebagai selesai.
+     * 
+     * Update status step menjadi 'Diparaf' atau 'Ditandatangani'
+     * dan set tanggal aksi.
+     *
+     * @param int $documentId ID dokumen
+     * @param string $status Status baru ('Diparaf' atau 'Ditandatangani')
+     * @return WorkflowStep Step yang sudah diupdate
+     * @throws \Exception Jika bukan giliran user atau step tidak ditemukan
      */
-    public function completeStep($documentId, $status = 'Diparaf') // Default to 'Diparaf' for now, can be 'Ditandatangani'
+    public function completeStep($documentId, $status = 'Diparaf')
     {
         $activeStep = WorkflowStep::where('document_id', $documentId)
             ->where('status', DocumentStatusEnum::DITINJAU)
@@ -59,7 +81,15 @@ class WorkflowService
     }
 
     /**
-     * Update the document status based on the progress of workflow steps.
+     * Update status dokumen berdasarkan progress workflow steps.
+     * 
+     * Logika:
+     * - Jika masih ada Kaprodi yang pending -> status 'Ditinjau'
+     * - Jika Kaprodi selesai tapi Kajur/Sekjur pending -> status 'Diparaf'
+     * - Jika semua selesai -> status 'Ditandatangani'
+     *
+     * @param int $documentId ID dokumen
+     * @return void
      */
     public function updateDocumentStatus($documentId)
     {
@@ -107,8 +137,15 @@ class WorkflowService
     }
 
     /**
-     * Process the next step in the workflow after completing the current step.
-     * Updates document status and sends email notifications.
+     * Proses step berikutnya dalam workflow setelah step saat ini selesai.
+     * 
+     * Menangani:
+     * 1. Update status dokumen berdasarkan step yang tersisa
+     * 2. Kirim email notifikasi ke user berikutnya (jika ada)
+     * 3. Kirim email completion ke uploader (jika workflow selesai)
+     *
+     * @param int $documentId ID dokumen
+     * @return void
      */
     public function processNextStep($documentId)
     {

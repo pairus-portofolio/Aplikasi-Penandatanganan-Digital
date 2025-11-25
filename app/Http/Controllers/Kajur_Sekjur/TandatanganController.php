@@ -7,40 +7,70 @@ use Illuminate\Http\Request;
 use App\Models\Document;
 use App\Models\WorkflowStep;
 use App\Http\Controllers\Dashboard\TableController;
-use App\Enums\RoleEnum;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\DocumentWorkflowNotification;
 use App\Services\WorkflowService;
 use App\Enums\DocumentStatusEnum;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
-use setasign\Fpdi\Fpdi;
 
+/**
+ * Controller untuk mengelola proses tanda tangan dokumen.
+ * 
+ * Menangani upload tanda tangan dengan verifikasi reCAPTCHA,
+ * penempatan tanda tangan pada PDF, dan submit tanda tangan
+ * ke dalam workflow dokumen.
+ * 
+ * @package App\Http\Controllers\Kajur_Sekjur
+ */
 class TandatanganController extends Controller
 {
+    /**
+     * Service untuk mengelola workflow dokumen.
+     *
+     * @var WorkflowService
+     */
     protected $workflowService;
+
+    /**
+     * Service untuk mengelola operasi PDF.
+     *
+     * @var \App\Services\PdfService
+     */
     protected $pdfService;
 
+    /**
+     * Inisialisasi controller dengan dependency injection.
+     *
+     * @param WorkflowService $workflowService Service untuk workflow
+     * @param \App\Services\PdfService $pdfService Service untuk PDF
+     */
     public function __construct(WorkflowService $workflowService, \App\Services\PdfService $pdfService)
     {
         $this->workflowService = $workflowService;
         $this->pdfService = $pdfService;
     }
 
-    // ======================================================
-    // 1. LIST TABEL
-    // ======================================================
+    /**
+     * Tampilkan halaman daftar dokumen yang perlu ditandatangani.
+     *
+     * @return \Illuminate\View\View
+     */
     public function index()
     {
         $daftarSurat = TableController::getData();
         return view('kajur_sekjur.tandatangan.index', compact('daftarSurat'));
     }
 
-    // ======================================================
-    // 2. HALAMAN DETAIL TTD
-    // ======================================================
+    /**
+     * Tampilkan halaman detail dokumen untuk proses tanda tangan.
+     * 
+     * Menampilkan PDF viewer dan sidebar untuk drag & drop tanda tangan.
+     * Jika user sudah pernah menempatkan tanda tangan, posisi akan dimuat kembali.
+     *
+     * @param int $id ID dokumen
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\View\View
+     */
     public function show($id)
     {
         $document = Document::findOrFail($id);
@@ -66,9 +96,16 @@ class TandatanganController extends Controller
         return view('kajur_sekjur.tandatangan-surat', compact('document', 'savedSignature'));
     }
 
-    // ======================================================
-    // 3. UPLOAD TANDA TANGAN (BARU)
-    // ======================================================
+    /**
+     * Upload gambar tanda tangan baru dengan verifikasi reCAPTCHA.
+     * 
+     * Menggantikan gambar tanda tangan lama jika sudah ada.
+     * File disimpan di storage/app/public/tandatangan.
+     * Memerlukan validasi Google reCAPTCHA sebelum upload.
+     *
+     * @param Request $request Request dengan file image dan g-recaptcha-response
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function uploadTandatangan(Request $request)
     {
         $request->validate([
@@ -126,9 +163,13 @@ class TandatanganController extends Controller
         }
     }
 
-    // ======================================================
-    // 4. HAPUS TANDA TANGAN (BARU)
-    // ======================================================
+    /**
+     * Hapus gambar tanda tangan user secara permanen.
+     * 
+     * Menghapus file dari storage dan reset path di database.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function deleteTandatangan()
     {
         try {
@@ -149,9 +190,16 @@ class TandatanganController extends Controller
         }
     }
 
-    // ======================================================
-    // 5. SIMPAN POSISI TANDA TANGAN (BARU)
-    // ======================================================
+    /**
+     * Simpan posisi tanda tangan yang ditempatkan user pada PDF.
+     * 
+     * Dipanggil via AJAX saat user drag & drop tanda tangan.
+     * Menyimpan koordinat X, Y, dan nomor halaman.
+     *
+     * @param Request $request Request dengan posisi_x, posisi_y, halaman
+     * @param int $id ID dokumen
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function saveTandatangan(Request $request, $id)
     {
         $request->validate([
@@ -182,9 +230,19 @@ class TandatanganController extends Controller
         return response()->json(["status" => "success"]);
     }
 
-    // ======================================================
-    // 6. SUBMIT TANDA TANGAN
-    // ======================================================
+    /**
+     * Submit tanda tangan ke dokumen dan lanjutkan workflow.
+     * 
+     * Proses:
+     * 1. Validasi akses dan posisi tanda tangan
+     * 2. Stamp tanda tangan ke PDF menggunakan PdfService
+     * 3. Update status workflow step
+     * 4. Proses step berikutnya (update status dokumen & kirim email)
+     *
+     * @param Request $request HTTP request
+     * @param int $documentId ID dokumen
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function submit(Request $request, $documentId)
     {
         if (!$this->workflowService->checkAccess($documentId)) {
@@ -221,8 +279,4 @@ class TandatanganController extends Controller
         }
     }
 
-    // ======================================================
-    // 7. PRIVATE: APPLY TTD TO PDF (FPDI)
-    // ======================================================
-    // Private method applyTandatanganToPdf removed as it is now handled by PdfService
 }
