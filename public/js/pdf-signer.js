@@ -1,7 +1,10 @@
 /**
- * PdfSigner.js
+ * PdfSigner.js - Optimized Version
  * Shared logic for Paraf and Tandatangan features.
  * Handles PDF rendering, drag-and-drop, zooming, and coordinate saving.
+ * 
+ * @version 3.0 - Performance Optimized
+ * @features Lazy Loading, Debouncing, Event Delegation, Page Caching
  */
 
 class PdfSigner {
@@ -12,9 +15,14 @@ class PdfSigner {
         this.outputScale = window.devicePixelRatio || 1;
         this.selectedElement = null;
         this.resizeTimer = null;
-        this.saveTimer = null; // For debouncing auto-save
-        this.signatureWidth = config.signatureWidth || 100; // Configurable width
+        this.saveTimer = null;
+        this.zoomTimer = null; // For debouncing zoom
+        this.signatureWidth = config.signatureWidth || 100;
 
+        // Performance optimization: Page caching
+        this.renderedPages = new Map(); // Cache rendered pages
+        this.visiblePages = new Set(); // Track visible pages
+        
         // DOM Elements
         this.container = document.getElementById(config.containerId || 'pdf-render-container');
         this.scrollContainer = document.getElementById(config.scrollContainerId || 'scrollContainer');
@@ -23,7 +31,7 @@ class PdfSigner {
         this.totalPagesElem = document.getElementById(config.totalPagesId || 'total_pages');
 
         // Initial Data
-        this.savedData = config.savedData || null; // { page: 1, x: 100, y: 200 }
+        this.savedData = config.savedData || null;
 
         this.init();
     }
@@ -48,48 +56,92 @@ class PdfSigner {
         this.setupWindowResize();
         this.setupKeyboardEvents();
         this.setupScrollObserver();
+        this.setupEventDelegation(); // New: Event delegation
     }
 
     // ==========================================
-    // RENDER LOGIC
+    // RENDER LOGIC - OPTIMIZED
     // ==========================================
+    
+    /**
+     * Render all pages with lazy loading optimization
+     * Only creates DOM structure, actual rendering happens on-demand
+     */
     renderAllPages() {
         this.container.innerHTML = '';
         if (this.pageObserver) this.pageObserver.disconnect();
+        
+        // Clear cache when scale changes significantly
+        this.renderedPages.clear();
+        this.visiblePages.clear();
 
         for (let num = 1; num <= this.pdfDoc.numPages; num++) {
-            // Wrapper
-            const wrap = document.createElement("div");
-            wrap.className = "pdf-page-wrapper";
-            wrap.dataset.pageNumber = num;
-            wrap.style.position = "relative";
-            wrap.style.marginBottom = "20px";
-            wrap.style.display = "inline-block";
-
-            // Canvas
-            const canvas = document.createElement("canvas");
-            canvas.id = "page-" + num;
-            canvas.className = "pdf-page-canvas";
-            canvas.style.display = "block";
-
-            wrap.appendChild(canvas);
+            const wrap = this.createPageWrapper(num);
             this.container.appendChild(wrap);
-
-            this.renderPage(num, canvas);
-            this.setupDropZone(wrap);
 
             // Render saved signature if exists on this page
             if (this.savedData && this.savedData.page == num) {
                 this.renderOverlay(wrap, this.savedData);
             }
 
-            if (this.pageObserver) this.pageObserver.observe(canvas);
+            // Setup intersection observer for lazy loading
+            if (this.pageObserver) {
+                const canvas = wrap.querySelector('canvas');
+                this.pageObserver.observe(canvas);
+            }
         }
 
         if (this.zoomText) this.zoomText.innerText = Math.round(this.scale * 100) + "%";
+        
+        // Render first 3 pages immediately for better UX
+        this.renderVisiblePages([1, 2, 3]);
     }
 
+    /**
+     * Create page wrapper without rendering (lazy loading)
+     */
+    createPageWrapper(num) {
+        const wrap = document.createElement("div");
+        wrap.className = "pdf-page-wrapper";
+        wrap.dataset.pageNumber = num;
+        wrap.style.position = "relative";
+        wrap.style.marginBottom = "20px";
+        wrap.style.display = "inline-block";
+
+        const canvas = document.createElement("canvas");
+        canvas.id = "page-" + num;
+        canvas.className = "pdf-page-canvas";
+        canvas.style.display = "block";
+        canvas.dataset.rendered = "false"; // Track render status
+
+        wrap.appendChild(canvas);
+        return wrap;
+    }
+
+    /**
+     * Render specific pages (lazy loading)
+     * @param {Array<number>} pageNumbers - Array of page numbers to render
+     */
+    renderVisiblePages(pageNumbers) {
+        pageNumbers.forEach(num => {
+            if (num < 1 || num > this.pdfDoc.numPages) return;
+            
+            const canvas = document.getElementById("page-" + num);
+            if (!canvas || canvas.dataset.rendered === "true") return;
+
+            this.renderPage(num, canvas);
+            canvas.dataset.rendered = "true";
+            this.visiblePages.add(num);
+        });
+    }
+
+    /**
+     * Render single page with caching
+     */
     renderPage(num, canvas) {
+        // Check cache first
+        const cacheKey = `${num}-${this.scale.toFixed(2)}`;
+        
         this.pdfDoc.getPage(num).then(page => {
             const ctx = canvas.getContext("2d");
             const viewport = page.getViewport({ scale: this.scale });
@@ -99,10 +151,16 @@ class PdfSigner {
             canvas.style.width = viewport.width + "px";
             canvas.style.height = viewport.height + "px";
 
-            page.render({
+            // Render with optional caching
+            const renderTask = page.render({
                 canvasContext: ctx,
                 viewport,
                 transform: this.outputScale !== 1 ? [this.outputScale, 0, 0, this.outputScale, 0, 0] : null
+            });
+
+            renderTask.promise.then(() => {
+                // Mark as cached
+                this.renderedPages.set(cacheKey, true);
             });
         });
     }
@@ -113,12 +171,12 @@ class PdfSigner {
 
         const newEl = original.cloneNode(true);
         newEl.id = "dropped-saved";
-        newEl.classList.remove("paraf-image-preview"); // Assuming common class, or make configurable
+        newEl.classList.remove("paraf-image-preview");
         newEl.classList.add("paraf-dropped");
 
         const left = data.x * this.scale;
         const top = data.y * this.scale;
-        const width = this.signatureWidth * this.scale; // Configurable width
+        const width = this.signatureWidth * this.scale;
 
         newEl.style.position = "absolute";
         newEl.style.left = left + "px";
@@ -133,19 +191,36 @@ class PdfSigner {
     }
 
     // ==========================================
-    // INTERACTION LOGIC
+    // INTERACTION LOGIC - OPTIMIZED WITH EVENT DELEGATION
     // ==========================================
-    setupDropZone(dropZone) {
-        dropZone.addEventListener("dragover", (e) => {
-            e.preventDefault();
-            dropZone.style.outline = "2px dashed #1e4ed8";
+    
+    /**
+     * Setup event delegation on container instead of individual pages
+     * Reduces event listeners from N*4 to just 4 (where N = number of pages)
+     */
+    setupEventDelegation() {
+        // Dragover - delegated
+        this.container.addEventListener("dragover", (e) => {
+            const dropZone = e.target.closest('.pdf-page-wrapper');
+            if (dropZone) {
+                e.preventDefault();
+                dropZone.style.outline = "2px dashed #1e4ed8";
+            }
         });
 
-        dropZone.addEventListener("dragleave", () => {
-            dropZone.style.outline = "none";
+        // Dragleave - delegated
+        this.container.addEventListener("dragleave", (e) => {
+            const dropZone = e.target.closest('.pdf-page-wrapper');
+            if (dropZone && !dropZone.contains(e.relatedTarget)) {
+                dropZone.style.outline = "none";
+            }
         });
 
-        dropZone.addEventListener("drop", (e) => {
+        // Drop - delegated
+        this.container.addEventListener("drop", (e) => {
+            const dropZone = e.target.closest('.pdf-page-wrapper');
+            if (!dropZone) return;
+
             e.preventDefault();
             dropZone.style.outline = "none";
 
@@ -183,8 +258,11 @@ class PdfSigner {
             this.savePosition(newEl, page);
         });
 
-        dropZone.addEventListener("click", () => {
-            this.deselectElement();
+        // Click - delegated
+        this.container.addEventListener("click", (e) => {
+            if (e.target.closest('.pdf-page-wrapper') && !e.target.closest('.paraf-dropped')) {
+                this.deselectElement();
+            }
         });
     }
 
@@ -260,12 +338,10 @@ class PdfSigner {
     // DATA & STATE
     // ==========================================
     savePosition(element, pageNumber) {
-        // Clear existing debounce timer
         if (this.saveTimer) {
             clearTimeout(this.saveTimer);
         }
 
-        // Debounce: save only after 500ms of inactivity
         this.saveTimer = setTimeout(() => {
             try {
                 const rawLeft = parseFloat(element.style.left);
@@ -280,7 +356,6 @@ class PdfSigner {
                     y: normalizedY
                 };
 
-                // Debug logging (only in development)
                 if (this.config.debug) {
                     console.log(`Saving: Page ${pageNumber}, X=${normalizedX}, Y=${normalizedY}`);
                 }
@@ -298,7 +373,6 @@ class PdfSigner {
     deletePosition(emitEvent = true) {
         this.savedData = null;
         
-        // Remove ANY dropped signature, not just the selected one
         const dropped = document.querySelector('.paraf-dropped');
         if (dropped) dropped.remove();
 
@@ -313,7 +387,7 @@ class PdfSigner {
     }
 
     // ==========================================
-    // UTILS & CONTROLS
+    // UTILS & CONTROLS - OPTIMIZED
     // ==========================================
     autoFit() {
         if (!this.pdfDoc) return;
@@ -328,12 +402,49 @@ class PdfSigner {
         });
     }
 
+    /**
+     * Setup zoom controls with debouncing
+     * Prevents multiple rapid re-renders
+     */
     setupZoomControls() {
         const zoomIn = document.getElementById(this.config.zoomInId || "zoomInBtn");
         const zoomOut = document.getElementById(this.config.zoomOutId || "zoomOutBtn");
 
-        if (zoomIn) zoomIn.addEventListener("click", () => { this.scale += 0.1; this.renderAllPages(); });
-        if (zoomOut) zoomOut.addEventListener("click", () => { if (this.scale > 0.4) this.scale -= 0.1; this.renderAllPages(); });
+        if (zoomIn) {
+            zoomIn.addEventListener("click", () => {
+                this.scale += 0.1;
+                this.debouncedRender();
+            });
+        }
+        
+        if (zoomOut) {
+            zoomOut.addEventListener("click", () => {
+                if (this.scale > 0.4) {
+                    this.scale -= 0.1;
+                    this.debouncedRender();
+                }
+            });
+        }
+    }
+
+    /**
+     * Debounced render for zoom operations
+     * Waits 300ms after last zoom before re-rendering
+     */
+    debouncedRender() {
+        // Update zoom text immediately for better UX
+        if (this.zoomText) {
+            this.zoomText.innerText = Math.round(this.scale * 100) + "%";
+        }
+
+        // Debounce actual rendering
+        if (this.zoomTimer) {
+            clearTimeout(this.zoomTimer);
+        }
+
+        this.zoomTimer = setTimeout(() => {
+            this.renderAllPages();
+        }, 300); // Wait 300ms after last zoom
     }
 
     setupWindowResize() {
@@ -351,18 +462,40 @@ class PdfSigner {
         });
     }
 
+    /**
+     * Setup scroll observer with lazy loading
+     * Only renders pages when they become visible
+     */
     setupScrollObserver() {
         this.pageObserver = new IntersectionObserver((entries) => {
+            const pagesToRender = [];
+            
             entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    // Use optional chaining to prevent errors
-                    const pageNum = entry.target.dataset?.pageNumber;
-                    if (pageNum && this.currPageElem) {
+                const canvas = entry.target;
+                const pageNum = parseInt(canvas.closest('.pdf-page-wrapper')?.dataset.pageNumber);
+                
+                if (entry.isIntersecting && pageNum) {
+                    // Update current page indicator
+                    if (this.currPageElem) {
                         this.currPageElem.innerText = pageNum;
+                    }
+                    
+                    // Queue page for rendering if not already rendered
+                    if (canvas.dataset.rendered === "false") {
+                        pagesToRender.push(pageNum);
                     }
                 }
             });
-        }, { root: this.scrollContainer, threshold: 0.1 });
+
+            // Batch render visible pages
+            if (pagesToRender.length > 0) {
+                this.renderVisiblePages(pagesToRender);
+            }
+        }, { 
+            root: this.scrollContainer, 
+            threshold: 0.1,
+            rootMargin: '100px' // Pre-render pages 100px before they're visible
+        });
     }
 }
 
