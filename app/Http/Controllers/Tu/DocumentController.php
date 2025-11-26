@@ -17,6 +17,8 @@ use App\Mail\DocumentWorkflowNotification;
 use App\Enums\DocumentStatusEnum;
 use App\Services\WorkflowService;
 
+use App\Services\WorkflowService;
+
 class DocumentController extends Controller
 {
     protected $workflowService;
