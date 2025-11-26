@@ -51,16 +51,49 @@ tbody tr:nth-child(odd) {
 .biru   {background:#e0f2fe;color:#0369a1;}
 .hijau  {background:#dcfce7;color:#15803d;}
 
-/* Tombol aksi "Lihat" */
+/* Tombol aksi "Lihat" (Legacy - bisa dihapus jika tidak dipakai lagi) */
 .aksi {
   color:#1d4ed8;
   font-weight:700;
   text-decoration:none;
 }
 
-/* Hover tombol aksi */
 .aksi:hover {
   text-decoration:underline;
+}
+
+/* New Action Buttons */
+.btn-action {
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.btn-primary {
+  background: linear-gradient(90deg, var(--blue-cap-1), var(--blue-cap-2));
+  color: white;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
+}
+
+.btn-secondary {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.btn-secondary:hover {
+  background: #e2e8f0;
+  color: #1e293b;
 }
 
 /* Footer halaman */

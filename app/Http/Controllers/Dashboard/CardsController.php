@@ -20,14 +20,15 @@ class CardsController extends Controller
         }
         $roleName = $user->role->nama_role ?? '';
 
-        // Ambil dokumen yang boleh dilihat user (sudah Collection!)
-        $docs = TableController::getBaseQueryByRole();
+        // Ambil dokumen yang harus dikerjakan user (urutan aktif)
+        $docs = TableController::getActiveTasksQueryByRole();
 
         // =============================
         // CARD UNTUK ROLE TU
         // =============================
+        // Fix: Gunakan total() karena $docs untuk TU adalah Paginator
         $suratKeluarCount = ($roleName === RoleEnum::TU)
-            ? $docs->count()
+            ? $docs->total()
             : 0;
 
         // =============================
