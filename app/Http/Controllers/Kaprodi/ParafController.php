@@ -10,37 +10,69 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Dashboard\TableController;
-use setasign\Fpdi\Fpdi;
-use App\Enums\RoleEnum;
-use App\Enums\DocumentStatusEnum;
 use App\Services\WorkflowService;
+use App\Enums\DocumentStatusEnum;
 
+/**
+ * Controller untuk mengelola proses paraf dokumen.
+ * 
+ * Menangani upload gambar paraf, penempatan paraf pada PDF,
+ * dan submit paraf ke dalam workflow dokumen.
+ * 
+ * @package App\Http\Controllers\Kaprodi
+ */
 class ParafController extends Controller
 {
+    /**
+     * Service untuk mengelola workflow dokumen.
+     *
+     * @var WorkflowService
+     */
     protected $workflowService;
 
-    public function __construct(WorkflowService $workflowService)
+    /**
+     * Service untuk mengelola operasi PDF.
+     *
+     * @var \App\Services\PdfService
+     */
+    protected $pdfService;
+
+    /**
+     * Inisialisasi controller dengan dependency injection.
+     *
+     * @param WorkflowService $workflowService Service untuk workflow
+     * @param \App\Services\PdfService $pdfService Service untuk PDF
+     */
+    public function __construct(WorkflowService $workflowService, \App\Services\PdfService $pdfService)
     {
         $this->workflowService = $workflowService;
+        $this->pdfService = $pdfService;
     }
 
-    // =====================================================================
-    // 1. Halaman Tabel Daftar Surat
-    // =====================================================================
+    /**
+     * Tampilkan halaman daftar dokumen yang perlu diparaf.
+     *
+     * @return \Illuminate\View\View
+     */
     public function index()
     {
         $daftarSurat = TableController::getData();
         return view('kaprodi.paraf.index', compact('daftarSurat'));
     }
 
-    // =====================================================================
-    // 2. Halaman Detail Dokumen (Tempat Paraf PDF)
-    // =====================================================================
+    /**
+     * Tampilkan halaman detail dokumen untuk proses paraf.
+     * 
+     * Menampilkan PDF viewer dan sidebar untuk drag & drop paraf.
+     * Jika user sudah pernah menempatkan paraf, posisi akan dimuat kembali.
+     *
+     * @param int $id ID dokumen
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\View\View
+     */
     public function show($id)
     {
         $document = Document::findOrFail($id);
 
-        // Akses workflow (jangan dihapus)
         if (!$this->workflowService->checkAccess($document->id)) {
             return redirect()->route('kaprodi.paraf.index')
                 ->withErrors('Belum giliran Anda untuk memparaf dokumen ini.');
@@ -62,9 +94,15 @@ class ParafController extends Controller
         return view('kaprodi.paraf-surat', compact('document', 'savedParaf'));
     }
 
-    // =====================================================================
-    // 3. Upload Paraf Image (BARU)
-    // =====================================================================
+    /**
+     * Upload gambar paraf baru untuk user yang sedang login.
+     * 
+     * Menggantikan gambar paraf lama jika sudah ada.
+     * File disimpan di storage/app/public/paraf.
+     *
+     * @param Request $request Request dengan file image
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function uploadParaf(Request $request)
     {
         // Validasi standar
@@ -126,9 +164,13 @@ class ParafController extends Controller
         }
     }
 
-    // =====================================================================
-    // 4. Hapus Paraf Permanen (BARU)
-    // =====================================================================
+    /**
+     * Hapus gambar paraf user secara permanen.
+     * 
+     * Menghapus file dari storage dan reset path di database.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function deleteParaf()
     {
         try {
@@ -155,12 +197,23 @@ class ParafController extends Controller
         }
     }
 
-    // =====================================================================
-    // 5. Submit Paraf (Workflow - JANGAN DIUBAH)
-    // =====================================================================
+    /**
+     * Submit paraf ke dokumen dan lanjutkan workflow.
+     * 
+     * Proses:
+     * 1. Validasi akses dan posisi paraf
+     * 2. Stamp paraf ke PDF menggunakan PdfService
+     * 3. Update status workflow step
+     * 4. Proses step berikutnya (update status dokumen & kirim email)
+     *
+     * @param Request $request HTTP request
+     * @param int $documentId ID dokumen
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function submit(Request $request, $documentId)
     {
-        // VALIDASI DULU SEBELUM PROSES PDF (Fix Race Condition)
+        // 1. VALIDASI DULU SEBELUM PROSES PDF
+        // Menggunakan Service Check Access agar konsisten
         if (!$this->workflowService->checkAccess($documentId)) {
             return back()->withErrors('Bukan giliran Anda untuk memparaf dokumen ini.');
         }
@@ -170,18 +223,20 @@ class ParafController extends Controller
             ->first();
 
         // VALIDASI: Pastikan user sudah menempatkan paraf (posisi_x, posisi_y, halaman tidak null)
+        // [PENTING] Validasi ini dari branch bawah, harus dipertahankan agar FPDI tidak error
         if (is_null($activeStep->posisi_x) || is_null($activeStep->posisi_y) || !$activeStep->halaman) {
             return back()->withErrors('Anda belum menempatkan paraf pada dokumen. Silakan drag & drop paraf Anda ke dokumen terlebih dahulu.');
         }
 
+        // 2. PROSES PDF
         try {
             // BARU PROSES PDF SETELAH VALIDASI
-            $this->applyParafToPdf($documentId);
+            $this->pdfService->stampPdf($documentId, Auth::id(), 'paraf');
 
-            // Update workflow step & Document Status via Service
+            // 3. UPDATE STEP SAAT INI DAN PROSES WORKFLOW SELANJUTNYA
             $this->workflowService->completeStep($documentId, DocumentStatusEnum::DIPARAF);
-            $this->workflowService->updateDocumentStatus($documentId);
-
+            $this->workflowService->processNextStep($documentId);
+            
             Log::info('Document paraf submitted', ['document_id' => $documentId, 'user_id' => Auth::id()]);
 
             return redirect()->route('kaprodi.paraf.index')
@@ -189,16 +244,26 @@ class ParafController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Paraf submission failed', ['document_id' => $documentId, 'user_id' => Auth::id(), 'error' => $e->getMessage()]);
-            return back()->withErrors('Gagal memproses: ' . $e->getMessage());
+            return back()->withErrors('Gagal memproses PDF: ' . $e->getMessage());
         }
     }
 
+    /**
+     * Simpan posisi paraf yang ditempatkan user pada PDF.
+     * 
+     * Dipanggil via AJAX saat user drag & drop paraf.
+     * Menyimpan koordinat X, Y, dan nomor halaman.
+     *
+     * @param Request $request Request dengan posisi_x, posisi_y, halaman
+     * @param int $id ID dokumen
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function saveParaf(Request $request, $id)
     {
         $request->validate([
-            'posisi_x' => 'required|numeric|min:0|max:1000',
-            'posisi_y' => 'required|numeric|min:0|max:1500',
-            'halaman'  => 'required|integer|min:1'
+            'posisi_x' => 'nullable|numeric|min:0|max:2000',
+            'posisi_y' => 'nullable|numeric|min:0|max:3000',
+            'halaman'  => 'nullable|integer|min:1'
         ]);
 
         $workflowStep = WorkflowStep::where('document_id', $id)
@@ -224,94 +289,4 @@ class ParafController extends Controller
         return response()->json(["status" => "success"]);
     }
 
-    private function applyParafToPdf($documentId)
-    {
-        $document = Document::findOrFail($documentId);
-
-        // 1. Check workflow step dari user ini
-        $workflow = WorkflowStep::where('document_id', $documentId)
-            ->where('user_id', auth()->id())
-            ->first();
-
-        if (!$workflow || is_null($workflow->posisi_x) ||
-            is_null($workflow->posisi_y) || !$workflow->halaman) {
-            throw new \Exception("Data posisi paraf tidak lengkap.");
-        }
-
-        $user = auth()->user();
-
-        if (!$user->img_paraf_path) {
-            throw new \Exception("User belum mengatur gambar paraf.");
-        }
-
-        // ============================================================
-        // 2. Tentukan PATH file PDF asli (bisa private/public/app)
-        // ============================================================
-
-        $dbPath = $document->file_path;
-        $sourcePath = null;
-
-        $pathPrivate = storage_path('app/private/' . $dbPath);
-        $pathPublic  = storage_path('app/public/' . $dbPath);
-        $pathApp     = storage_path('app/' . $dbPath);
-
-        if (file_exists($pathPrivate)) {
-            $sourcePath = $pathPrivate;
-        } elseif (file_exists($pathPublic)) {
-            $sourcePath = $pathPublic;
-        } elseif (file_exists($pathApp)) {
-            $sourcePath = $pathApp;
-        } else {
-            throw new \Exception("File fisik dokumen tidak ditemukan.");
-        }
-
-        // 3. Ambil gambar paraf user
-        $parafPath = storage_path('app/public/' . $user->img_paraf_path);
-
-        if (!file_exists($parafPath)) {
-            throw new \Exception("File gambar paraf tidak ditemukan.");
-        }
-
-        // ============================================================
-        // 4. PROSES FPDI — PARAF + OVERWRITE FILE LAMA
-        // ============================================================
-
-        try {
-            // FIX: Gunakan satuan 'pt' (points) agar konsisten dengan TandatanganController
-            $pdf = new \setasign\Fpdi\Fpdi('P', 'pt');
-            $pageCount = $pdf->setSourceFile($sourcePath);
-
-            for ($i = 1; $i <= $pageCount; $i++) {
-
-                $template = $pdf->importPage($i);
-                $size = $pdf->getTemplateSize($template);
-
-                $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
-                $pdf->useTemplate($template);
-
-                // Tambah paraf hanya pada halaman yang ditentukan user
-                if ($i == $workflow->halaman) {
-
-                    // Karena PDF sudah dalam 'pt', tidak perlu konversi * 0.352778
-                    $x = $workflow->posisi_x;
-                    $y = $workflow->posisi_y;
-                    
-                    // Lebar paraf (misal 100px di frontend ~= 100pt di PDF)
-                    $width = 100;
-
-                    $pdf->Image(
-                        $parafPath,
-                        $x,
-                        $y,
-                        $width
-                    );
-                }
-            }
-
-            $pdf->Output($sourcePath, 'F');
-
-        } catch (\Exception $e) {
-            throw new \Exception("Gagal memproses PDF: " . $e->getMessage());
-        }
-    }
 }

@@ -116,6 +116,7 @@
     </script>
 
     {{-- 3. Panggil Script yang dibuat --}}
+    <script src="{{ asset('js/pdf-signer.js') }}"></script>
     <script src="{{ asset('js/kajur_sekjur/tandatangan.js') }}"></script>
     <script src="{{ asset('js/kajur_sekjur/captcha.js') }}"></script>
 

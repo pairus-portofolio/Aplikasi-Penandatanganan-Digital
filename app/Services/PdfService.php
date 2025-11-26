@@ -4,46 +4,85 @@ namespace App\Services;
 
 use App\Models\Document;
 use App\Models\WorkflowStep;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use setasign\Fpdi\Fpdi;
 
+/**
+ * Service untuk mengelola operasi PDF.
+ * 
+ * Menangani proses stamping (penempelan) gambar paraf atau
+ * tanda tangan ke dalam file PDF menggunakan library FPDI.
+ * 
+ * @package App\Services
+ */
 class PdfService
 {
-    public function applySignature($documentId, $userId)
+    /**
+     * Stamp gambar paraf atau tanda tangan ke dalam PDF.
+     * 
+     * Proses:
+     * 1. Validasi workflow step dan posisi
+     * 2. Ambil path gambar berdasarkan tipe (paraf/tandatangan)
+     * 3. Resolve path file PDF
+     * 4. Gunakan FPDI untuk stamp gambar ke halaman yang sesuai
+     * 5. Overwrite file PDF original
+     *
+     * @param int $documentId ID dokumen
+     * @param int $userId ID user yang melakukan stamp
+     * @param string $type Tipe stamp: 'paraf' atau 'tandatangan'
+     * @return void
+     * @throws \Exception Jika posisi belum diatur, gambar tidak ada, atau PDF tidak ditemukan
+     */
+    public function stampPdf($documentId, $userId, $type)
     {
         $document = Document::findOrFail($documentId);
+        $user = Auth::user(); // Or find by $userId if needed, but usually Auth::user() is safe here
+
+        // 1. Get Workflow Step
         $workflow = WorkflowStep::where('document_id', $documentId)
             ->where('user_id', $userId)
             ->first();
 
         if (!$workflow || is_null($workflow->posisi_x) || is_null($workflow->posisi_y) || !$workflow->halaman) {
-            return; // No signature position set, skip
+            throw new \Exception("Posisi $type belum diatur.");
         }
 
-        $user = $workflow->user; // Get user from workflow relation
-        if (!$user->img_paraf_path) {
-            throw new \Exception("User belum mengatur gambar paraf.");
+        // 2. Get Image Path based on Type
+        $imagePath = null;
+        if ($type === 'paraf') {
+            $imagePath = $user->img_paraf_path;
+        } elseif ($type === 'tandatangan') {
+            $imagePath = $user->img_ttd_path;
+        } else {
+            throw new \Exception("Tipe stamp tidak valid.");
         }
 
-        // 1. Find Source File
+        if (!$imagePath) {
+            throw new \Exception("Anda belum mengupload gambar $type.");
+        }
+
+        $fullImagePath = storage_path('app/public/' . $imagePath);
+        if (!file_exists($fullImagePath)) {
+            throw new \Exception("File gambar $type tidak ditemukan.");
+        }
+
+        // 3. Resolve PDF Source Path
         $dbPath = $document->file_path;
-        $sourcePath = $this->resolveFilePath($dbPath);
+        $sourcePath = null;
+        $pathPrivate = storage_path('app/private/' . $dbPath);
+        $pathPublic  = storage_path('app/public/' . $dbPath);
+        $pathApp     = storage_path('app/' . $dbPath);
 
-        // 2. Find Signature Image
-        $parafPath = storage_path('app/public/' . $user->img_paraf_path);
-        if (!file_exists($parafPath)) {
-            throw new \Exception("File gambar paraf tidak ditemukan.");
-        }
+        if (file_exists($pathPrivate)) $sourcePath = $pathPrivate;
+        elseif (file_exists($pathPublic)) $sourcePath = $pathPublic;
+        elseif (file_exists($pathApp)) $sourcePath = $pathApp;
+        else throw new \Exception("File fisik dokumen tidak ditemukan.");
 
-        // 3. Process FPDI
-        $outputDir = storage_path('app/public/paraf_output');
-        if (!is_dir($outputDir)) mkdir($outputDir, 0755, true);
-
-        $newFileName = 'paraf_output/' . $documentId . '_' . time() . '.pdf';
-        $outputFile = storage_path('app/public/' . $newFileName);
-
+        // 4. Process FPDI
         try {
-            $pdf = new Fpdi();
+            // Use 'pt' (points) for consistency with frontend coordinates
+            $pdf = new Fpdi('P', 'pt');
             $pageCount = $pdf->setSourceFile($sourcePath);
 
             for ($i = 1; $i <= $pageCount; $i++) {
@@ -53,39 +92,23 @@ class PdfService
                 $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
                 $pdf->useTemplate($template);
 
+                // Stamp on the correct page
                 if ($i == $workflow->halaman) {
-                    $x_mm = $workflow->posisi_x * 0.352778;
-                    $y_mm = $workflow->posisi_y * 0.352778;
-                    $lebar_mm = 100 * 0.352778;
+                    $x = $workflow->posisi_x;
+                    $y = $workflow->posisi_y;
+                    
+                    // Default width 100pt (same as frontend 100px assumption)
+                    $width = 100;
 
-                    $pdf->Image($parafPath, $x_mm, $y_mm, $lebar_mm);
+                    $pdf->Image($fullImagePath, $x, $y, $width);
                 }
             }
 
-            $pdf->Output($outputFile, 'F');
-
-            // Update document path to the new file
-            $document->update(['file_path' => $newFileName]);
+            // Overwrite original file
+            $pdf->Output($sourcePath, 'F');
 
         } catch (\Exception $e) {
             throw new \Exception("Gagal memproses PDF: " . $e->getMessage());
         }
-    }
-
-    private function resolveFilePath($relativePath)
-    {
-        $paths = [
-            storage_path('app/private/' . $relativePath),
-            storage_path('app/public/' . $relativePath),
-            storage_path('app/' . $relativePath),
-        ];
-
-        foreach ($paths as $path) {
-            if (file_exists($path)) {
-                return $path;
-            }
-        }
-
-        throw new \Exception("File fisik surat tidak ditemukan.");
     }
 }

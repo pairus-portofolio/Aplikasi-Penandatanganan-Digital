@@ -12,29 +12,65 @@ use App\Enums\DocumentStatusEnum;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
-use setasign\Fpdi\Fpdi;
+use Illuminate\Support\Facades\Http;
 
+/**
+ * Controller untuk mengelola proses tanda tangan dokumen.
+ * 
+ * Menangani upload tanda tangan dengan verifikasi reCAPTCHA,
+ * penempatan tanda tangan pada PDF, dan submit tanda tangan
+ * ke dalam workflow dokumen.
+ * 
+ * @package App\Http\Controllers\Kajur_Sekjur
+ */
 class TandatanganController extends Controller
 {
+    /**
+     * Service untuk mengelola workflow dokumen.
+     *
+     * @var WorkflowService
+     */
     protected $workflowService;
 
-    public function __construct(WorkflowService $workflowService)
+    /**
+     * Service untuk mengelola operasi PDF.
+     *
+     * @var \App\Services\PdfService
+     */
+    protected $pdfService;
+
+    /**
+     * Inisialisasi controller dengan dependency injection.
+     *
+     * @param WorkflowService $workflowService Service untuk workflow
+     * @param \App\Services\PdfService $pdfService Service untuk PDF
+     */
+    public function __construct(WorkflowService $workflowService, \App\Services\PdfService $pdfService)
     {
         $this->workflowService = $workflowService;
+        $this->pdfService = $pdfService;
     }
 
-    // ======================================================
-    // 1. LIST TABEL
-    // ======================================================
+    /**
+     * Tampilkan halaman daftar dokumen yang perlu ditandatangani.
+     *
+     * @return \Illuminate\View\View
+     */
     public function index()
     {
         $daftarSurat = TableController::getData();
         return view('kajur_sekjur.tandatangan.index', compact('daftarSurat'));
     }
 
-    // ======================================================
-    // 2. HALAMAN DETAIL TTD
-    // ======================================================
+    /**
+     * Tampilkan halaman detail dokumen untuk proses tanda tangan.
+     * 
+     * Menampilkan PDF viewer dan sidebar untuk drag & drop tanda tangan.
+     * Jika user sudah pernah menempatkan tanda tangan, posisi akan dimuat kembali.
+     *
+     * @param int $id ID dokumen
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\View\View
+     */
     public function show($id)
     {
         $document = Document::findOrFail($id);
@@ -60,14 +96,33 @@ class TandatanganController extends Controller
         return view('kajur_sekjur.tandatangan-surat', compact('document', 'savedSignature'));
     }
 
-    // ======================================================
-    // 3. UPLOAD TANDA TANGAN (BARU)
-    // ======================================================
+    /**
+     * Upload gambar tanda tangan baru dengan verifikasi reCAPTCHA.
+     * 
+     * Menggantikan gambar tanda tangan lama jika sudah ada.
+     * File disimpan di storage/app/public/tandatangan.
+     * Memerlukan validasi Google reCAPTCHA sebelum upload.
+     *
+     * @param Request $request Request dengan file image dan g-recaptcha-response
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function uploadTandatangan(Request $request)
     {
         $request->validate([
             'image' => 'required|image|mimes:png,jpg,jpeg|max:2048',
+            'g-recaptcha-response' => 'required',
         ]);
+
+        // VERIFIKASI RECAPTCHA KE GOOGLE
+        $response = Http::asForm()->post('https://www.google.com/recaptcha/api/siteverify', [
+            'secret' => env('RECAPTCHA_SECRET_KEY'),
+            'response' => $request->input('g-recaptcha-response'),
+            'remoteip' => $request->ip(),
+        ]);
+
+        if (!$response->json()['success']) {
+            return response()->json(['status' => 'error', 'message' => 'Validasi Captcha Gagal. Silakan coba lagi.'], 400);
+        }
 
         if (!$request->hasFile('image')) {
             return response()->json(['status' => 'error', 'message' => 'File tidak terbaca.'], 400);
@@ -108,9 +163,13 @@ class TandatanganController extends Controller
         }
     }
 
-    // ======================================================
-    // 4. HAPUS TANDA TANGAN (BARU)
-    // ======================================================
+    /**
+     * Hapus gambar tanda tangan user secara permanen.
+     * 
+     * Menghapus file dari storage dan reset path di database.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function deleteTandatangan()
     {
         try {
@@ -131,15 +190,22 @@ class TandatanganController extends Controller
         }
     }
 
-    // ======================================================
-    // 5. SIMPAN POSISI TANDA TANGAN (BARU)
-    // ======================================================
+    /**
+     * Simpan posisi tanda tangan yang ditempatkan user pada PDF.
+     * 
+     * Dipanggil via AJAX saat user drag & drop tanda tangan.
+     * Menyimpan koordinat X, Y, dan nomor halaman.
+     *
+     * @param Request $request Request dengan posisi_x, posisi_y, halaman
+     * @param int $id ID dokumen
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function saveTandatangan(Request $request, $id)
     {
         $request->validate([
-            'posisi_x' => 'required|numeric',
-            'posisi_y' => 'required|numeric',
-            'halaman'  => 'required|integer|min:1'
+            'posisi_x' => 'nullable|numeric|min:0|max:2000',
+            'posisi_y' => 'nullable|numeric|min:0|max:3000',
+            'halaman'  => 'nullable|integer|min:1'
         ]);
 
         $workflowStep = WorkflowStep::where('document_id', $id)
@@ -164,9 +230,19 @@ class TandatanganController extends Controller
         return response()->json(["status" => "success"]);
     }
 
-    // ======================================================
-    // 6. SUBMIT TANDA TANGAN
-    // ======================================================
+    /**
+     * Submit tanda tangan ke dokumen dan lanjutkan workflow.
+     * 
+     * Proses:
+     * 1. Validasi akses dan posisi tanda tangan
+     * 2. Stamp tanda tangan ke PDF menggunakan PdfService
+     * 3. Update status workflow step
+     * 4. Proses step berikutnya (update status dokumen & kirim email)
+     *
+     * @param Request $request HTTP request
+     * @param int $documentId ID dokumen
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function submit(Request $request, $documentId)
     {
         if (!$this->workflowService->checkAccess($documentId)) {
@@ -178,19 +254,20 @@ class TandatanganController extends Controller
             ->where('user_id', Auth::id())
             ->first();
 
+        // [MERGE FIX] Validasi harus dijalankan sebelum proses PDF
         if (is_null($activeStep->posisi_x) || is_null($activeStep->posisi_y) || !$activeStep->halaman) {
             return back()->withErrors('Anda belum menempatkan tanda tangan pada dokumen.');
         }
 
         try {
             // 1. Apply TTD ke PDF
-            $this->applyTandatanganToPdf($documentId);
+            $this->pdfService->stampPdf($documentId, Auth::id(), 'tandatangan');
 
-            // 2. Update Step Status
+            // 2. Update Step Status dan Proses Workflow Selanjutnya
             $this->workflowService->completeStep($documentId, DocumentStatusEnum::DITANDATANGANI);
+            $this->workflowService->processNextStep($documentId);
 
-            // 3. Update Document Status
-            $this->workflowService->updateDocumentStatus($documentId);
+            Log::info('Document tandatangan submitted', ['document_id' => $documentId, 'user_id' => Auth::id()]);
 
             Log::info('Document tandatangan submitted', ['document_id' => $documentId, 'user_id' => Auth::id()]);
 
@@ -204,80 +281,4 @@ class TandatanganController extends Controller
         }
     }
 
-    // ======================================================
-    // 7. PRIVATE: APPLY TTD TO PDF (FPDI)
-    // ======================================================
-    private function applyTandatanganToPdf($documentId)
-    {
-        $document = Document::findOrFail($documentId);
-        $user = Auth::user();
-
-        // Cek Workflow
-        $workflow = WorkflowStep::where('document_id', $documentId)
-            ->where('user_id', $user->id)
-            ->first();
-
-        if (!$workflow || is_null($workflow->posisi_x) || is_null($workflow->posisi_y)) {
-            throw new \Exception("Posisi tanda tangan belum diatur.");
-        }
-
-        if (!$user->img_ttd_path) {
-            throw new \Exception("Anda belum mengupload gambar tanda tangan.");
-        }
-
-        // Path File PDF
-        $dbPath = $document->file_path;
-        $sourcePath = null;
-        $pathPrivate = storage_path('app/private/' . $dbPath);
-        $pathPublic  = storage_path('app/public/' . $dbPath);
-        $pathApp     = storage_path('app/' . $dbPath);
-
-        if (file_exists($pathPrivate)) $sourcePath = $pathPrivate;
-        elseif (file_exists($pathPublic)) $sourcePath = $pathPublic;
-        elseif (file_exists($pathApp)) $sourcePath = $pathApp;
-        else throw new \Exception("File fisik dokumen tidak ditemukan.");
-
-        // Path Gambar TTD
-        $ttdPath = storage_path('app/public/' . $user->img_ttd_path);
-        if (!file_exists($ttdPath)) {
-            throw new \Exception("File gambar tanda tangan tidak ditemukan.");
-        }
-
-        // Proses FPDI
-        try {
-            // FIX: Gunakan satuan 'pt' (points) agar sesuai dengan getTemplateSize()
-            // Default FPDI adalah 'mm', yang menyebabkan ukuran halaman membengkak (1 pt != 1 mm)
-            $pdf = new Fpdi('P', 'pt'); 
-            $pageCount = $pdf->setSourceFile($sourcePath);
-
-            for ($i = 1; $i <= $pageCount; $i++) {
-                $template = $pdf->importPage($i);
-                $size = $pdf->getTemplateSize($template);
-
-                // AddPage dengan ukuran asli (dalam pt)
-                $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
-                $pdf->useTemplate($template);
-
-                // Stamp TTD di halaman yang sesuai
-                if ($i == $workflow->halaman) {
-                    // Karena PDF sudah dalam 'pt', tidak perlu konversi * 0.352778
-                    // Koordinat dari Frontend (PDF.js) biasanya sudah dalam skala 72 DPI (points)
-                    
-                    $x = $workflow->posisi_x; 
-                    $y = $workflow->posisi_y;
-                    
-                    // Lebar tanda tangan (misal 100px di frontend ~= 100pt di PDF)
-                    // Sesuaikan jika dirasa terlalu besar/kecil
-                    $width = 100; 
-
-                    $pdf->Image($ttdPath, $x, $y, $width);
-                }
-            }
-
-            $pdf->Output($sourcePath, 'F'); // Overwrite file asli
-
-        } catch (\Exception $e) {
-            throw new \Exception("Gagal memproses PDF: " . $e->getMessage());
-        }
-    }
 }
