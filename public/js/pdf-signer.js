@@ -12,6 +12,8 @@ class PdfSigner {
         this.outputScale = window.devicePixelRatio || 1;
         this.selectedElement = null;
         this.resizeTimer = null;
+        this.saveTimer = null; // For debouncing auto-save
+        this.signatureWidth = config.signatureWidth || 100; // Configurable width
 
         // DOM Elements
         this.container = document.getElementById(config.containerId || 'pdf-render-container');
@@ -116,7 +118,7 @@ class PdfSigner {
 
         const left = data.x * this.scale;
         const top = data.y * this.scale;
-        const width = 100 * this.scale; // Hardcoded base width 100px
+        const width = this.signatureWidth * this.scale; // Configurable width
 
         newEl.style.position = "absolute";
         newEl.style.left = left + "px";
@@ -163,13 +165,13 @@ class PdfSigner {
             const page = parseInt(dropZone.dataset.pageNumber, 10);
             const rect = dropZone.getBoundingClientRect();
 
-            const x = e.clientX - rect.left - (50 * this.scale);
-            const y = e.clientY - rect.top - (25 * this.scale);
+            const x = e.clientX - rect.left - ((this.signatureWidth / 2) * this.scale);
+            const y = e.clientY - rect.top - ((this.signatureWidth / 4) * this.scale);
 
             newEl.style.position = "absolute";
             newEl.style.left = x + "px";
             newEl.style.top = y + "px";
-            newEl.style.width = (100 * this.scale) + "px";
+            newEl.style.width = (this.signatureWidth * this.scale) + "px";
             newEl.style.cursor = "grab";
             newEl.style.zIndex = "100";
 
@@ -258,28 +260,39 @@ class PdfSigner {
     // DATA & STATE
     // ==========================================
     savePosition(element, pageNumber) {
-        try {
-            const rawLeft = parseFloat(element.style.left);
-            const rawTop = parseFloat(element.style.top);
-
-            const normalizedX = Math.round(rawLeft / this.scale);
-            const normalizedY = Math.round(rawTop / this.scale);
-
-            this.savedData = {
-                page: pageNumber,
-                x: normalizedX,
-                y: normalizedY
-            };
-
-            console.log(`Saving: Page ${pageNumber}, X=${normalizedX}, Y=${normalizedY}`);
-
-            if (this.config.onSave) {
-                this.config.onSave(this.savedData);
-            }
-
-        } catch (error) {
-            console.error("Auto save error:", error);
+        // Clear existing debounce timer
+        if (this.saveTimer) {
+            clearTimeout(this.saveTimer);
         }
+
+        // Debounce: save only after 500ms of inactivity
+        this.saveTimer = setTimeout(() => {
+            try {
+                const rawLeft = parseFloat(element.style.left);
+                const rawTop = parseFloat(element.style.top);
+
+                const normalizedX = Math.round(rawLeft / this.scale);
+                const normalizedY = Math.round(rawTop / this.scale);
+
+                this.savedData = {
+                    page: pageNumber,
+                    x: normalizedX,
+                    y: normalizedY
+                };
+
+                // Debug logging (only in development)
+                if (this.config.debug) {
+                    console.log(`Saving: Page ${pageNumber}, X=${normalizedX}, Y=${normalizedY}`);
+                }
+
+                if (this.config.onSave) {
+                    this.config.onSave(this.savedData);
+                }
+
+            } catch (error) {
+                console.error("Auto save error:", error);
+            }
+        }, 500);
     }
 
     deletePosition(emitEvent = true) {
@@ -342,8 +355,11 @@ class PdfSigner {
         this.pageObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
-                    const pageNum = entry.target.dataset.pageNumber;
-                    if (this.currPageElem) this.currPageElem.innerText = pageNum;
+                    // Use optional chaining to prevent errors
+                    const pageNum = entry.target.dataset?.pageNumber;
+                    if (pageNum && this.currPageElem) {
+                        this.currPageElem.innerText = pageNum;
+                    }
                 }
             });
         }, { root: this.scrollContainer, threshold: 0.1 });

@@ -203,8 +203,8 @@ class TandatanganController extends Controller
     public function saveTandatangan(Request $request, $id)
     {
         $request->validate([
-            'posisi_x' => 'nullable|numeric',
-            'posisi_y' => 'nullable|numeric',
+            'posisi_x' => 'nullable|numeric|min:0|max:2000',
+            'posisi_y' => 'nullable|numeric|min:0|max:3000',
             'halaman'  => 'nullable|integer|min:1'
         ]);
 

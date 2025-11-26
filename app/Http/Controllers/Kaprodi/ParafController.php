@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Dashboard\TableController;
 use App\Services\WorkflowService;
+use App\Enums\DocumentStatusEnum;
 
 /**
  * Controller untuk mengelola proses paraf dokumen.
@@ -233,7 +234,7 @@ class ParafController extends Controller
             $this->pdfService->stampPdf($documentId, Auth::id(), 'paraf');
 
             // 3. UPDATE STEP SAAT INI DAN PROSES WORKFLOW SELANJUTNYA
-            $this->workflowService->completeStep($documentId, 'Diparaf');
+            $this->workflowService->completeStep($documentId, DocumentStatusEnum::DIPARAF);
             $this->workflowService->processNextStep($documentId);
             
             Log::info('Document paraf submitted', ['document_id' => $documentId, 'user_id' => Auth::id()]);
@@ -260,8 +261,8 @@ class ParafController extends Controller
     public function saveParaf(Request $request, $id)
     {
         $request->validate([
-            'posisi_x' => 'nullable|numeric|min:0|max:1000',
-            'posisi_y' => 'nullable|numeric|min:0|max:1500',
+            'posisi_x' => 'nullable|numeric|min:0|max:2000',
+            'posisi_y' => 'nullable|numeric|min:0|max:3000',
             'halaman'  => 'nullable|integer|min:1'
         ]);
 
