@@ -91,7 +91,14 @@ class ParafController extends Controller
             ];
         }
 
-        return view('kaprodi.paraf-surat', compact('document', 'savedParaf'));
+        // Prepare paraf data for view (no logic in Blade)
+        $user = Auth::user();
+        $parafData = [
+            'hasImage' => !empty($user->img_paraf_path),
+            'url' => !empty($user->img_paraf_path) ? asset('storage/' . $user->img_paraf_path) : ''
+        ];
+
+        return view('kaprodi.paraf-surat', compact('document', 'savedParaf', 'parafData'));
     }
 
     /**
