@@ -1,12 +1,14 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\GoogleLoginController;
 use App\Http\Controllers\Dashboard\CardsController;
 use App\Http\Controllers\Dashboard\TableController;
 use App\Http\Controllers\Tu\DocumentController;
-use App\Http\Controllers\Kaprodi\ReviewController; 
+use App\Http\Controllers\Tu\FinalisasiController;
+use App\Http\Controllers\Kaprodi\ReviewController;
 use App\Http\Controllers\Kaprodi\ParafController;
 use App\Http\Controllers\Kajur_Sekjur\TandatanganController;
 
@@ -16,7 +18,7 @@ Route::get('/', function () {
 });
 
 // Login routes
-Route::get('/login', [AuthController::class, 'showLogin'])->name('login');        // ← WAJIB DITAMBAHKAN
+Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::get('/login', [AuthController::class, 'showLogin'])->name('auth.login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
@@ -31,8 +33,32 @@ Route::get('/dashboard/table', [TableController::class, 'index'])->middleware('a
 
 // TU
 Route::middleware(['auth'])->group(function () {
+
+    // Upload
     Route::get('/tu/upload', [DocumentController::class, 'create'])->name('tu.upload.create');
     Route::post('/tu/upload', [DocumentController::class, 'store'])->name('tu.upload.store');
+
+    // Finalisasi TU
+    Route::prefix('tu/finalisasi')->name('tu.finalisasi.')->group(function() {
+
+        // daftar finalisasi
+        Route::get('/', [FinalisasiController::class, 'index'])->name('index');
+
+        // detail finalisasi (show)
+        Route::get('/{id}', [FinalisasiController::class, 'show'])->name('show');
+
+        // submit finalisasi (post)
+        Route::post('/{id}', [FinalisasiController::class, 'submit'])->name('store');
+
+        // preview PDF (private) - gunakan model binding Document
+        Route::get('/{id}/preview', [DocumentController::class, 'preview']) // Ganti {document} ke {id}
+            ->name('preview');
+
+        // download PDF (private)
+        Route::get('/{document}/download', [DocumentController::class, 'download'])
+            ->name('download');
+    });
+
 });
 
 // Kaprodi

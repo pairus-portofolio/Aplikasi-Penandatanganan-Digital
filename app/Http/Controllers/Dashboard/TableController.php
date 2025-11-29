@@ -125,7 +125,8 @@ class TableController extends Controller
                 DocumentStatusEnum::DIPARAF        => 'biru',
                 DocumentStatusEnum::DITANDATANGANI => 'hijau',
                 DocumentStatusEnum::PERLU_REVISI   => 'merah',
-                default                            => 'abu', 
+                DocumentStatusEnum::FINAL          => 'abu',
+                default                            => 'abu',
             };
 
             // Tentukan Action Type

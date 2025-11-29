@@ -46,10 +46,11 @@ tbody tr:nth-child(odd) {
 }
 
 /* Warna badge status */
-.kuning {background:#fef9c3;color:#a16207;}
-.merah  {background:#fee2e2;color:#b91c1c;}
-.biru   {background:#e0f2fe;color:#0369a1;}
-.hijau  {background:#dcfce7;color:#15803d;}
+.kuning {background:#fef9c3;color:#a16207;} /* Ditinjau */
+.merah  {background:#fee2e2;color:#b91c1c;} /* Perlu revisi */
+.biru   {background:#e0f2fe;color:#0369a1;} /* Diparaf */
+.hijau  {background:#dcfce7;color:#15803d;} /* Ditandatangani / FINAL */
+.abu    {background:#f1f5f9;color:#475569;} /* Default / unknown */
 
 /* Tombol aksi "Lihat" (Legacy - bisa dihapus jika tidak dipakai lagi) */
 .aksi {
