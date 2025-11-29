@@ -278,8 +278,6 @@ class TandatanganController extends Controller
 
             Log::info('Document tandatangan submitted', ['document_id' => $documentId, 'user_id' => Auth::id()]);
 
-            Log::info('Document tandatangan submitted', ['document_id' => $documentId, 'user_id' => Auth::id()]);
-
             return redirect()
                 ->route('kajur.tandatangan.index')
                 ->with('success', 'Dokumen berhasil ditandatangani.');

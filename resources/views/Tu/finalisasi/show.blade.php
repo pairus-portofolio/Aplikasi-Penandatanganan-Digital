@@ -87,7 +87,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
 
-
+            <div class="modal-body">
                 <a href="{{ route('tu.finalisasi.download', $document->id) }}" class="btn btn-success w-100 mb-2">
                     Download
                 </a>
@@ -116,5 +116,5 @@
 
 
 @push('scripts')
-<script src="{{ asset('js/finalisasi.js') }}"></script>
+<script src="{{ asset('js/tu/finalisasi.js') }}"></script>
 @endpush
