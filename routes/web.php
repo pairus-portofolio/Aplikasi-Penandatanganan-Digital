@@ -19,7 +19,6 @@ Route::get('/', function () {
 
 // Login routes
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-Route::get('/login', [AuthController::class, 'showLogin'])->name('auth.login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
@@ -48,7 +47,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{id}', [FinalisasiController::class, 'show'])->name('show');
 
         // submit finalisasi (post)
-        Route::post('/{id}', [FinalisasiController::class, 'submit'])->name('store');
+        Route::post('/{id}', [FinalisasiController::class, 'store'])->name('store');
 
         // preview PDF (private) - gunakan model binding Document
         Route::get('/{id}/preview', [DocumentController::class, 'preview']) // Ganti {document} ke {id}

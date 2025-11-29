@@ -32,8 +32,8 @@
             </span>
           </td>
           <td>
-            <a class="aksi" href="{{ route('kajur.tandatangan.show', $s['id_raw']) }}">
-               Lihat
+            <a href="{{ $s['action_url'] }}" class="btn-action {{ $s['action_class'] }}">
+                {{ $s['action_label'] }}
             </a>
           </td>
         </tr>

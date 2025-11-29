@@ -30,7 +30,8 @@
     <!-- Layout utama: sidebar aksi + area preview dokumen -->
     <div class="paraf-layout-container">
         
-        <!-- Sidebar tombol aksi TTD -->
+        <!-- Sidebar tombol aksi TTD (Hanya tampil jika bukan View Only) -->
+        @if(!isset($isViewOnly) || !$isViewOnly)
         <div class="paraf-sidebar">
             <p style="font-weight: 600; color: #333; margin-top:0; margin-bottom: 10px;">
                 Tanda Tangan Tersedia:
@@ -70,9 +71,10 @@
                    style="display: none;"
                    accept="image/png, image/jpeg, image/jpg">
         </div>
+        @endif
         
         <!-- Area utama untuk menampilkan dokumen yang akan ditandatangani -->
-        <div class="paraf-preview-area">
+        <div class="paraf-preview-area" @if(isset($isViewOnly) && $isViewOnly) style="width: 100%;" @endif>
             <div id="scrollContainer">
                 <div id="pdf-render-container"></div>
             </div>
@@ -85,14 +87,21 @@
     @include('partials.captcha-popup')
 
     <!-- Toolbar bawah halaman (Zoom, navigasi, dll) -->
-    @include('partials.shared.action-submit', [
-        'actionUrl'      => route('kajur.tandatangan.submit', $document->id),
-        'modalId'        => 'ttdNotifPopup',
-        'inputIdPrefix'  => 'ttd',
-        'defaultSubject' => 'Dokumen Telah Ditandatangani',
-        'cancelBtnId'    => 'batalKirimTTD',
-        'confirmBtnId'   => 'konfirmasiKirimTTD'
-    ])
+    @if(!isset($isViewOnly) || !$isViewOnly)
+        @include('partials.shared.action-submit', [
+            'actionUrl'      => route('kajur.tandatangan.submit', $document->id),
+            'modalId'        => 'ttdNotifPopup',
+            'inputIdPrefix'  => 'ttd',
+            'defaultSubject' => 'Dokumen Telah Ditandatangani',
+            'cancelBtnId'    => 'batalKirimTTD',
+            'confirmBtnId'   => 'konfirmasiKirimTTD'
+        ])
+    @else
+        <!-- Jika View Only, tampilkan tombol kembali sederhana atau toolbar tanpa submit -->
+        <div class="action-bar">
+            <a href="{{ route('kajur.tandatangan.index') }}" class="btn-secondary">Kembali</a>
+        </div>
+    @endif
 
     <!-- Popup konfirmasi logout -->
     @include('partials.logout-popup')

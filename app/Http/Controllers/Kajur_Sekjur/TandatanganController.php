@@ -75,10 +75,19 @@ class TandatanganController extends Controller
     {
         $document = Document::findOrFail($id);
 
-        if (!$this->workflowService->checkAccess($document->id)) {
+        // Cek akses:
+        // 1. Jika giliran user (checkAccess = true) -> OK
+        // 2. Jika bukan giliran, cek apakah user ada di workflow history (untuk view only) -> OK
+        $isCurrentTurn = $this->workflowService->checkAccess($document->id);
+        $isInWorkflow = WorkflowStep::where('document_id', $id)->where('user_id', Auth::id())->exists();
+
+        if (!$isCurrentTurn && !$isInWorkflow) {
             return redirect()->route('kajur.tandatangan.index')
-                ->withErrors('Belum giliran Anda untuk menandatangani dokumen ini.');
+                ->withErrors('Anda tidak memiliki akses ke dokumen ini.');
         }
+
+        // Jika bukan giliran tapi ada di workflow, kita set flag view-only
+        $isViewOnly = !$isCurrentTurn;
 
         $activeStep = WorkflowStep::where('document_id', $id)
             ->where('user_id', Auth::id())
@@ -93,7 +102,7 @@ class TandatanganController extends Controller
             ];
         }
 
-        return view('kajur_sekjur.tandatangan-surat', compact('document', 'savedSignature'));
+        return view('kajur_sekjur.tandatangan-surat', compact('document', 'savedSignature', 'isViewOnly'));
     }
 
     /**
@@ -266,8 +275,6 @@ class TandatanganController extends Controller
             // 2. Update Step Status dan Proses Workflow Selanjutnya
             $this->workflowService->completeStep($documentId, DocumentStatusEnum::DITANDATANGANI);
             $this->workflowService->processNextStep($documentId);
-
-            Log::info('Document tandatangan submitted', ['document_id' => $documentId, 'user_id' => Auth::id()]);
 
             Log::info('Document tandatangan submitted', ['document_id' => $documentId, 'user_id' => Auth::id()]);
 

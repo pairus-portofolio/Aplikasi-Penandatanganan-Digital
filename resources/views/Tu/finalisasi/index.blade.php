@@ -74,5 +74,5 @@
 @endsection
 
 @push('scripts')
-  <script src="{{ asset('js/finalisasi.js') }}"></script>
+  <script src="{{ asset('js/tu/finalisasi.js') }}"></script>
 @endpush

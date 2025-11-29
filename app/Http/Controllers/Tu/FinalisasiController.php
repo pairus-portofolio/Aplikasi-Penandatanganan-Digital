@@ -41,19 +41,18 @@ class FinalisasiController extends Controller
     {
         $document = Document::findOrFail($id);
 
-        $filePath = "documents/{$document->file}";
+        $filePath = $document->file_path;
 
-        if (!Storage::disk('private')->exists($filePath)) {
+        if (!Storage::exists($filePath)) {
             abort(404, 'File tidak ditemukan.');
         }
 
-        return response()->file(
-            Storage::disk('private')->path($filePath),
-            [
-                'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="'.$document->file.'"'
-            ]
-        );
+        $fileContent = Storage::get($filePath);
+        
+        return response()->make($fileContent, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$document->file_name.'"'
+        ]);
     }
 
     /**

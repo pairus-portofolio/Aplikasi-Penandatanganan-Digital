@@ -12,7 +12,8 @@ use App\Enums\RoleEnum;
 class TableController extends Controller
 {
     /**
-     * Query dasar berdasarkan role user.
+     * Query untuk tabel - menampilkan semua surat yang user ada di workflow-nya.
+     * Tidak memandang status atau urutan.
      */
     public static function getBaseQueryByRole()
     {
@@ -26,50 +27,81 @@ class TableController extends Controller
 
         $roleName = $user->role->nama_role ?? '';
 
-        // 1. TU → semua dokumen (Collection)
+        // 1. TU → semua dokumen (sebagai admin surat)
+        if ($roleName === RoleEnum::TU) {
+            return Document::with(['uploader', 'workflowSteps.user'])
+                ->latest()
+                ->paginate(10);
+        }
+
+        // 2. Role Lain (Kaprodi, Kajur, Sekjur) → semua dokumen yang user ada di workflow-nya
+        // Kita gabungkan logika karena pada dasarnya sama: user harus ada di workflow
+        return Document::with(['uploader', 'workflowSteps.user'])
+            ->whereHas('workflowSteps', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            })
+            ->latest()
+            ->paginate(10);
+    }
+
+    /**
+     * Query untuk card - menampilkan surat yang harus dikerjakan user saat ini.
+     * Hanya surat dengan urutan aktif dan status sesuai.
+     */
+    public static function getActiveTasksQueryByRole()
+    {
+        $user = Auth::user();
+        
+        if (!$user->relationLoaded('role')) {
+            $user->load('role');
+        }
+
+        $roleName = $user->role->nama_role ?? '';
+
+        // 1. TU → semua dokumen (untuk card surat keluar)
         if ($roleName === RoleEnum::TU) {
             return Document::with('uploader')->latest()->paginate(10);
         }
 
-        // 2. Kaprodi → dokumen yang ada di workflow, tapi hanya jika dia urutan aktif
-        if (in_array($roleName, RoleEnum::getKaprodiRoles())) {
-            return Document::with('uploader')
-                ->whereHas('workflowSteps', function ($q) use ($user) {
-                    $q->where('user_id', $user->id)
-                      ->where('status', DocumentStatusEnum::DITINJAU)
-                      ->whereRaw('urutan = (
-                          SELECT MIN(urutan)
-                          FROM workflow_steps as w2
-                          WHERE w2.document_id = workflow_steps.document_id
-                          AND w2.status = ?
-                      )', [DocumentStatusEnum::DITINJAU]);
-                })
-                ->latest()
-                ->paginate(10);
-        }
-
-        // 3. Kajur / Sekjur → hanya dokumen Diparaf, dan jika dia urutan aktif
-        if (in_array($roleName, RoleEnum::getKajurSekjurRoles())) {
-            return Document::with('uploader')
-                ->where('status', DocumentStatusEnum::DIPARAF)
-                ->whereHas('workflowSteps', function ($q) use ($user) {
-                    $q->where('user_id', $user->id)
-                      ->where('status', DocumentStatusEnum::DITINJAU)
-                      ->whereRaw('urutan = (
-                          SELECT MIN(urutan)
-                          FROM workflow_steps as w2
-                          WHERE w2.document_id = workflow_steps.document_id
-                          AND w2.status = ?
-                      )', [DocumentStatusEnum::DITINJAU]);
-                })
-                ->latest()
-                ->paginate(10);
-        }
-
-        // Default → empty paginator
-        return new \Illuminate\Pagination\LengthAwarePaginator([], 0, 10);
+        // 2. Role Lain (Kaprodi, Kajur, Sekjur)
+        // Dokumen dianggap "Active Task" jika:
+        // - User ada di workflow step
+        // - Step user statusnya DITINJAU
+        // - User adalah urutan terendah (min) dari semua step yang statusnya DITINJAU
+        
+        return Document::with(['uploader', 'workflowSteps'])
+            ->whereHas('workflowSteps', function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->where('status', DocumentStatusEnum::DITINJAU);
+            })
+            // Filter tambahan untuk memastikan user adalah active step
+            ->get() // Kita ambil collection dulu untuk filter logic yang kompleks
+            ->filter(function ($doc) use ($user) {
+                return self::isUserActiveInWorkflow($doc, $user->id);
+            });
     }
 
+    /**
+     * Helper untuk mengecek apakah user adalah active step di workflow dokumen
+     */
+    public static function isUserActiveInWorkflow($document, $userId)
+    {
+        // Ambil semua step yang statusnya DITINJAU
+        $pendingSteps = $document->workflowSteps->where('status', DocumentStatusEnum::DITINJAU);
+
+        if ($pendingSteps->isEmpty()) {
+            return false;
+        }
+
+        // Cari urutan terkecil
+        $minUrutan = $pendingSteps->min('urutan');
+
+        // Cek apakah user memiliki step dengan urutan terkecil tersebut
+        // dan status step user tersebut juga DITINJAU
+        $userStep = $pendingSteps->where('user_id', $userId)->first();
+
+        return $userStep && $userStep->urutan === $minUrutan;
+    }
 
     /**
      * Digunakan oleh tabel HTML (formatting).
@@ -83,9 +115,10 @@ class TableController extends Controller
 
     private static function formatSuratForTable($paginator)
     {
+        $user = Auth::user();
+
         // Gunakan through() untuk memodifikasi item di dalam paginator
-        // tanpa mengubah objek Paginator itu sendiri (agar links() tetap jalan)
-        $paginator->through(function ($doc) {
+        $paginator->through(function ($doc) use ($user) {
 
             $statusClass = match ($doc->status) {
                 DocumentStatusEnum::DITINJAU       => 'kuning',
@@ -96,6 +129,9 @@ class TableController extends Controller
                 default                            => 'abu',
             };
 
+            // Tentukan Action Type
+            $actionData = self::determineActionType($doc, $user);
+
             return [
                 'id_raw'       => $doc->id,
                 'nomor'        => 'SRT-' . str_pad($doc->id, 4, '0', STR_PAD_LEFT),
@@ -103,10 +139,68 @@ class TableController extends Controller
                 'pengunggah'   => $doc->uploader->nama_lengkap ?? 'Tidak Diketahui',
                 'tanggal'      => $doc->created_at->format('d/m/Y'),
                 'status'       => ucfirst($doc->status),
-                'status_class' => $statusClass
+                'status_class' => $statusClass,
+                'action_type'  => $actionData['type'],
+                'action_url'   => $actionData['url'],
+                'action_label' => $actionData['label'],
+                'action_class' => $actionData['class']
             ];
         });
 
         return $paginator;
+    }
+
+    /**
+     * Menentukan tipe aksi, URL, dan label tombol berdasarkan kondisi dokumen dan user
+     */
+    private static function determineActionType($doc, $user)
+    {
+        $isTU = $user->role->nama_role === RoleEnum::TU;
+        $isActive = self::isUserActiveInWorkflow($doc, $user->id);
+        
+        // Default: View Only
+        $type = 'view';
+        $label = 'Lihat';
+        $class = 'btn-secondary'; // Abu-abu atau outline
+        
+        // Tentukan Base URL berdasarkan Role
+        $baseUrl = '#';
+        
+        if (in_array($user->role->nama_role, RoleEnum::getKaprodiRoles())) {
+            // Jika aktif -> ke halaman paraf
+            // Jika view -> ke halaman review
+            $baseUrl = $isActive 
+                ? route('kaprodi.paraf.show', $doc->id) 
+                : route('kaprodi.review.show', $doc->id);
+
+        } elseif (in_array($user->role->nama_role, RoleEnum::getKajurSekjurRoles())) {
+             // Kajur/Sekjur menggunakan controller yang sama, nanti kita sesuaikan logic di controller-nya
+             $baseUrl = route('kajur.tandatangan.show', $doc->id);
+        } else {
+            // TU atau lainnya
+             // Sementara arahkan ke # karena belum ada route detail TU
+             $baseUrl = '#'; 
+        }
+
+        // Jika User Aktif (Giliran dia) -> Work Mode
+        if ($isActive && !$isTU) {
+            $type = 'work';
+            $label = 'Kerjakan';
+            $class = 'btn-primary'; // Biru/Warna Utama
+            
+            // Override URL jika perlu (sebenarnya logic di atas sudah handle, tapi untuk konsistensi)
+            if (in_array($user->role->nama_role, RoleEnum::getKaprodiRoles())) {
+                $baseUrl = route('kaprodi.paraf.show', $doc->id);
+            } elseif (in_array($user->role->nama_role, RoleEnum::getKajurSekjurRoles())) {
+                $baseUrl = route('kajur.tandatangan.show', $doc->id);
+            }
+        }
+
+        return [
+            'type'  => $type,
+            'url'   => $baseUrl,
+            'label' => $label,
+            'class' => $class
+        ];
     }
 }

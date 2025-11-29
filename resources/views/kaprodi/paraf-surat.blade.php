@@ -3,13 +3,14 @@
 @section('title', 'Paraf Surat')
 
 @push('styles')
-    <!-- Load seluruh file CSS khusus halaman paraf -->
+    {{-- CSRF Token for AJAX requests --}}
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    
+    {{-- Page-specific stylesheets --}}
     <link rel="stylesheet" href="{{ asset('css/kaprodi/preview-top.css') }}">
     <link rel="stylesheet" href="{{ asset('css/kaprodi/preview-bottom.css') }}">
     <link rel="stylesheet" href="{{ asset('css/kaprodi/zoom-button.css') }}">
     <link rel="stylesheet" href="{{ asset('css/kaprodi/revision-button.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/kaprodi/paraf.css') }}">
     <link rel="stylesheet" href="{{ asset('css/kaprodi/paraf-layout.css') }}">
     <link rel="stylesheet" href="{{ asset('css/kaprodi/notif-button.css') }}">
     <link rel="stylesheet" href="{{ asset('css/kaprodi/popup.css') }}">
@@ -26,32 +27,23 @@
 @section('content')
     <div class="paraf-layout-container">
 
-        <!-- ========================= -->
-        <!--      PARAF SIDEBAR        -->
-        <!-- ========================= -->
+        {{-- Paraf Sidebar --}}
         <div class="paraf-sidebar">
-
-            <p style="font-weight: 600; color: #333; margin-top:0; margin-bottom: 10px;">
+            <p class="paraf-sidebar-title">
                 Paraf Tersedia:
             </p>
 
-            @php
-                $path = Auth::user()->img_paraf_path;
-                $adaParaf = !empty($path);
-                $urlParaf = $adaParaf ? asset('storage/' . $path) : '';
-            @endphp
-
-            <div id="parafBox" class="paraf-template-box {{ $adaParaf ? 'has-image' : '' }}">
+            <div id="parafBox" class="paraf-template-box {{ $parafData['hasImage'] ? 'has-image' : '' }}">
                 <span class="paraf-text">Klik untuk upload</span>
 
-                <!-- Gambar paraf -->
+                {{-- Paraf Image --}}
                 <img id="parafImage"
                      class="paraf-image-preview"
-                     src="{{ $urlParaf }}"
+                     src="{{ $parafData['url'] }}"
                      alt="Paraf"
                      draggable="true">
 
-                <!-- Tombol aksi -->
+                {{-- Action Buttons --}}
                 <div class="paraf-box-actions">
                     <button type="button" class="paraf-action-btn" id="parafGantiBtn" title="Ganti Paraf">
                         <i class="fa-solid fa-pen-to-square"></i>
@@ -63,16 +55,14 @@
                 </div>
             </div>
 
-            <!-- Input tersembunyi -->
+            {{-- Hidden File Input --}}
             <input type="file"
                    id="parafImageUpload"
-                   style="display: none;"
+                   class="paraf-file-input"
                    accept="image/png, image/jpeg, image/jpg">
         </div>
 
-        <!-- ========================= -->
-        <!--      PREVIEW DOKUMEN     -->
-        <!-- ========================= -->
+        {{-- Document Preview Area --}}
         <div class="paraf-preview-area">
             <div id="scrollContainer">
                 <div id="pdf-render-container"></div>
@@ -95,37 +85,32 @@
 @endsection
 
 @push('scripts')
-
-    <!-- PDF.js -->
+    {{-- PDF.js Library --}}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 
-    <!-- Bridge Data -->
+    {{-- PDF Configuration --}}
     <script>
         window.pdfConfig = {
             pdfUrl: "{{ route('document.download', $document->id) }}",
             workerSrc: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js",
-            // TAMBAHAN BARU: URL untuk simpan posisi & Token keamanan
             saveUrl: "{{ route('kaprodi.paraf.save', $document->id) }}",
+            uploadUrl: "{{ route('kaprodi.paraf.upload') }}",
+            deleteUrl: "{{ route('kaprodi.paraf.delete') }}",
             csrfToken: "{{ csrf_token() }}",
             savedParaf: @json($savedParaf ?? null)
         };
     </script>
 
-    <script>
-        window.suratId = "{{ $document->id }}";
-    </script>
-
-    {{-- 3. Panggil Script yang dibuat --}}
+    {{-- Application Scripts --}}
     <script src="{{ asset('js/pdf-signer.js') }}"></script>
-    <!-- Script utama -->
     <script src="{{ asset('js/kaprodi/paraf-surat.js') }}"></script>
 
-    <script>
-        @if(session('popup'))
+    {{-- Show popup if session exists --}}
+    @if(session('popup'))
+        <script>
             document.addEventListener("DOMContentLoaded", function () {
                 document.getElementById("parafNotifPopup").classList.add("show");
             });
-        @endif
-    </script>
-
+        </script>
+    @endif
 @endpush
