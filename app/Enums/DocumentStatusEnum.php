@@ -8,6 +8,7 @@ class DocumentStatusEnum
     const PERLU_REVISI = 'Perlu Revisi';
     const DIPARAF = 'Diparaf';
     const DITANDATANGANI = 'Ditandatangani';
+    const FINAL = 'Selesai';
 
     public static function getAllStatuses(): array
     {
@@ -16,6 +17,7 @@ class DocumentStatusEnum
             self::PERLU_REVISI,
             self::DIPARAF,
             self::DITANDATANGANI,
+            self::FINAL,
         ];
     }
 }

@@ -38,9 +38,9 @@ class TableController extends Controller
                     $q->where('user_id', $user->id)
                       ->where('status', DocumentStatusEnum::DITINJAU)
                       ->whereRaw('urutan = (
-                          SELECT MIN(urutan) 
-                          FROM workflow_steps as w2 
-                          WHERE w2.document_id = workflow_steps.document_id 
+                          SELECT MIN(urutan)
+                          FROM workflow_steps as w2
+                          WHERE w2.document_id = workflow_steps.document_id
                           AND w2.status = ?
                       )', [DocumentStatusEnum::DITINJAU]);
                 })
@@ -56,9 +56,9 @@ class TableController extends Controller
                     $q->where('user_id', $user->id)
                       ->where('status', DocumentStatusEnum::DITINJAU)
                       ->whereRaw('urutan = (
-                          SELECT MIN(urutan) 
-                          FROM workflow_steps as w2 
-                          WHERE w2.document_id = workflow_steps.document_id 
+                          SELECT MIN(urutan)
+                          FROM workflow_steps as w2
+                          WHERE w2.document_id = workflow_steps.document_id
                           AND w2.status = ?
                       )', [DocumentStatusEnum::DITINJAU]);
                 })
@@ -92,7 +92,8 @@ class TableController extends Controller
                 DocumentStatusEnum::DIPARAF        => 'biru',
                 DocumentStatusEnum::DITANDATANGANI => 'hijau',
                 DocumentStatusEnum::PERLU_REVISI   => 'merah',
-                default                            => 'abu', 
+                DocumentStatusEnum::FINAL          => 'abu',
+                default                            => 'abu',
             };
 
             return [
