@@ -206,4 +206,26 @@ class DocumentController extends Controller
             abort(500, 'Gagal membaca file: ' . $e->getMessage());
         }
     }
+
+    // Di dalam class DocumentController
+
+public function preview($id) // Terima $id, bukan Document $document
+{
+    $document = Document::findOrFail($id); 
+
+    $filePath = $document->file_path; 
+
+    // Menggunakan Storage::get untuk mengambil konten file
+    if (!Storage::exists($filePath)) {
+        abort(404, 'File tidak ditemukan di storage: ' . $filePath);
+    }
+    
+    $fileContent = Storage::get($filePath); 
+
+    // PENTING: Pastikan Content-Type adalah application/pdf 
+    // dan tidak ada header Content-Disposition yang memaksa download
+    return response()->make($fileContent, 200, [
+        'Content-Type' => 'application/pdf',
+    ]);
+}
 }
