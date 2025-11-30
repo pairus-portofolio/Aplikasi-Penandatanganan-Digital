@@ -55,8 +55,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{id}/preview', [DocumentController::class, 'preview']) // Ganti {document} ke {id}
             ->name('preview');
 
-        // download PDF (private)
-        Route::get('/{document}/download', [DocumentController::class, 'download'])
+       // download PDF (private) - Arahkan ke FinalisasiController
+        Route::get('/{id}/download', [FinalisasiController::class, 'download']) // <-- Ganti ke FinalisasiController
             ->name('download');
     });
 
