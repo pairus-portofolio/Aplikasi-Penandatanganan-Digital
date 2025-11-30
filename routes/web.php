@@ -19,6 +19,7 @@ Route::get('/', function () {
 
 // Login routes
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+Route::get('/login', [AuthController::class, 'showLogin'])->name('auth.login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
@@ -36,6 +37,7 @@ Route::middleware(['auth'])->group(function () {
     // Upload
     Route::get('/tu/upload', [DocumentController::class, 'create'])->name('tu.upload.create');
     Route::post('/tu/upload', [DocumentController::class, 'store'])->name('tu.upload.store');
+    Route::put('/tu/document/{id}/revisi', [DocumentController::class, 'updateRevision'])->name('tu.document.revisi');
 
     // Finalisasi TU
     Route::prefix('tu/finalisasi')->name('tu.finalisasi.')->group(function() {
@@ -68,6 +70,8 @@ Route::middleware('auth')->group(function () {
         ->name('kaprodi.review.index');
     Route::get('/review-surat/{id}', [ReviewController::class, 'show'])
         ->name('kaprodi.review.show');
+    Route::post('/review-surat/{id}/revise', [ReviewController::class, 'revise'])
+        ->name('kaprodi.review.revise');
 
     // PARAF
     Route::get('/paraf-surat', [ParafController::class, 'index'])

@@ -83,29 +83,9 @@
 @endsection
 
 @section('popup')
-
     @include('partials.captcha-popup')
-
-    <!-- Toolbar bawah halaman (Zoom, navigasi, dll) -->
-    @if(!isset($isViewOnly) || !$isViewOnly)
-        @include('partials.shared.action-submit', [
-            'actionUrl'      => route('kajur.tandatangan.submit', $document->id),
-            'modalId'        => 'ttdNotifPopup',
-            'inputIdPrefix'  => 'ttd',
-            'defaultSubject' => 'Dokumen Telah Ditandatangani',
-            'cancelBtnId'    => 'batalKirimTTD',
-            'confirmBtnId'   => 'konfirmasiKirimTTD'
-        ])
-    @else
-        <!-- Jika View Only, tampilkan tombol kembali sederhana atau toolbar tanpa submit -->
-        <div class="action-bar">
-            <a href="{{ route('kajur.tandatangan.index') }}" class="btn-secondary">Kembali</a>
-        </div>
-    @endif
-
-    <!-- Popup konfirmasi logout -->
     @include('partials.logout-popup')
-
+    @include('partials.action-tandatangan')
 @endsection
 
 @push('scripts')

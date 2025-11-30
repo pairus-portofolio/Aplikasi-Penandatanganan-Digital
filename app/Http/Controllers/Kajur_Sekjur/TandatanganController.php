@@ -258,23 +258,28 @@ class TandatanganController extends Controller
             return back()->withErrors('Bukan giliran Anda untuk menandatangani dokumen ini.');
         }
 
-        // VALIDASI: Pastikan user sudah menempatkan TTD
+        // VALIDASI
         $activeStep = WorkflowStep::where('document_id', $documentId)
             ->where('user_id', Auth::id())
             ->first();
 
-        // [MERGE FIX] Validasi harus dijalankan sebelum proses PDF
         if (is_null($activeStep->posisi_x) || is_null($activeStep->posisi_y) || !$activeStep->halaman) {
             return back()->withErrors('Anda belum menempatkan tanda tangan pada dokumen.');
         }
 
         try {
-            // 1. Apply TTD ke PDF
+            // 1. PROSES PDF
             $this->pdfService->stampPdf($documentId, Auth::id(), 'tandatangan');
 
-            // 2. Update Step Status dan Proses Workflow Selanjutnya
+            // 2. UPDATE STEP
             $this->workflowService->completeStep($documentId, DocumentStatusEnum::DITANDATANGANI);
-            $this->workflowService->processNextStep($documentId);
+            
+            // --- PERBAIKAN DISINI ---
+            // Tangkap input dari Modal (1 = Ya, 0 = Tidak)
+            $sendNotification = $request->input('send_notification') == '1';
+
+            // Kirim status notifikasi ke service
+            $this->workflowService->processNextStep($documentId, $sendNotification);
 
             Log::info('Document tandatangan submitted', ['document_id' => $documentId, 'user_id' => Auth::id()]);
 
@@ -283,9 +288,8 @@ class TandatanganController extends Controller
                 ->with('success', 'Dokumen berhasil ditandatangani.');
 
         } catch (\Exception $e) {
-            Log::error('Tandatangan submission failed', ['document_id' => $documentId, 'user_id' => Auth::id(), 'error' => $e->getMessage()]);
+            Log::error('Tandatangan submission failed', ['document_id' => $documentId, 'error' => $e->getMessage()]);
             return back()->withErrors('Gagal memproses: ' . $e->getMessage());
         }
     }
-
 }

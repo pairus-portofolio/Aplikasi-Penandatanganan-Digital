@@ -101,11 +101,55 @@
         </div>
     </div>
 
-    <!-- Tombol unggah muncul setelah file dipilih -->
+    <!-- INPUT HIDDEN UNTUK PILIHAN NOTIFIKASI -->
+    <input type="hidden" name="send_notification" id="sendNotificationValue" value="0">
+
+    <!-- GANTI TOMBOL SUBMIT JADI TOMBOL PEMICU MODAL -->
     <div id="submit-button-wrapper" style="text-align: center; margin-top: 32px; display: none;">
-        <button type="submit" class="upload-btn" style="cursor: pointer;">Unggah</button>
+        <button type="button" class="upload-btn" data-bs-toggle="modal" data-bs-target="#confirmUploadModal" style="cursor: pointer;">
+            Unggah Surat
+        </button>
     </div>
 </form>
+
+<!-- MODAL KONFIRMASI -->
+<div class="modal fade" id="confirmUploadModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Konfirmasi Pengiriman</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <p>Surat akan disimpan ke sistem.</p>
+                <p class="fw-bold">Apakah Anda ingin mengirim notifikasi email ke penandatangan pertama?</p>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <!-- YA, KIRIM -->
+                <button type="button" class="btn btn-success" onclick="submitFormWithNotif(1)">
+                    Ya, Kirim Notifikasi
+                </button>
+                <!-- JANGAN KIRIM -->
+                <button type="button" class="btn btn-secondary" onclick="submitFormWithNotif(0)">
+                    Ya, Jangan Kirim
+                </button>
+                <!-- BATAL -->
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">
+                    Batal
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function submitFormWithNotif(val) {
+        // Isi nilai hidden input
+        document.getElementById('sendNotificationValue').value = val;
+        // Submit form terdekat
+        document.getElementById('sendNotificationValue').closest('form').submit();
+    }
+</script>
 
 @endsection
 

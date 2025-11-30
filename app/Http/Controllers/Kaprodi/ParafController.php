@@ -220,7 +220,6 @@ class ParafController extends Controller
     public function submit(Request $request, $documentId)
     {
         // 1. VALIDASI DULU SEBELUM PROSES PDF
-        // Menggunakan Service Check Access agar konsisten
         if (!$this->workflowService->checkAccess($documentId)) {
             return back()->withErrors('Bukan giliran Anda untuk memparaf dokumen ini.');
         }
@@ -229,20 +228,24 @@ class ParafController extends Controller
             ->where('user_id', Auth::id())
             ->first();
 
-        // VALIDASI: Pastikan user sudah menempatkan paraf (posisi_x, posisi_y, halaman tidak null)
-        // [PENTING] Validasi ini dari branch bawah, harus dipertahankan agar FPDI tidak error
+        // VALIDASI POSISI
         if (is_null($activeStep->posisi_x) || is_null($activeStep->posisi_y) || !$activeStep->halaman) {
-            return back()->withErrors('Anda belum menempatkan paraf pada dokumen. Silakan drag & drop paraf Anda ke dokumen terlebih dahulu.');
+            return back()->withErrors('Anda belum menempatkan paraf pada dokumen.');
         }
 
         // 2. PROSES PDF
         try {
-            // BARU PROSES PDF SETELAH VALIDASI
             $this->pdfService->stampPdf($documentId, Auth::id(), 'paraf');
 
-            // 3. UPDATE STEP SAAT INI DAN PROSES WORKFLOW SELANJUTNYA
+            // 3. UPDATE STEP
             $this->workflowService->completeStep($documentId, DocumentStatusEnum::DIPARAF);
-            $this->workflowService->processNextStep($documentId);
+            
+            // --- PERBAIKAN DISINI ---
+            // Tangkap input dari Modal (1 = Ya, 0 = Tidak)
+            $sendNotification = $request->input('send_notification') == '1';
+
+            // Kirim status notifikasi ke service
+            $this->workflowService->processNextStep($documentId, $sendNotification);
             
             Log::info('Document paraf submitted', ['document_id' => $documentId, 'user_id' => Auth::id()]);
 
@@ -250,7 +253,7 @@ class ParafController extends Controller
                 ->with('success', 'Dokumen berhasil diparaf.');
 
         } catch (\Exception $e) {
-            Log::error('Paraf submission failed', ['document_id' => $documentId, 'user_id' => Auth::id(), 'error' => $e->getMessage()]);
+            Log::error('Paraf submission failed', ['document_id' => $documentId, 'error' => $e->getMessage()]);
             return back()->withErrors('Gagal memproses PDF: ' . $e->getMessage());
         }
     }

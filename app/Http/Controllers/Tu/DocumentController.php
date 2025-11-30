@@ -96,18 +96,22 @@ class DocumentController extends Controller
             // Commit transaction jika semua berhasil
             DB::commit();
 
-            // --- LOGIKA EMAIL NOTIFIKASI (USER PERTAMA) ---
-            // Ambil user urutan ke-1
-            $firstStep = WorkflowStep::where('document_id', $document->id)
-                ->where('urutan', 1)
-                ->first();
+            // --- LOGIKA EMAIL MANUAL ---
+            // Cek input dari modal (1 = kirim, 0 = jangan)
+            if ($request->input('send_notification') == '1') {
+                
+                // Ambil step pertama
+                $firstStep = WorkflowStep::where('document_id', $document->id)
+                    ->where('urutan', 1)
+                    ->first();
 
-            if ($firstStep && $firstStep->user) {
-                try {
-                    Mail::to($firstStep->user->email)
-                        ->send(new DocumentWorkflowNotification($document, $firstStep->user, 'next_turn'));
-                } catch (\Exception $e) {
-                    \Log::error("Gagal kirim email ke user pertama: " . $e->getMessage());
+                if ($firstStep && $firstStep->user) {
+                    try {
+                        Mail::to($firstStep->user->email)
+                            ->send(new DocumentWorkflowNotification($document, $firstStep->user, 'next_turn'));
+                    } catch (\Exception $e) {
+                        \Log::error("Gagal kirim email: " . $e->getMessage());
+                    }
                 }
             }
 
@@ -150,6 +154,61 @@ class DocumentController extends Controller
         }
 
         return view('document.show', compact('document', 'currentStep', 'workflowSteps'));
+    }
+
+    public function updateRevision(Request $request, $id)
+    {
+        $request->validate([
+            'file_revisi' => 'required|file|mimes:pdf|max:2048',
+        ]);
+
+        $document = Document::findOrFail($id);
+
+        // Validasi: Hanya dokumen berstatus Revisi yang boleh diupload ulang
+        if ($document->status !== DocumentStatusEnum::PERLU_REVISI) {
+            return back()->withErrors('Dokumen ini tidak sedang dalam status revisi.');
+        }
+
+        DB::beginTransaction();
+        try {
+            // 1. Hapus File Lama (Opsional, tapi sebaiknya dihapus agar tidak menumpuk sampah)
+            if (Storage::exists($document->file_path)) {
+                Storage::delete($document->file_path);
+            }
+
+            // 2. Upload File Baru
+            $file = $request->file('file_revisi');
+            $ext  = $file->getClientOriginalExtension();
+            $filename = Str::uuid()->toString() . '.' . $ext;
+            
+            // Simpan file baru
+            $filePath = $file->storeAs('documents', $filename); 
+
+            // 3. Update Data Dokumen (Replace file lama & Reset Status)
+            $document->update([
+                'file_path' => $filePath,
+                'file_name' => $file->getClientOriginalName(),
+                'status'    => DocumentStatusEnum::DITINJAU // Reset status jadi Ditinjau agar Kaprodi bisa review ulang
+            ]);
+
+            // 4. RESET SEMUA WORKFLOW STEPS
+            // Karena file diganti, proses harus diulang dari awal (reset approval)
+            WorkflowStep::where('document_id', $id)->update([
+                'status' => DocumentStatusEnum::DITINJAU,
+                'tanggal_aksi' => null,
+                'posisi_x' => null, // Reset posisi paraf jika perlu, karena layout file baru mungkin beda
+                'posisi_y' => null,
+                'halaman' => null
+            ]);
+
+            DB::commit();
+
+            return redirect()->back()->with('success', 'File revisi berhasil diunggah. Alur persetujuan dimulai ulang.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors('Gagal upload revisi: ' . $e->getMessage());
+        }
     }
 
     // Mengupdate status penandatanganan workflow oleh user
