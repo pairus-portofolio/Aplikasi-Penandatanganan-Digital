@@ -116,9 +116,10 @@ class TableController extends Controller
     private static function formatSuratForTable($paginator)
     {
         $user = Auth::user();
+        $isTU = $user->role->nama_role === RoleEnum::TU;
 
         // Gunakan through() untuk memodifikasi item di dalam paginator
-        $paginator->through(function ($doc) use ($user) {
+        $paginator->through(function ($doc) use ($user, $isTU) {
 
             $statusClass = match ($doc->status) {
                 DocumentStatusEnum::DITINJAU       => 'kuning',
@@ -128,6 +129,14 @@ class TableController extends Controller
                 DocumentStatusEnum::FINAL          => 'abu',
                 default                            => 'abu',
             };
+
+            $revisionUrl = null;
+            
+            // Jika user adalah TU DAN statusnya Perlu Revisi
+            if ($isTU && $doc->status === DocumentStatusEnum::PERLU_REVISI) {
+                // Buat link ke halaman upload dengan membawa ID (Pintu Revisi)
+                $revisionUrl = route('tu.upload.create', ['id' => $doc->id]);
+            }
 
             // Tentukan Action Type
             $actionData = self::determineActionType($doc, $user);
@@ -139,6 +148,7 @@ class TableController extends Controller
                 'pengunggah'   => $doc->uploader->nama_lengkap ?? 'Tidak Diketahui',
                 'tanggal'      => $doc->created_at->format('d/m/Y'),
                 'status'       => ucfirst($doc->status),
+                'revision_url' => $revisionUrl,
                 'status_class' => $statusClass,
                 'action_type'  => $actionData['type'],
                 'action_url'   => $actionData['url'],
