@@ -59,6 +59,7 @@
   <div id="overlay"></div>
 
   <!-- Popup dinamis -->
+  @include('partials.logout-popup')
   @yield('popup')
 
   <!-- Script utama dashboard -->
