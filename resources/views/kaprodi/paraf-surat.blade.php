@@ -73,14 +73,7 @@
 @endsection
 
 @section('popup')
-    @include('partials.shared.action-submit', [
-        'actionUrl'      => route('kaprodi.paraf.submit', $document->id),
-        'modalId'        => 'parafNotifPopup',
-        'inputIdPrefix'  => 'paraf',
-        'defaultSubject' => 'Dokumen Selesai Diparaf',
-        'cancelBtnId'    => 'batalKirim',
-        'confirmBtnId'   => 'konfirmasiKirim'
-    ])
+    @include('partials.action-paraf')
     @include('partials.logout-popup')
 @endsection
 

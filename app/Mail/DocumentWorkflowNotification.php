@@ -15,27 +15,31 @@ class DocumentWorkflowNotification extends Mailable
     public $document;
     public $receiver;
     public $type; 
+    public $notes;
+    public $customSubject;
 
-    public function __construct(Document $document, User $receiver, $type = 'next_turn')
+    public function __construct(Document $document, User $receiver, $type = 'next_turn', $notes = null, $customSubject = null)
     {
         $this->document = $document;
         $this->receiver = $receiver;
         $this->type = $type;
+        $this->notes = $notes;
+        $this->customSubject = $customSubject;
     }
 
     public function build()
     {
         $subject = '';
         
-        if ($this->type == 'completed') {
+        // Logika Subjek
+        if ($this->customSubject) {
+            // Jika ada subjek custom (dari revisi), pakai itu
+            $subject = $this->customSubject;
+        } elseif ($this->type == 'completed') {
             $subject = '[SELESAI] Dokumen Telah Selesai Diproses: ' . $this->document->judul_surat;
         } else {
-            // ID Role: 2,3 (Kaprodi/Paraf), 4,5 (Kajur/Tanda Tangan)
-            if (in_array($this->receiver->role_id, [2, 3])) {
-                $subject = '[TINDAKAN DIPERLUKAN] Giliran Anda Melakukan Paraf: ' . $this->document->judul_surat;
-            } else {
-                $subject = '[TINDAKAN DIPERLUKAN] Giliran Anda Menandatangani: ' . $this->document->judul_surat;
-            }
+            // Default subjek
+            $subject = '[TINDAKAN DIPERLUKAN] Dokumen: ' . $this->document->judul_surat;
         }
 
         return $this->subject($subject)

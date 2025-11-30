@@ -9,6 +9,8 @@ use App\Models\WorkflowStep;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Dashboard\TableController;
 use App\Enums\DocumentStatusEnum;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\DocumentWorkflowNotification;
 
 class ReviewController extends Controller
 {
@@ -42,10 +44,23 @@ class ReviewController extends Controller
         $document->status = DocumentStatusEnum::PERLU_REVISI; 
         $document->save();
 
-        // 2. Kirim Email ke TU (Uploader)
-        // [PENDING] Logika email dinonaktifkan sementara sesuai permintaan.
-        // Nanti di sini akan memanggil Mail::to(...)->send(...)
-        // Data $request->catatan dan $request->subjek akan dikirim via email.
+        // 2. Kirim Email Otomatis ke TU
+        if ($document->uploader && $document->uploader->email) {
+            try {
+                // Kita kirim parameter tambahan: tipe 'revision_request', catatan, dan subjek
+                Mail::to($document->uploader->email)
+                    ->send(new DocumentWorkflowNotification(
+                        $document, 
+                        $document->uploader, 
+                        'revision_request', // Tipe Notifikasi
+                        $request->catatan,  // Isi Catatan
+                        $request->subjek    // Subjek Custom
+                    ));
+            } catch (\Exception $e) {
+                // Log error tapi jangan gagalkan proses redirect
+                \Log::error("Gagal kirim email revisi: " . $e->getMessage());
+            }
+        }
 
         return redirect()->route('kaprodi.review.index')
             ->with('success', 'Status dokumen diubah menjadi Revisi. Catatan akan dikirim ke TU.');

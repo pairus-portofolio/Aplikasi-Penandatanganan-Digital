@@ -96,18 +96,22 @@ class DocumentController extends Controller
             // Commit transaction jika semua berhasil
             DB::commit();
 
-            // --- LOGIKA EMAIL NOTIFIKASI (USER PERTAMA) ---
-            // Ambil user urutan ke-1
-            $firstStep = WorkflowStep::where('document_id', $document->id)
-                ->where('urutan', 1)
-                ->first();
+            // --- LOGIKA EMAIL MANUAL ---
+            // Cek input dari modal (1 = kirim, 0 = jangan)
+            if ($request->input('send_notification') == '1') {
+                
+                // Ambil step pertama
+                $firstStep = WorkflowStep::where('document_id', $document->id)
+                    ->where('urutan', 1)
+                    ->first();
 
-            if ($firstStep && $firstStep->user) {
-                try {
-                    Mail::to($firstStep->user->email)
-                        ->send(new DocumentWorkflowNotification($document, $firstStep->user, 'next_turn'));
-                } catch (\Exception $e) {
-                    \Log::error("Gagal kirim email ke user pertama: " . $e->getMessage());
+                if ($firstStep && $firstStep->user) {
+                    try {
+                        Mail::to($firstStep->user->email)
+                            ->send(new DocumentWorkflowNotification($document, $firstStep->user, 'next_turn'));
+                    } catch (\Exception $e) {
+                        \Log::error("Gagal kirim email: " . $e->getMessage());
+                    }
                 }
             }
 
