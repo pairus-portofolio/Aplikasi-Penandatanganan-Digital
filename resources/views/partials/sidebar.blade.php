@@ -27,10 +27,9 @@
           <i class="fa-solid fa-upload fa-fw"></i><span>Unggah Surat</span>
         </a>
 
-        <!-- Halaman finalisasi surat -->
-        <a href="#" class="{{ Request::is('finalisasi') ? 'active' : '' }}">
-          <i class="fa-solid fa-file-signature fa-fw"></i><span>Finalisasi Surat</span>
-        </a>
+        <a href="{{ route('tu.finalisasi.index') }}" class="{{ Request::is('tu/finalisasi*') ? 'active' : '' }}">
+    <i class="fa-solid fa-file-signature fa-fw"></i><span>Finalisasi Surat</span>
+</a>
       @endif
 
       <!-- Menu khusus Kaprodi D3 & D4 -->

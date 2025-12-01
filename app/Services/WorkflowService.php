@@ -147,7 +147,7 @@ class WorkflowService
      * @param int $documentId ID dokumen
      * @return void
      */
-    public function processNextStep($documentId)
+    public function processNextStep($documentId, $sendNotification = false)
     {
         // 1. Update document status based on remaining workflow steps
         $this->updateDocumentStatus($documentId);
@@ -160,43 +160,31 @@ class WorkflowService
             ->orderBy('urutan')
             ->first();
 
-        if ($nextStep && $nextStep->user) {
-            // There is a next step - send notification to the next user
-            try {
-                Mail::to($nextStep->user->email)
-                    ->send(new DocumentWorkflowNotification($document, $nextStep->user, 'next_turn'));
-                
-                Log::info('Next step notification sent', [
-                    'document_id' => $documentId,
-                    'next_user_id' => $nextStep->user_id,
-                    'next_user_email' => $nextStep->user->email
-                ]);
-            } catch (\Exception $e) {
-                Log::error('Failed to send next step notification', [
-                    'document_id' => $documentId,
-                    'next_user_id' => $nextStep->user_id,
-                    'error' => $e->getMessage()
-                ]);
-            }
-        } else {
-            // No more pending steps - workflow is complete
-            // Send completion notification to the uploader
-            if ($document->uploader && $document->uploader->email) {
+        // 3. LOGIKA PENGIRIMAN EMAIL (HANYA JIKA $sendNotification == true)
+        if ($sendNotification) {
+            
+            if ($nextStep && $nextStep->user) {
+                // Kasus: Ada user selanjutnya (Estafet)
                 try {
-                    Mail::to($document->uploader->email)
-                        ->send(new DocumentWorkflowNotification($document, $document->uploader, 'completed'));
+                    Mail::to($nextStep->user->email)
+                        ->send(new DocumentWorkflowNotification($document, $nextStep->user, 'next_turn'));
                     
-                    Log::info('Workflow completion notification sent', [
-                        'document_id' => $documentId,
-                        'uploader_id' => $document->uploader->id,
-                        'uploader_email' => $document->uploader->email
-                    ]);
+                    Log::info('Notifikasi estafet dikirim manual', ['doc_id' => $documentId]);
                 } catch (\Exception $e) {
-                    Log::error('Failed to send completion notification', [
-                        'document_id' => $documentId,
-                        'uploader_id' => $document->uploader->id,
-                        'error' => $e->getMessage()
-                    ]);
+                    Log::error('Gagal kirim notifikasi estafet', ['error' => $e->getMessage()]);
+                }
+
+            } else {
+                // Kasus: Tidak ada step lagi (Finish) -> Kirim ke TU
+                if ($document->uploader && $document->uploader->email) {
+                    try {
+                        Mail::to($document->uploader->email)
+                            ->send(new DocumentWorkflowNotification($document, $document->uploader, 'completed'));
+                        
+                        Log::info('Notifikasi selesai dikirim manual', ['doc_id' => $documentId]);
+                    } catch (\Exception $e) {
+                        Log::error('Gagal kirim notifikasi selesai', ['error' => $e->getMessage()]);
+                    }
                 }
             }
         }

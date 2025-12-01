@@ -31,9 +31,21 @@
           <td>{{ $s['pengunggah'] }}</td>
           <td>{{ $s['tanggal'] }}</td>
           <td>
-            <span class="pill {{ $s['status_class'] }}">
-              {{ $s['status'] }}
-            </span>
+            {{-- LOGIKA: Cek apakah ada URL Revisi (Khusus TU yang kena Revisi) --}}
+            @if(!empty($s['revision_url']))
+                {{-- TAMPILAN LINK (Tanpa Border Tombol, Cuma Link Biasa) --}}
+                <a href="{{ $s['revision_url'] }}" 
+                   class="pill {{ $s['status_class'] }}" 
+                   style="text-decoration: underline; cursor: pointer;"
+                   title="Klik untuk memperbaiki surat ini">
+                    {{ $s['status'] }}
+                </a>
+            @else
+                {{-- TAMPILAN STATUS BIASA (Span) --}}
+                <span class="pill {{ $s['status_class'] }}">
+                  {{ $s['status'] }}
+                </span>
+            @endif
           </td>
         </tr>
         @empty
@@ -57,5 +69,5 @@
 @endsection
 
 @section('popup')
-  @include('partials.logout-popup')
+
 @endsection

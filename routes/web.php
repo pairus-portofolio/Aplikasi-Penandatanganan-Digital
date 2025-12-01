@@ -1,12 +1,14 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\GoogleLoginController;
 use App\Http\Controllers\Dashboard\CardsController;
 use App\Http\Controllers\Dashboard\TableController;
 use App\Http\Controllers\Tu\DocumentController;
-use App\Http\Controllers\Kaprodi\ReviewController; 
+use App\Http\Controllers\Tu\FinalisasiController;
+use App\Http\Controllers\Kaprodi\ReviewController;
 use App\Http\Controllers\Kaprodi\ParafController;
 use App\Http\Controllers\Kajur_Sekjur\TandatanganController;
 
@@ -16,8 +18,8 @@ Route::get('/', function () {
 });
 
 // Login routes
-Route::get('/login', [AuthController::class, 'showLogin'])->name('login');        // ← WAJIB DITAMBAHKAN
-Route::get('/login', [AuthController::class, 'showLogin'])->name('auth.login');
+Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
@@ -31,8 +33,33 @@ Route::get('/dashboard/table', [TableController::class, 'index'])->middleware('a
 
 // TU
 Route::middleware(['auth'])->group(function () {
+
+    // Upload
     Route::get('/tu/upload', [DocumentController::class, 'create'])->name('tu.upload.create');
     Route::post('/tu/upload', [DocumentController::class, 'store'])->name('tu.upload.store');
+    Route::put('/tu/document/{id}/revisi', [DocumentController::class, 'updateRevision'])->name('tu.document.revisi');
+
+    // Finalisasi TU
+    Route::prefix('tu/finalisasi')->name('tu.finalisasi.')->group(function() {
+
+        // daftar finalisasi
+        Route::get('/', [FinalisasiController::class, 'index'])->name('index');
+
+        // detail finalisasi (show)
+        Route::get('/{id}', [FinalisasiController::class, 'show'])->name('show');
+
+        // submit finalisasi (post)
+        Route::post('/{id}', [FinalisasiController::class, 'store'])->name('store');
+
+        // preview PDF (private) - gunakan model binding Document
+        Route::get('/{id}/preview', [DocumentController::class, 'preview']) // Ganti {document} ke {id}
+            ->name('preview');
+
+       // download PDF (private) - Arahkan ke FinalisasiController
+        Route::get('/{id}/download', [FinalisasiController::class, 'download']) // <-- Ganti ke FinalisasiController
+            ->name('download');
+    });
+
 });
 
 // Kaprodi
@@ -43,6 +70,8 @@ Route::middleware('auth')->group(function () {
         ->name('kaprodi.review.index');
     Route::get('/review-surat/{id}', [ReviewController::class, 'show'])
         ->name('kaprodi.review.show');
+    Route::post('/review-surat/{id}/revise', [ReviewController::class, 'revise'])
+        ->name('kaprodi.review.revise');
 
     // PARAF
     Route::get('/paraf-surat', [ParafController::class, 'index'])

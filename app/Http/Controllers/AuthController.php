@@ -23,12 +23,12 @@ class AuthController extends Controller
             'password' => ['required'],
         ]);
 
-        // Menentukan apakah login memakai email atau nama lengkap
-        $loginField = filter_var($credentials['email'], FILTER_VALIDATE_EMAIL) ? 'email' : 'nama_lengkap';
+        // Menentukan field login (Hanya Email)
+        $loginField = 'email';
 
         // Mencoba login dengan kredensial yang dimasukkan
         $attempt = Auth::attempt(
-            [$loginField => $credentials['email'], 'password' => $credentials['password']],
+            ['email' => $credentials['email'], 'password' => $credentials['password']],
             $request->filled('remember')
         );
 
@@ -39,11 +39,7 @@ class AuthController extends Controller
         }
 
         // Mencari user untuk kemungkinan password yang masih plaintext
-        $userQuery = $loginField === 'email'
-            ? ['email' => $credentials['email']]
-            : ['nama_lengkap' => $credentials['email']];
-
-        $user = User::where($userQuery)->first();
+        $user = User::where('email', $credentials['email'])->first();
 
         // Validasi login untuk user yang menyimpan password plaintext
         if ($user && $user->password === $credentials['password']) {
@@ -53,7 +49,7 @@ class AuthController extends Controller
 
             // Mencoba login ulang setelah password diperbaiki
             $attempt = Auth::attempt(
-                [$loginField => $credentials['email'], 'password' => $credentials['password']],
+                ['email' => $credentials['email'], 'password' => $credentials['password']],
                 $request->filled('remember')
             );
 
@@ -85,6 +81,6 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         // Arahkan kembali ke halaman login
-        return redirect()->route('auth.login');
+        return redirect()->route('login');
     }
 }
