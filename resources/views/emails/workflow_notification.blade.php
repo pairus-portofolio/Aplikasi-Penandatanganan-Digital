@@ -40,7 +40,7 @@
     <br>
     <p>
         {{-- [FIX] Ganti route('auth.login') menjadi route('login') --}}
-        <a href="{{ route('auth.login') }}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
+        <a href="{{ route('login') }}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
             Masuk ke Aplikasi
         </a>
     </p>

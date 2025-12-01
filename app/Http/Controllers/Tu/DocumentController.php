@@ -39,13 +39,41 @@ class DocumentController extends Controller
     // Menyimpan surat yang diupload dan membuat workflow penandatangan
     public function store(Request $request)
     {
-        // Validasi data form upload
+        // FIX BUG #4: Validasi data form upload dengan custom validation untuk alur
         $validated = $request->validate([
             'judul_surat' => 'required|string|max:255',
             'file_surat'  => 'required|file|mimes:pdf|max:2048',
             'kategori'    => 'required|string',
             'tanggal'     => 'required|date',
-            'alur'        => 'required|string',
+            'alur'        => [
+                'required',
+                'string',
+                'regex:/^[0-9,]+$/', // Hanya angka dan koma
+                function ($attribute, $value, $fail) {
+                    // Validasi format dan duplikasi
+                    $userIds = array_filter(explode(',', $value));
+                    
+                    // Minimal 1 penandatangan
+                    if (empty($userIds)) {
+                        $fail('Minimal harus ada 1 penandatangan.');
+                        return;
+                    }
+                    
+                    // Cek duplikasi
+                    if (count($userIds) !== count(array_unique($userIds))) {
+                        $fail('Tidak boleh ada penandatangan yang sama lebih dari sekali.');
+                        return;
+                    }
+                    
+                    // Validasi semua user ID valid
+                    foreach ($userIds as $userId) {
+                        if (!User::find($userId)) {
+                            $fail("User dengan ID '$userId' tidak ditemukan.");
+                            return;
+                        }
+                    }
+                },
+            ],
         ]);
 
         // Mengambil file yang diupload
@@ -129,11 +157,18 @@ class DocumentController extends Controller
                 Storage::delete($filePath);
             }
 
-            // Kembali dengan error message
+            // FIX BUG #9: Log error detail untuk developer, tampilkan generic message ke user
+            \Log::error('Document upload failed', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // Kembali dengan error message yang user-friendly
             return redirect()
                 ->back()
                 ->withInput()
-                ->withErrors('Gagal mengupload dokumen: ' . $e->getMessage());
+                ->withErrors('Gagal mengupload dokumen. Silakan periksa kembali data Anda dan coba lagi.');
         }
     }
 
