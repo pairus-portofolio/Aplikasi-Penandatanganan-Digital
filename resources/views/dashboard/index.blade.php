@@ -11,6 +11,8 @@
 
   @include('partials.cards')
     
+  @include('partials.search-filter')
+
   <div class="table-shell">
     <table>
       <thead>
@@ -69,5 +71,5 @@
 @endsection
 
 @section('popup')
-  @include('partials.logout-popup')
+
 @endsection

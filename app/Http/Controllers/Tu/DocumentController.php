@@ -121,7 +121,19 @@ class DocumentController extends Controller
             if (isset($filePath) && Storage::exists($filePath)) {
                 Storage::delete($filePath);
             }
-            return redirect()->back()->withInput()->withErrors('Gagal mengupload: ' . $e->getMessage());
+
+            // FIX BUG #9: Log error detail untuk developer, tampilkan generic message ke user
+            \Log::error('Document upload failed', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // Kembali dengan error message yang user-friendly
+            return redirect()
+                ->back()
+                ->withInput()
+                ->withErrors('Gagal mengupload dokumen. Silakan periksa kembali data Anda dan coba lagi.');
         }
     }
 

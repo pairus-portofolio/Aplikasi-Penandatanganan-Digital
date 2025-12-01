@@ -58,7 +58,7 @@
 @endsection
 
 @section('popup')
-  @include('partials.logout-popup')
+
   
   {{-- 1. Logika untuk menampilkan popup konfirmasi download --}}
   @if(Session::has('download_doc_id'))

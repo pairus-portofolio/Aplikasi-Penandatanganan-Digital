@@ -54,7 +54,7 @@
             <div class="detail-title">Detail Surat</div>
             <div class="detail-wrapper">
 
-                <!-- Judul -->
+                <!-- Judul surat (otomatis dari nama file, bisa diedit) -->
                 <div class="detail-field-box">
                     <label for="judul_surat">Judul Surat :</label>
                     <input id="judul_surat" name="judul_surat" type="text" class="detail-input-inner" 
@@ -135,9 +135,30 @@
 </div>
 
 <script>
+    // FIX BUG #12: Prevent multiple submit
     function submitFormWithNotif(val) {
         document.getElementById('sendNotificationValue').value = val;
-        document.getElementById('sendNotificationValue').closest('form').submit();
+        
+        // Ambil form dan tombol
+        const form = document.getElementById('sendNotificationValue').closest('form');
+        const modal = bootstrap.Modal.getInstance(document.getElementById('confirmUploadModal'));
+        const submitButtons = document.querySelectorAll('#confirmUploadModal button[type="button"]');
+        
+        // Disable semua tombol di modal
+        submitButtons.forEach(btn => {
+            btn.disabled = true;
+            if (btn.classList.contains('btn-success') || btn.classList.contains('btn-secondary')) {
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Memproses...';
+            }
+        });
+        
+        // Close modal
+        if (modal) {
+            modal.hide();
+        }
+        
+        // Submit form
+        form.submit();
     }
 </script>
 

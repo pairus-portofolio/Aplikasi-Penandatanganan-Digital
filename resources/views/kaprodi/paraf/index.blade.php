@@ -6,6 +6,8 @@
 
   <h1 class="page-title">Daftar Surat Perlu Diparaf</h1>
 
+  @include('partials.search-filter')
+
   <div class="table-shell">
     <table>
       <thead>
@@ -62,5 +64,5 @@
 @endsection
 
 @section('popup')
-    @include('partials.logout-popup')
+
 @endsection

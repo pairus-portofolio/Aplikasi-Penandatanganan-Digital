@@ -28,21 +28,40 @@ class TableController extends Controller
 
         $roleName = $user->role->nama_role ?? '';
 
-        // 1. TU → semua dokumen (sebagai admin surat)
-        if ($roleName === RoleEnum::TU) {
-            return Document::with(['uploader', 'workflowSteps.user'])
-                ->latest()
-                ->paginate(10);
+        // Ambil parameter search & filter
+        $search = request('search');
+        $status = request('status');
+
+        // Base Query
+        $query = Document::with(['uploader', 'workflowSteps.user']);
+
+        // Filter Role Logic
+        if ($roleName !== RoleEnum::TU) {
+            // Role Lain (Kaprodi, Kajur, Sekjur) → user harus ada di workflow
+            $query->whereHas('workflowSteps', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            });
         }
 
-        // 2. Role Lain (Kaprodi, Kajur, Sekjur) → semua dokumen yang user ada di workflow-nya
-        // Kita gabungkan logika karena pada dasarnya sama: user harus ada di workflow
-        return Document::with(['uploader', 'workflowSteps.user'])
-            ->whereHas('workflowSteps', function ($q) use ($user) {
-                $q->where('user_id', $user->id);
-            })
-            ->latest()
-            ->paginate(10);
+        // 1. Search Logic (Judul atau Nama Pengunggah)
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('judul_surat', 'like', '%' . $search . '%')
+                  ->orWhereHas('uploader', function($u) use ($search) {
+                      $u->where('nama_lengkap', 'like', '%' . $search . '%');
+                  });
+            });
+        }
+
+        // 2. Filter Status
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        // Return Paginated with Query String (agar search tidak hilang saat ganti halaman)
+        return $query->latest()
+            ->paginate(10)
+            ->withQueryString();
     }
 
     /**
