@@ -19,7 +19,7 @@
             <option value="Diparaf" {{ request('status') == 'Diparaf' ? 'selected' : '' }}>Diparaf</option>
             <option value="Ditandatangani" {{ request('status') == 'Ditandatangani' ? 'selected' : '' }}>Ditandatangani</option>
             <option value="Perlu Revisi" {{ request('status') == 'Perlu Revisi' ? 'selected' : '' }}>Perlu Revisi</option>
-            <option value="Selesai" {{ request('status') == 'Selesai' ? 'selected' : '' }}>Final / Selesai</option>
+            <option value="Selesai" {{ request('status') == 'Selesai' ? 'selected' : '' }}>Final</option>
         </select>
 
         <!-- Submit Button -->
