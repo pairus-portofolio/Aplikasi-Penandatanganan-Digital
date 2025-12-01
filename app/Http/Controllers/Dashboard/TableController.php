@@ -8,6 +8,7 @@ use App\Models\Document;
 use App\Models\WorkflowStep;
 use App\Enums\DocumentStatusEnum;
 use App\Enums\RoleEnum;
+use Carbon\Carbon;
 
 class TableController extends Controller
 {
@@ -86,6 +87,11 @@ class TableController extends Controller
      */
     public static function isUserActiveInWorkflow($document, $userId)
     {
+        // Tidak ada user yang boleh 'Kerjakan' saat status revisi.
+        if ($document->status === DocumentStatusEnum::PERLU_REVISI) {
+            return false;
+        }
+
         // Ambil semua step yang statusnya DITINJAU
         $pendingSteps = $document->workflowSteps->where('status', DocumentStatusEnum::DITINJAU);
 
@@ -141,12 +147,22 @@ class TableController extends Controller
             // Tentukan Action Type
             $actionData = self::determineActionType($doc, $user);
 
+            // [FIX BUG 1] Prioritaskan tanggal_surat (inputan user) daripada created_at
+            $tanggalTampil = $doc->created_at->format('d/m/Y'); // Default fallback
+            if ($doc->tanggal_surat) {
+                try {
+                    $tanggalTampil = Carbon::parse($doc->tanggal_surat)->format('d/m/Y');
+                } catch (\Exception $e) {
+                    // Fallback jika format error
+                }
+            }
+
             return [
                 'id_raw'       => $doc->id,
                 'nomor'        => 'SRT-' . str_pad($doc->id, 4, '0', STR_PAD_LEFT),
                 'nama'         => $doc->judul_surat,
                 'pengunggah'   => $doc->uploader->nama_lengkap ?? 'Tidak Diketahui',
-                'tanggal'      => $doc->created_at->format('d/m/Y'),
+                'tanggal'      => $tanggalTampil,
                 'status'       => ucfirst($doc->status),
                 'revision_url' => $revisionUrl,
                 'status_class' => $statusClass,
@@ -196,7 +212,7 @@ class TableController extends Controller
         if ($isActive && !$isTU) {
             $type = 'work';
             $label = 'Kerjakan';
-            $class = 'btn-primary'; // Biru/Warna Utama
+            $class = 'btn-primary';
             
             // Override URL jika perlu (sebenarnya logic di atas sudah handle, tapi untuk konsistensi)
             if (in_array($user->role->nama_role, RoleEnum::getKaprodiRoles())) {

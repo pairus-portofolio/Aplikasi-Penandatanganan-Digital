@@ -35,7 +35,7 @@ Route::get('/dashboard/table', [TableController::class, 'index'])->middleware('a
 Route::middleware(['auth'])->group(function () {
 
     // Upload
-    Route::get('/tu/upload', [DocumentController::class, 'create'])->name('tu.upload.create');
+    Route::get('/tu/upload/{id?}', [DocumentController::class, 'create'])->name('tu.upload.create');
     Route::post('/tu/upload', [DocumentController::class, 'store'])->name('tu.upload.store');
     Route::put('/tu/document/{id}/revisi', [DocumentController::class, 'updateRevision'])->name('tu.document.revisi');
 

@@ -1,22 +1,14 @@
 @extends('layouts.app')
 
-@section('title', 'Unggah Surat')
+@section('title', isset($document) ? 'Revisi Surat' : 'Unggah Surat')
 
 @section('content')
 
-<!-- Notifikasi modern pakai SweetAlert2 -->
+<!-- Notifikasi -->
 @if(session('success'))
 <script>
     document.addEventListener("DOMContentLoaded", function () {
-        Swal.fire({
-            toast: true,
-            icon: 'success',
-            title: '{{ session('success') }}',
-            position: 'top-end',
-            timer: 2500,
-            timerProgressBar: true,
-            showConfirmButton: false,
-        });
+        Swal.fire({ toast: true, icon: 'success', title: '{{ session('success') }}', position: 'top-end', timer: 2500, showConfirmButton: false });
     });
 </script>
 @endif
@@ -24,60 +16,66 @@
 @if ($errors->any())
 <script>
     document.addEventListener("DOMContentLoaded", function () {
-        Swal.fire({
-            icon: 'error',
-            title: 'Validasi Gagal',
-            html: `{!! implode('<br>', $errors->all()) !!}`,
-        });
+        Swal.fire({ icon: 'error', title: 'Validasi Gagal', html: `{!! implode('<br>', $errors->all()) !!}` });
     });
 </script>
 @endif
 
-<!-- Load CSS halaman unggah surat -->
 <link rel="stylesheet" href="{{ asset('css/tu/upload.css') }}">
 
-<h1>Unggah Surat</h1>
+<!-- JUDUL DINAMIS -->
+<h1>{{ isset($document) ? 'Revisi Surat: ' . $document->judul_surat : 'Unggah Surat' }}</h1>
 
-<!-- Form utama untuk upload surat -->
-<form method="POST" action="{{ route('tu.upload.store') }}" enctype="multipart/form-data">
+<!-- FORM DINAMIS -->
+<!-- Jika ada $document, arahkan ke route updateRevision dengan method PUT -->
+<!-- Jika tidak, arahkan ke store dengan method POST -->
+<form method="POST" 
+      action="{{ isset($document) ? route('tu.document.revisi', $document->id) : route('tu.upload.store') }}" 
+      enctype="multipart/form-data">
+    
     @csrf
+    
+    <!-- METHOD PUT UNTUK REVISI -->
+    @if(isset($document))
+        @method('PUT')
+    @endif
 
-    <!-- Area drag & drop untuk upload file -->
     <div class="upload-box" id="drop-area">
         <p class="upload-title">Seret & letakan file disini</p>
         <p class="upload-subtitle">hanya mendukung file PDF</p>
         <button type="button" class="upload-btn">Pilih File</button>
     </div>
 
-    <!-- Input file yang disembunyikan -->
+    <!-- Input file -->
     <input id="file-input" name="file_surat" type="file" accept=".pdf" style="display:none;" required>
 
-    <!-- Container bagian input detail surat -->
     <div class="form-container">
         <div class="detail-container">
             <div class="detail-title">Detail Surat</div>
-
             <div class="detail-wrapper">
 
-                <!-- Judul surat (otomatis dari nama file) -->
+                <!-- Judul -->
                 <div class="detail-field-box">
                     <label for="judul_surat">Judul Surat :</label>
-                    <input id="judul_surat" name="judul_surat" type="text" class="detail-input-inner" required readonly>
+                    <input id="judul_surat" name="judul_surat" type="text" class="detail-input-inner" 
+                           value="{{ old('judul_surat', $document->judul_surat ?? '') }}" required {{ isset($document) ? '' : 'readonly' }}>
                 </div>
 
-                <!-- Input kategori surat -->
+                <!-- Kategori -->
                 <div class="detail-field-box">
                     <label for="kategori">Kategori surat :</label>
-                    <input id="kategori" name="kategori" type="text" class="detail-input-inner" required>
+                    <input id="kategori" name="kategori" type="text" class="detail-input-inner" 
+                           value="{{ old('kategori', $document->kategori ?? '') }}" required>
                 </div>
 
-                <!-- Input tanggal surat -->
+                <!-- Tanggal -->
                 <div class="detail-field-box">
                     <label for="tanggal">Tanggal :</label>
-                    <input id="tanggal" name="tanggal" type="date" class="detail-input-inner" required>
+                    <input id="tanggal" name="tanggal" type="date" class="detail-input-inner" 
+                           value="{{ old('tanggal', $document->tanggal_surat ?? '') }}" required>
                 </div>
 
-                <!-- Dropdown untuk memilih penandatangan -->
+                <!-- ALUR (Hanya Penampil, logika JS dibawah yang mengisi) -->
                 <div class="detail-field-box">
                     <label for="userSelect">Pilih Alur Penandatanganan :</label>
                     <select id="userSelect" class="detail-input-inner">
@@ -88,55 +86,49 @@
                     </select>
                 </div>
 
-                <!-- Daftar urutan penandatangan -->
                 <div id="alurStepsContainer" class="alur-steps">
                     <p class="alur-placeholder">Alur surat.</p>
                     <ol id="alurList" class="alur-list"></ol>
                 </div>
 
-                <!-- Input tersembunyi untuk menyimpan urutan user -->
-                <input type="hidden" name="alur" id="alurInput">
+                <!-- Input Hidden Alur -->
+                <!-- PRE-FILL ALUR JIKA REVISI (Mengambil ID user dari workflow steps lama) -->
+                @php
+                    $existingAlur = isset($document) ? $document->workflowSteps->pluck('user_id')->join(',') : '';
+                @endphp
+                <input type="hidden" name="alur" id="alurInput" value="{{ $existingAlur }}">
 
             </div>
         </div>
     </div>
 
-    <!-- INPUT HIDDEN UNTUK PILIHAN NOTIFIKASI -->
+    <!-- Hidden Notifikasi -->
     <input type="hidden" name="send_notification" id="sendNotificationValue" value="0">
 
-    <!-- GANTI TOMBOL SUBMIT JADI TOMBOL PEMICU MODAL -->
-    <div id="submit-button-wrapper" style="text-align: center; margin-top: 32px; display: none;">
+    <!-- Tombol Submit -->
+    <div id="submit-button-wrapper" style="text-align: center; margin-top: 32px; {{ isset($document) ? '' : 'display: none;' }}">
         <button type="button" class="upload-btn" data-bs-toggle="modal" data-bs-target="#confirmUploadModal" style="cursor: pointer;">
-            Unggah Surat
+            {{ isset($document) ? 'Simpan Revisi' : 'Unggah Surat' }}
         </button>
     </div>
 </form>
 
-<!-- MODAL KONFIRMASI -->
+<!-- Modal Konfirmasi -->
 <div class="modal fade" id="confirmUploadModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Konfirmasi Pengiriman</h5>
+                <h5 class="modal-title">Konfirmasi</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body text-center">
-                <p>Surat akan disimpan ke sistem.</p>
-                <p class="fw-bold">Apakah Anda ingin mengirim notifikasi email ke penandatangan pertama?</p>
+                <p>{{ isset($document) ? 'Dokumen lama akan diganti dengan yang baru.' : 'Surat akan disimpan ke sistem.' }}</p>
+                <p class="fw-bold">Kirim notifikasi email ke penandatangan pertama?</p>
             </div>
             <div class="modal-footer justify-content-center">
-                <!-- YA, KIRIM -->
-                <button type="button" class="btn btn-success" onclick="submitFormWithNotif(1)">
-                    Ya, Kirim Notifikasi
-                </button>
-                <!-- JANGAN KIRIM -->
-                <button type="button" class="btn btn-secondary" onclick="submitFormWithNotif(0)">
-                    Ya, Jangan Kirim
-                </button>
-                <!-- BATAL -->
-                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">
-                    Batal
-                </button>
+                <button type="button" class="btn btn-success" onclick="submitFormWithNotif(1)">Ya, Kirim Notifikasi</button>
+                <button type="button" class="btn btn-secondary" onclick="submitFormWithNotif(0)">Ya, Jangan Kirim</button>
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Batal</button>
             </div>
         </div>
     </div>
@@ -144,9 +136,7 @@
 
 <script>
     function submitFormWithNotif(val) {
-        // Isi nilai hidden input
         document.getElementById('sendNotificationValue').value = val;
-        // Submit form terdekat
         document.getElementById('sendNotificationValue').closest('form').submit();
     }
 </script>
@@ -158,9 +148,50 @@
 @endsection
 
 @push('scripts')
-    <!-- SweetAlert2 (untuk notifikasi modern) -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-    <!-- Script untuk logika drag-and-drop dan alur sign -->
     <script src="{{ asset('js/tu/upload.js') }}"></script>
+    
+    <!-- Script Tambahan untuk Load Data Lama saat Revisi -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // Jika ada nilai alur (mode revisi), load list-nya
+            const existingAlur = document.getElementById("alurInput").value;
+            if (existingAlur) {
+                const userIds = existingAlur.split(',');
+                const userSelect = document.getElementById("userSelect");
+                const alurList = document.getElementById("alurList");
+                
+                // Hapus placeholder
+                const placeholder = document.querySelector(".alur-placeholder");
+                if(placeholder) placeholder.style.display = 'none';
+
+                userIds.forEach(id => {
+                    // Cari nama user di option dropdown
+                    let option = userSelect.querySelector(`option[value="${id}"]`);
+                    if (option) {
+                        const userName = option.text;
+                        
+                        // Buat elemen list manual (copy logic dari upload.js)
+                        const listItem = document.createElement("li");
+                        listItem.classList.add("alur-item");
+                        listItem.textContent = userName;
+                        listItem.dataset.userId = id;
+
+                        const removeButton = document.createElement("button");
+                        removeButton.classList.add("remove-alur-btn");
+                        removeButton.textContent = "Hapus";
+                        removeButton.onclick = function () {
+                            alurList.removeChild(listItem);
+                            updateAlurInput(); // Panggil fungsi dari upload.js (pastikan scope-nya global/accessible)
+                            option.disabled = false;
+                        };
+
+                        listItem.appendChild(removeButton);
+                        alurList.appendChild(listItem);
+                        option.disabled = true;
+                    }
+                });
+            }
+        });
+    </script>
 @endpush
