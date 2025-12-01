@@ -6,6 +6,8 @@
 
   <h1 class="page-title">Daftar Surat Perlu Direview</h1>
 
+  @include('partials.search-filter')
+
   <div class="table-shell">
     <table>
       <thead>

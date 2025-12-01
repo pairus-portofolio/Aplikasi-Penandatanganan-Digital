@@ -42,6 +42,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 fileInput.files = files;
             } catch (err) {
                 console.error("Tidak dapat meng-assign fileInput.files:", err);
+                alert("Gagal memproses file. Silakan coba lagi atau gunakan tombol 'Pilih File'.");
+                return; // FIX BUG #2: Return early jika error
             }
             handleFile(files[0]);
         }
@@ -75,8 +77,9 @@ document.addEventListener("DOMContentLoaded", function () {
             </div>
         `;
 
-        // Mengisi judul otomatis berdasarkan nama file
-        judulSuratInput.value = file.name;
+        // FIX BUG #11: Sanitize nama file sebelum assign ke judul
+        const sanitizedFileName = sanitizeFileName(file.name);
+        judulSuratInput.value = sanitizedFileName;
 
         // Menampilkan tombol submit setelah file valid
         submitButtonWrapper.style.display = "block";
@@ -143,6 +146,18 @@ document.addEventListener("DOMContentLoaded", function () {
             alurUserIds.push(item.dataset.userId);
         });
         alurInput.value = alurUserIds.join(",");
+    }
+
+    // FIX BUG #11: Fungsi untuk sanitasi nama file
+    function sanitizeFileName(fileName) {
+        // Hapus karakter berbahaya dan HTML tags
+        let sanitized = fileName.replace(/[<>:"\/\\|?*\x00-\x1f]/g, '');
+        // Decode HTML entities jika ada
+        const textarea = document.createElement('textarea');
+        textarea.innerHTML = sanitized;
+        sanitized = textarea.value;
+        // Trim whitespace
+        return sanitized.trim();
     }
 
     // Mengembalikan UI upload ke kondisi awal

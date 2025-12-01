@@ -11,6 +11,8 @@
 
   @include('partials.cards')
     
+  @include('partials.search-filter')
+
   <div class="table-shell">
     <table>
       <thead>
