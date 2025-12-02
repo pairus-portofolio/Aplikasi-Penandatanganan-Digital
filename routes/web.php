@@ -11,6 +11,7 @@ use App\Http\Controllers\Tu\FinalisasiController;
 use App\Http\Controllers\Kaprodi\ReviewController;
 use App\Http\Controllers\Kaprodi\ParafController;
 use App\Http\Controllers\Kajur_Sekjur\TandatanganController;
+use App\Http\Controllers\Tu\ArsipController;
 
 // Halaman utama diarahkan ke login
 Route::get('/', function () {
@@ -51,13 +52,30 @@ Route::middleware(['auth'])->group(function () {
         // submit finalisasi (post)
         Route::post('/{id}', [FinalisasiController::class, 'store'])->name('store');
 
-        // preview PDF (private) - gunakan model binding Document
-        Route::get('/{id}/preview', [DocumentController::class, 'preview']) // Ganti {document} ke {id}
+        // preview PDF (private)
+        Route::get('/{id}/preview', [DocumentController::class, 'preview'])
             ->name('preview');
 
-       // download PDF (private) - Arahkan ke FinalisasiController
-        Route::get('/{id}/download', [FinalisasiController::class, 'download']) // <-- Ganti ke FinalisasiController
+       // download PDF (private)
+        Route::get('/{id}/download', [FinalisasiController::class, 'download'])
             ->name('download');
+    });
+
+    // ARSIP TU (Dokumen Final)
+    
+    Route::prefix('tu/arsip')->name('tu.arsip.')->group(function () {
+
+        // Daftar Arsip (INDEX)
+        Route::get('/', [ArsipController::class, 'index'])->name('index');
+
+        // Detail Arsip (SHOW)
+        Route::get('/{id}', [ArsipController::class, 'show'])->name('show');
+
+        // Preview PDF (HELPER)
+        Route::get('/{id}/preview', [ArsipController::class, 'preview'])->name('preview');
+
+        // Download PDF (Compress/Original)
+        Route::get('/{id}/download', [ArsipController::class, 'download'])->name('download');
     });
 
 });

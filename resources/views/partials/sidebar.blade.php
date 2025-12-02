@@ -28,8 +28,13 @@
         </a>
 
         <a href="{{ route('tu.finalisasi.index') }}" class="{{ Request::is('tu/finalisasi*') ? 'active' : '' }}">
-    <i class="fa-solid fa-file-signature fa-fw"></i><span>Finalisasi Surat</span>
-</a>
+            <i class="fa-solid fa-file-signature fa-fw"></i><span>Finalisasi Surat</span>
+        </a>
+
+        <!-- Halaman Arsip Surat (MENU BARU) -->
+        <a href="{{ route('tu.arsip.index') }}" class="{{ Request::is('tu/arsip*') ? 'active' : '' }}">
+            <i class="fa-solid fa-archive fa-fw"></i><span>Arsip Surat</span>
+        </a>
       @endif
 
       <!-- Menu khusus Kaprodi D3 & D4 -->
