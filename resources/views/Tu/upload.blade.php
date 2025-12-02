@@ -1,4 +1,5 @@
 @extends('layouts.app')
+
 @section('title', isset($document) ? 'Revisi Surat' : 'Unggah Surat')
 
 @section('content')
@@ -34,8 +35,8 @@
 
 <h1>{{ isset($document) ? 'Revisi Surat: ' . ($document->judul_surat ?? 'Dokumen') : 'Unggah Surat' }}</h1>
 
-<form method="POST"
-      action="{{ isset($document) ? route('tu.document.revisi', $document->id) : route('tu.upload.store') }}"
+<form method="POST" 
+      action="{{ isset($document) ? route('tu.document.revisi', $document->id) : route('tu.upload.store') }}" 
       enctype="multipart/form-data">
     
     @csrf
@@ -60,21 +61,21 @@
 
                 <div class="detail-field-box">
                     <label for="judul_surat">Judul Surat :</label>
-                    <input id="judul_surat" name="judul_surat" type="text" class="detail-input-inner"
-                           value="{{ old('judul_surat', $document->judul_surat ?? '') }}"
-                           required placeholder="">
+                    <input id="judul_surat" name="judul_surat" type="text" class="detail-input-inner" 
+                           value="{{ old('judul_surat', $document->judul_surat ?? '') }}" 
+                           required placeholder="Judul akan terisi otomatis dari nama file">
                 </div>
 
                 <div class="detail-field-box">
                     <label for="kategori">Kategori surat :</label>
-                    <input id="kategori" name="kategori" type="text" class="detail-input-inner"
+                    <input id="kategori" name="kategori" type="text" class="detail-input-inner" 
                            value="{{ old('kategori', $document->kategori ?? '') }}"
                            required>
                 </div>
 
                 <div class="detail-field-box">
                     <label for="tanggal">Tanggal :</label>
-                    <input id="tanggal" name="tanggal" type="date" class="detail-input-inner"
+                    <input id="tanggal" name="tanggal" type="date" class="detail-input-inner" 
                            value="{{ old('tanggal', $document->tanggal_surat ?? '') }}"
                            required>
                 </div>
