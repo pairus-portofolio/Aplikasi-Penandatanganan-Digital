@@ -28,8 +28,7 @@
             </div>
             <div class="modal-footer justify-content-center">
                 <button type="button" class="btn btn-success" onclick="submitTtd(1)">Ya</button>
-                <button type="button" class="btn btn-secondary" onclick="submitTtd(0)">Tidak</button>
-                <button type="button" class="btn btn-outline-danger" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-danger" onclick="submitTtd(0)">Tidak</button>
             </div>
         </div>
     </div>

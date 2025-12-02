@@ -4,7 +4,7 @@
 
 @section('content')
 
-<!-- Notifikasi -->
+<!-- Notifikasi SweetAlert -->
 @if(session('success'))
 <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -26,39 +26,42 @@
 <!-- JUDUL DINAMIS -->
 <h1>{{ isset($document) ? 'Revisi Surat: ' . $document->judul_surat : 'Unggah Surat' }}</h1>
 
-<!-- FORM DINAMIS -->
-<!-- Jika ada $document, arahkan ke route updateRevision dengan method PUT -->
-<!-- Jika tidak, arahkan ke store dengan method POST -->
+<!-- FORM UTAMA -->
+<!-- Action dinamis: Ke 'revisi' (PUT) jika ada dokumen, atau ke 'store' (POST) jika baru -->
 <form method="POST" 
       action="{{ isset($document) ? route('tu.document.revisi', $document->id) : route('tu.upload.store') }}" 
       enctype="multipart/form-data">
     
     @csrf
     
-    <!-- METHOD PUT UNTUK REVISI -->
+    <!-- Method Spoofing untuk PUT jika Mode Revisi -->
     @if(isset($document))
         @method('PUT')
     @endif
 
+    <!-- Area Drag & Drop -->
     <div class="upload-box" id="drop-area">
         <p class="upload-title">Seret & letakan file disini</p>
         <p class="upload-subtitle">hanya mendukung file PDF</p>
         <button type="button" class="upload-btn">Pilih File</button>
     </div>
 
-    <!-- Input file -->
+    <!-- Input file (Hidden) -->
     <input id="file-input" name="file_surat" type="file" accept=".pdf" style="display:none;" required>
 
+    <!-- Detail Form Container -->
     <div class="form-container">
         <div class="detail-container">
             <div class="detail-title">Detail Surat</div>
             <div class="detail-wrapper">
 
-                <!-- Judul surat (otomatis dari nama file, bisa diedit) -->
+                <!-- Judul Surat -->
+                <!-- Readonly dihapus agar bisa diedit saat revisi -->
                 <div class="detail-field-box">
                     <label for="judul_surat">Judul Surat :</label>
                     <input id="judul_surat" name="judul_surat" type="text" class="detail-input-inner" 
-                           value="{{ old('judul_surat', $document->judul_surat ?? '') }}" required {{ isset($document) ? '' : 'readonly' }}>
+                           value="{{ old('judul_surat', $document->judul_surat ?? '') }}" 
+                           required placeholder="Judul akan terisi otomatis dari nama file">
                 </div>
 
                 <!-- Kategori -->
@@ -75,7 +78,7 @@
                            value="{{ old('tanggal', $document->tanggal_surat ?? '') }}" required>
                 </div>
 
-                <!-- ALUR (Hanya Penampil, logika JS dibawah yang mengisi) -->
+                <!-- ALUR -->
                 <div class="detail-field-box">
                     <label for="userSelect">Pilih Alur Penandatanganan :</label>
                     <select id="userSelect" class="detail-input-inner">
@@ -86,14 +89,15 @@
                     </select>
                 </div>
 
+                <!-- List Penandatangan (Diisi oleh JS) -->
                 <div id="alurStepsContainer" class="alur-steps">
                     <p class="alur-placeholder">Alur surat.</p>
                     <ol id="alurList" class="alur-list"></ol>
                 </div>
 
-                <!-- Input Hidden Alur -->
-                <!-- PRE-FILL ALUR JIKA REVISI (Mengambil ID user dari workflow steps lama) -->
+                <!-- Input Hidden Alur (Menyimpan ID user urut dipisah koma) -->
                 @php
+                    // Jika revisi, ambil urutan user dari workflow steps lama
                     $existingAlur = isset($document) ? $document->workflowSteps->pluck('user_id')->join(',') : '';
                 @endphp
                 <input type="hidden" name="alur" id="alurInput" value="{{ $existingAlur }}">
@@ -102,65 +106,13 @@
         </div>
     </div>
 
-    <!-- Hidden Notifikasi -->
+    <!-- Hidden Notifikasi (Nilainya diisi oleh JS di Partial saat tombol diklik) -->
     <input type="hidden" name="send_notification" id="sendNotificationValue" value="0">
 
-    <!-- Tombol Submit -->
-    <div id="submit-button-wrapper" style="text-align: center; margin-top: 32px; {{ isset($document) ? '' : 'display: none;' }}">
-        <button type="button" class="upload-btn" data-bs-toggle="modal" data-bs-target="#confirmUploadModal" style="cursor: pointer;">
-            {{ isset($document) ? 'Simpan Revisi' : 'Unggah Surat' }}
-        </button>
-    </div>
+    <!-- PANGGIL PARTIAL TOMBOL & MODAL (Yang baru kamu buat) -->
+    @include('partials.action-upload')
+
 </form>
-
-<!-- Modal Konfirmasi -->
-<div class="modal fade" id="confirmUploadModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Konfirmasi</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body text-center">
-                <p>{{ isset($document) ? 'Dokumen lama akan diganti dengan yang baru.' : 'Surat akan disimpan ke sistem.' }}</p>
-                <p class="fw-bold">Kirim notifikasi email ke penandatangan pertama?</p>
-            </div>
-            <div class="modal-footer justify-content-center">
-                <button type="button" class="btn btn-success" onclick="submitFormWithNotif(1)">Ya, Kirim Notifikasi</button>
-                <button type="button" class="btn btn-secondary" onclick="submitFormWithNotif(0)">Ya, Jangan Kirim</button>
-                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Batal</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    // FIX BUG #12: Prevent multiple submit
-    function submitFormWithNotif(val) {
-        document.getElementById('sendNotificationValue').value = val;
-        
-        // Ambil form dan tombol
-        const form = document.getElementById('sendNotificationValue').closest('form');
-        const modal = bootstrap.Modal.getInstance(document.getElementById('confirmUploadModal'));
-        const submitButtons = document.querySelectorAll('#confirmUploadModal button[type="button"]');
-        
-        // Disable semua tombol di modal
-        submitButtons.forEach(btn => {
-            btn.disabled = true;
-            if (btn.classList.contains('btn-success') || btn.classList.contains('btn-secondary')) {
-                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Memproses...';
-            }
-        });
-        
-        // Close modal
-        if (modal) {
-            modal.hide();
-        }
-        
-        // Submit form
-        form.submit();
-    }
-</script>
 
 @endsection
 
@@ -172,43 +124,47 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="{{ asset('js/tu/upload.js') }}"></script>
     
-    <!-- Script Tambahan untuk Load Data Lama saat Revisi -->
+    <!-- Script Load Data Revisi (Alur Lama) -->
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-            // Jika ada nilai alur (mode revisi), load list-nya
             const existingAlur = document.getElementById("alurInput").value;
+            
+            // Jika ada data alur lama (Mode Revisi)
             if (existingAlur) {
                 const userIds = existingAlur.split(',');
                 const userSelect = document.getElementById("userSelect");
                 const alurList = document.getElementById("alurList");
-                
-                // Hapus placeholder
                 const placeholder = document.querySelector(".alur-placeholder");
+                
+                // Sembunyikan placeholder "Alur surat"
                 if(placeholder) placeholder.style.display = 'none';
 
                 userIds.forEach(id => {
-                    // Cari nama user di option dropdown
+                    // Cari nama user di option dropdown berdasarkan ID
                     let option = userSelect.querySelector(`option[value="${id}"]`);
                     if (option) {
                         const userName = option.text;
                         
-                        // Buat elemen list manual (copy logic dari upload.js)
+                        // Buat elemen list (tampilan visual alur)
                         const listItem = document.createElement("li");
                         listItem.classList.add("alur-item");
                         listItem.textContent = userName;
                         listItem.dataset.userId = id;
 
+                        // Tombol hapus
                         const removeButton = document.createElement("button");
                         removeButton.classList.add("remove-alur-btn");
                         removeButton.textContent = "Hapus";
                         removeButton.onclick = function () {
                             alurList.removeChild(listItem);
-                            updateAlurInput(); // Panggil fungsi dari upload.js (pastikan scope-nya global/accessible)
+                            updateAlurInput(); // Panggil fungsi global dari upload.js
                             option.disabled = false;
                         };
 
                         listItem.appendChild(removeButton);
                         alurList.appendChild(listItem);
+                        
+                        // Disable opsi di dropdown biar gak dipilih 2x
                         option.disabled = true;
                     }
                 });
