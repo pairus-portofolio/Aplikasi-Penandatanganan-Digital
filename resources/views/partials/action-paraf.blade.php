@@ -30,8 +30,7 @@
             </div>
             <div class="modal-footer justify-content-center">
                 <button type="button" class="btn btn-success" onclick="submitParaf(1)">Ya</button>
-                <button type="button" class="btn btn-secondary" onclick="submitParaf(0)">Tidak</button>
-                <button type="button" class="btn btn-outline-danger" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-danger" onclick="submitParaf(0)">Tidak</button>
             </div>
         </div>
     </div>
