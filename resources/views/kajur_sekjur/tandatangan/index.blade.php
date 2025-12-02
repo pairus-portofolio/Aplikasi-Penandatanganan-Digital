@@ -24,7 +24,6 @@
         <tr>
           <td>
              <div style="font-weight:bold;">{{ $s['nama'] }}</div>
-             <div style="font-size:12px; color:#64748b;">{{ $s['nomor'] }}</div>
           </td>
           <td>{{ $s['pengunggah'] }}</td>
           <td>{{ $s['tanggal'] }}</td>
