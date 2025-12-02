@@ -43,7 +43,7 @@
           <td>{{ $d->uploader->nama_lengkap ?? '-' }}</td>
 
           {{-- Tanggal Updated --}}
-          <td>{{ $d->updated_at->format('d M Y') }}</td>
+          <td>{{ $d->updated_at->format('d/m/Y') }}</td>
 
           {{-- Status --}}
           <td>
