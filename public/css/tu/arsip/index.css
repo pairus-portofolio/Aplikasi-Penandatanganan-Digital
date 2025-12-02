@@ -1,0 +1,7 @@
+.btn-action.abu {
+    transition: background-color 0.15s ease;
+}
+
+.btn-action.abu:hover {
+    background-color: #edf0f5;
+}
