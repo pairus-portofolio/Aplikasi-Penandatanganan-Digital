@@ -10,38 +10,53 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\File;
 use Ilovepdf\Ilovepdf;
 
-class FinalisasiController extends Controller
+class ArsipController extends Controller
 {
     /**
-     * Halaman daftar dokumen yang siap difinalisasi
+     * Menampilkan daftar arsip final dengan pencarian & pagination.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $suratFinalisasi = Document::where('status', DocumentStatusEnum::DITANDATANGANI)
-            ->with('uploader')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        // Query dasar
+        $documents = Document::query()
+            ->where('status', DocumentStatusEnum::FINAL)
+            ->with('uploader');
 
-        return view('Tu.finalisasi.index', compact('suratFinalisasi'));
+        // Logika pencarian (judul surat atau nama pengunggah)
+        $documents->when($request->filled('search'), function ($query) use ($request) {
+            $searchTerm = '%' . $request->search . '%';
+
+            $query->where(function ($subQuery) use ($searchTerm) {
+                $subQuery->where('judul_surat', 'like', $searchTerm)
+                         ->orWhereHas('uploader', function ($q) use ($searchTerm) {
+                             $q->where('nama_lengkap', 'like', $searchTerm);
+                         });
+            });
+        });
+
+        // Sorting & pagination
+        $documents = $documents->orderBy('updated_at', 'desc')
+            ->paginate(10)
+            ->withQueryString();
+
+        return view('Tu.arsip.index', compact('documents'));
     }
 
     /**
-     * Halaman preview dokumen sebelum finalisasi
+     * Menampilkan halaman detail arsip (full page).
      */
     public function show($id)
     {
-        $document = Document::with('uploader')->findOrFail($id);
-
-        return view('Tu.finalisasi.show', compact('document'));
+        $document = Document::findOrFail($id);
+        return view('Tu.arsip.show', compact('document'));
     }
 
     /**
-     * PREVIEW PDF (Versi "Pencarian File Pintar")
+     * Menampilkan preview file PDF secara inline.
      */
     public function preview($id)
     {
         $document = Document::findOrFail($id);
-        
         $fullPath = $this->findPhysicalPath($document->file_path);
 
         return response()->file($fullPath, [
@@ -51,50 +66,36 @@ class FinalisasiController extends Controller
     }
 
     /**
-     * Finalisasi dokumen & Trigger Popup
-     */
-    public function store(Request $request, $id)
-    {
-        $document = Document::findOrFail($id);
-
-        $document->status = DocumentStatusEnum::FINAL;
-        $document->save();
-
-        return redirect()
-            ->route('tu.finalisasi.index')
-            ->with('success', 'Dokumen berhasil difinalisasi.')
-            ->with('download_doc_id', $document->id);
-    }
-
-    /**
-     * DOWNLOAD PDF (Dengan Kompresi Jika Perlu)
+     * Mengunduh file PDF.
+     * Jika ukuran > 1MB, otomatis dikompres menggunakan iLovePDF.
      */
     public function download($id)
     {
         $document = Document::findOrFail($id);
         $sourcePath = $this->findPhysicalPath($document->file_path);
-        $downloadName = $document->file_name ?? 'dokumen_final.pdf';
-        
-        // Batas ukuran 1 MB
+        $downloadName = $document->file_name ?? 'dokumen_arsip.pdf';
+
         $oneMB = 1048576;
 
-        // Jika file besar, coba kompres dulu
+        // Kompres jika perlu
         if (filesize($sourcePath) > $oneMB) {
-            
             $compressedPath = $this->attemptCompression($sourcePath, $downloadName);
 
-            // Jika kompresi sukses, download file kompresi
             if ($compressedPath) {
                 return response()->download($compressedPath, $downloadName)->deleteFileAfterSend(true);
             }
         }
 
-        // Fallback ke download asli jika tidak perlu atau gagal kompresi
+        // Fallback: file asli
         return response()->download($sourcePath, $downloadName);
     }
 
+    /* =========================================================================
+     * Helper Functions
+     * ========================================================================= */
+
     /**
-     * PRIVATE HELPER: Logika Kompresi iLovePDF
+     * Mengompres PDF menggunakan iLovePDF.
      */
     private function attemptCompression($sourcePath, $downloadName)
     {
@@ -108,6 +109,7 @@ class FinalisasiController extends Controller
 
             $ilovepdf = new Ilovepdf($publicKey, $secretKey);
             $myTask = $ilovepdf->newTask('compress');
+
             $myTask->addFile($sourcePath);
             $myTask->setOutputFilename('compressed_' . $downloadName);
             $myTask->execute();
@@ -118,8 +120,7 @@ class FinalisasiController extends Controller
             }
 
             $myTask->download($tempDir);
-            
-            // Cek variasi nama file output
+
             $possiblePaths = [
                 $tempDir . '/compressed_' . $downloadName,
                 $tempDir . '/compressed_' . $downloadName . '.pdf'
@@ -127,20 +128,18 @@ class FinalisasiController extends Controller
 
             foreach ($possiblePaths as $path) {
                 if (file_exists($path)) {
-                    return $path; // Berhasil menemukan file hasil kompresi
+                    return $path;
                 }
             }
-
         } catch (\Exception $e) {
-            // Log error tanpa menghentikan proses utama
-            \Log::warning('Gagal kompres iLovePDF: ' . $e->getMessage());
+            \Log::warning('Gagal kompres arsip: ' . $e->getMessage());
         }
 
         return null;
     }
 
     /**
-     * PRIVATE HELPER: Mencari lokasi fisik file secara cerdas
+     * Mencari path fisik file pada berbagai lokasi (fallback anti 404).
      */
     private function findPhysicalPath($relativePath)
     {

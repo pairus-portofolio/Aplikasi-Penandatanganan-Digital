@@ -11,6 +11,7 @@ use App\Http\Controllers\Tu\FinalisasiController;
 use App\Http\Controllers\Kaprodi\ReviewController;
 use App\Http\Controllers\Kaprodi\ParafController;
 use App\Http\Controllers\Kajur_Sekjur\TandatanganController;
+use App\Http\Controllers\Tu\ArsipController;
 
 // Halaman utama diarahkan ke login
 Route::get('/', function () {
@@ -35,8 +36,9 @@ Route::get('/dashboard/table', [TableController::class, 'index'])->middleware('a
 Route::middleware(['auth'])->group(function () {
 
     // Upload
-    Route::get('/tu/upload', [DocumentController::class, 'create'])->name('tu.upload.create');
+    Route::get('/tu/upload/{id?}', [DocumentController::class, 'create'])->name('tu.upload.create');
     Route::post('/tu/upload', [DocumentController::class, 'store'])->name('tu.upload.store');
+    Route::put('/tu/document/{id}/revisi', [DocumentController::class, 'updateRevision'])->name('tu.document.revisi');
 
     // Finalisasi TU
     Route::prefix('tu/finalisasi')->name('tu.finalisasi.')->group(function() {
@@ -48,15 +50,32 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{id}', [FinalisasiController::class, 'show'])->name('show');
 
         // submit finalisasi (post)
-        Route::post('/{id}', [FinalisasiController::class, 'submit'])->name('store');
+        Route::post('/{id}', [FinalisasiController::class, 'store'])->name('store');
 
-        // preview PDF (private) - gunakan model binding Document
-        Route::get('/{id}/preview', [DocumentController::class, 'preview']) // Ganti {document} ke {id}
+        // preview PDF (private)
+        Route::get('/{id}/preview', [DocumentController::class, 'preview'])
             ->name('preview');
 
-        // download PDF (private)
-        Route::get('/{document}/download', [DocumentController::class, 'download'])
+       // download PDF (private)
+        Route::get('/{id}/download', [FinalisasiController::class, 'download'])
             ->name('download');
+    });
+
+    // ARSIP TU (Dokumen Final)
+    
+    Route::prefix('tu/arsip')->name('tu.arsip.')->group(function () {
+
+        // Daftar Arsip (INDEX)
+        Route::get('/', [ArsipController::class, 'index'])->name('index');
+
+        // Detail Arsip (SHOW)
+        Route::get('/{id}', [ArsipController::class, 'show'])->name('show');
+
+        // Preview PDF (HELPER)
+        Route::get('/{id}/preview', [ArsipController::class, 'preview'])->name('preview');
+
+        // Download PDF (Compress/Original)
+        Route::get('/{id}/download', [ArsipController::class, 'download'])->name('download');
     });
 
 });
@@ -69,6 +88,8 @@ Route::middleware('auth')->group(function () {
         ->name('kaprodi.review.index');
     Route::get('/review-surat/{id}', [ReviewController::class, 'show'])
         ->name('kaprodi.review.show');
+    Route::post('/review-surat/{id}/revise', [ReviewController::class, 'revise'])
+        ->name('kaprodi.review.revise');
 
     // PARAF
     Route::get('/paraf-surat', [ParafController::class, 'index'])

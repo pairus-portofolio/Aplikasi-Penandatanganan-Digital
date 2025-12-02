@@ -6,6 +6,8 @@
 
   <h1 class="page-title">Daftar Surat Perlu Direview</h1>
 
+  @include('partials.search-filter')
+
   <div class="table-shell">
     <table>
       <thead>
@@ -19,28 +21,21 @@
         <tbody>
             @forelse($daftarSurat as $tugas)
                 <tr>
-                    {{-- 1. Judul Surat (Key di controller: 'nama') --}}
                     <td>{{ $tugas['nama'] }}</td>
-
-                    {{-- 2. Pengunggah (Key di controller: 'pengunggah') --}}
                     <td>{{ $tugas['pengunggah'] }}</td>
-
-                    {{-- 3. Tanggal (Key di controller: 'tanggal') - Sudah diformat d/m/Y di controller --}}
                     <td>{{ $tugas['tanggal'] }}</td>
-
-                    {{-- 4. Status (Key di controller: 'status' & 'status_class') --}}
                     <td>
-                        {{-- Tambahkan class warna status biar sesuai logika controller --}}
                         <span class="pill {{ $tugas['status_class'] }}">
                             {{ $tugas['status'] }}
                         </span>
                     </td>
 
                     <td>
-                        {{-- LINK KE HALAMAN REVIEW --}}
-                        {{-- 5. ID (Key di controller: 'id_raw') --}}
-                        <a class="aksi" href="{{ route('kaprodi.review.show', $tugas['id_raw']) }}">
-                            Lihat
+                        {{-- FIX: PAKSA LINK KE HALAMAN REVIEW --}}
+                        {{-- Mengabaikan $tugas['action_url'] bawaan controller --}}
+                        <a href="{{ route('kaprodi.review.show', $tugas['id_raw']) }}" class="btn-action {{ $tugas['action_class'] }}">
+                            {{-- Label tetap 'Kerjakan' atau 'Lihat' --}}
+                            {{ $tugas['action_label'] }}
                         </a>
                     </td>
                 </tr>
@@ -55,7 +50,6 @@
     </table>
   </div>
 
-  <!-- Pagination Links -->
   <div style="margin-top: 20px;">
       {{ $daftarSurat->links('partials.pagination') }}
   </div>
@@ -63,5 +57,5 @@
 @endsection
 
 @section('popup')
-    @include('partials.logout-popup')
+
 @endsection

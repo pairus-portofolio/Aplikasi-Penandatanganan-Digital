@@ -14,6 +14,14 @@
     flex: 0 0 180px;
 }
 
+/* Sidebar title */
+.paraf-sidebar-title {
+    font-weight: 600;
+    color: #333;
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
 /* Area untuk pratinjau dokumen */
 .paraf-preview-area {
     flex: 1; 
@@ -117,6 +125,11 @@
 .paraf-action-btn:hover {
     background: #fff;
     color: #000;
+}
+
+/* Hidden file input */
+.paraf-file-input {
+    display: none;
 }
 
 /* Elemen paraf yang sudah di-drop ke halaman */

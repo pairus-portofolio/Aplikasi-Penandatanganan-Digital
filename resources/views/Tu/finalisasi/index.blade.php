@@ -58,7 +58,7 @@
 @endsection
 
 @section('popup')
-  @include('partials.logout-popup')
+
   
   {{-- 1. Logika untuk menampilkan popup konfirmasi download --}}
   @if(Session::has('download_doc_id'))
@@ -74,5 +74,5 @@
 @endsection
 
 @push('scripts')
-  <script src="{{ asset('js/finalisasi.js') }}"></script>
+  <script src="{{ asset('js/tu/finalisasi.js') }}"></script>
 @endpush

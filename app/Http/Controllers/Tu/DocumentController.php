@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Document;
 use App\Models\WorkflowStep;
 use App\Models\User;
+use App\Models\Role; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -25,43 +26,128 @@ class DocumentController extends Controller
     {
         $this->workflowService = $workflowService;
     }
-    // Menampilkan halaman upload surat beserta daftar user penandatangan
-    public function create()
-    {
-        // Ambil semua user yang bukan role TU
-        $users = User::whereHas('role', function($query) {
-            $query->where('nama_role', '!=', RoleEnum::TU);
-        })->get(['id', 'nama_lengkap']);
 
-        return view('tu.upload', ['users' => $users]);
+    // CREATE (Menggabungkan Logika Baru untuk Dropdown + Logika Lama untuk Revisi)
+    public function create($id = null)
+    {
+        // 1. Ambil data Kaprodi dan Kajur/Sekjur (Logika baru)
+        $kaprodis = User::whereHas('role', function($query) {
+            $query->whereIn('nama_role', RoleEnum::getKaprodiRoles());
+        })->with('role')->get(['id', 'nama_lengkap', 'role_id']);
+
+        $penandatangan = User::whereHas('role', function($query) {
+            $query->whereIn('nama_role', RoleEnum::getKajurSekjurRoles());
+        })->with('role')->get(['id', 'nama_lengkap', 'role_id']);
+
+        $document = null;
+        $users = null; // Fallback lama
+        $existingAlurIds = [];
+
+        // 2. JIKA ADA ID (MODE REVISI - Logika lama)
+        if ($id) {
+            $document = Document::findOrFail($id);
+            if ($document->status !== DocumentStatusEnum::PERLU_REVISI) {
+                return redirect()->route('tu.upload.create')
+                    ->withErrors('Hanya dokumen status Revisi yang bisa diedit di sini.');
+            }
+            $existingAlurIds = $document->workflowSteps->pluck('user_id')->toArray();
+            $users = User::whereHas('role', function($query) {
+                $query->where('nama_role', '!=', RoleEnum::TU);
+            })->get(['id', 'nama_lengkap']);
+        }
+
+        return view('tu.upload', [
+            'kaprodis' => $kaprodis,
+            'penandatangan' => $penandatangan,
+            'document' => $document,
+            'existingAlurIds' => $existingAlurIds,
+            'users' => $users,
+        ]);
     }
 
-    // Menyimpan surat yang diupload dan membuat workflow penandatangan
+    // STORE (Menggunakan logika validasi alur yang ketat dari kode baru)
     public function store(Request $request)
     {
-        // Validasi data form upload
+        // Validasi Alur Kustom
         $validated = $request->validate([
             'judul_surat' => 'required|string|max:255',
             'file_surat'  => 'required|file|mimes:pdf|max:2048',
             'kategori'    => 'required|string',
             'tanggal'     => 'required|date',
-            'alur'        => 'required|string',
+            'alur'        => [ 
+                'required',
+                'string',
+                'regex:/^[0-9,]+$/',
+                function ($attribute, $value, $fail) {
+                    $kaprodiRoleNames = RoleEnum::getKaprodiRoles();
+                    $kajurSekjurRoleNames = RoleEnum::getKajurSekjurRoles();
+
+                    $userIds = array_filter(explode(',', $value));
+                    
+                    if (empty($userIds)) {
+                        $fail('Minimal harus ada 1 penandatangan (Kajur/Sekjur).');
+                        return;
+                    }
+                    
+                    if (count($userIds) !== count(array_unique($userIds))) {
+                        $fail('Tidak boleh ada penandatangan yang sama lebih dari sekali dalam alur.');
+                        return;
+                    }
+                    
+                    $allUsers = User::whereIn('id', $userIds)->with('role')->get();
+                    
+                    $parafUsers = [];
+                    $ttdUser = null;
+                    
+                    foreach ($userIds as $id) {
+                        $user = $allUsers->firstWhere('id', $id);
+                        $roleName = $user->role->nama_role ?? '';
+
+                        if (in_array($roleName, $kaprodiRoleNames)) {
+                            $parafUsers[] = $id;
+                        } elseif (in_array($roleName, $kajurSekjurRoleNames)) {
+                            if ($ttdUser !== null) {
+                                $fail('Hanya boleh ada satu Penandatangan (Kajur atau Sekjur).');
+                                return;
+                            }
+                            $ttdUser = $id;
+                        } else {
+                            $fail("User dengan ID '$id' tidak memiliki role yang valid.");
+                            return;
+                        }
+                    }
+                    
+                    if (count($parafUsers) > 2) {
+                        $fail('Maksimal hanya boleh ada 2 Pemaraf (Kaprodi).');
+                        return;
+                    }
+                    
+                    if ($ttdUser === null) {
+                        $fail('Wajib ada 1 Penandatangan (Kajur atau Sekjur).');
+                        return;
+                    }
+
+                    if (end($userIds) != $ttdUser) {
+                        $fail('Penandatangan (Kajur/Sekjur) harus menjadi langkah terakhir.');
+                        return;
+                    }
+
+                    if (in_array($ttdUser, $parafUsers)) {
+                        $fail('Penandatangan tidak boleh merangkap sebagai Pemaraf.');
+                        return;
+                    }
+                },
+            ],
         ]);
 
-        // Mengambil file yang diupload
         $file = $request->file('file_surat');
         $ext  = $file->getClientOriginalExtension();
-
-        // Membuat nama file unik
         $filename = Str::uuid()->toString() . '.' . $ext;
 
-        // GUNAKAN TRANSACTION UNTUK MENCEGAH DATA INCONSISTENCY
         DB::beginTransaction();
         try {
-            // Menyimpan file ke storage
             $filePath = $file->storeAs('documents', $filename);
 
-            // Menyimpan data surat ke database
             $document = Document::create([
                 'judul_surat'      => $validated['judul_surat'],
                 'file_name'        => $file->getClientOriginalName(),
@@ -73,18 +159,13 @@ class DocumentController extends Controller
                 'id_client_app'    => 1,
             ]);
 
-            // Mengubah string daftar user menjadi array
-            $alurUserIds = explode(',', $validated['alur']);
+            $alurUserIds = array_filter(explode(',', $validated['alur']));
 
-            // Membuat langkah workflow untuk tiap user
             foreach ($alurUserIds as $index => $userId) {
-
-                // Validasi user penandatangan
                 if (!User::find($userId)) {
                     throw new \Exception("User ID '$userId' tidak valid.");
                 }
 
-                // Menambahkan step workflow ke database
                 WorkflowStep::create([
                     'document_id' => $document->id,
                     'user_id'     => $userId,
@@ -93,139 +174,157 @@ class DocumentController extends Controller
                 ]);
             }
 
-            // Commit transaction jika semua berhasil
             DB::commit();
 
-            // --- LOGIKA EMAIL NOTIFIKASI (USER PERTAMA) ---
-            // Ambil user urutan ke-1
-            $firstStep = WorkflowStep::where('document_id', $document->id)
-                ->where('urutan', 1)
-                ->first();
+            // Logika Email
+            if ($request->input('send_notification') == '1') {
+                $firstStep = WorkflowStep::where('document_id', $document->id)
+                    ->where('urutan', 1)
+                    ->first();
 
-            if ($firstStep && $firstStep->user) {
-                try {
-                    Mail::to($firstStep->user->email)
-                        ->send(new DocumentWorkflowNotification($document, $firstStep->user, 'next_turn'));
-                } catch (\Exception $e) {
-                    \Log::error("Gagal kirim email ke user pertama: " . $e->getMessage());
+                if ($firstStep && $firstStep->user) {
+                    try {
+                        Mail::to($firstStep->user->email)
+                            ->send(new DocumentWorkflowNotification($document, $firstStep->user, 'next_turn'));
+                    } catch (\Exception $e) {
+                        \Log::error("Gagal kirim email: " . $e->getMessage());
+                    }
                 }
             }
 
-            // Kembali ke halaman upload dengan pesan sukses
             return redirect()
                 ->route('tu.upload.create')
                 ->with('success', 'Surat berhasil diunggah dan menunggu peninjauan.');
 
         } catch (\Exception $e) {
-            // Rollback transaction jika terjadi error
             DB::rollBack();
-
-            // Hapus file yang sudah terupload jika ada
             if (isset($filePath) && Storage::exists($filePath)) {
                 Storage::delete($filePath);
             }
 
-            // Kembali dengan error message
+            \Log::error('Document upload failed', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return redirect()
                 ->back()
                 ->withInput()
-                ->withErrors('Gagal mengupload dokumen: ' . $e->getMessage());
+                ->withErrors('Gagal mengupload dokumen. Silakan periksa kembali data Anda dan coba lagi.');
         }
     }
-
-    // Menampilkan detail dokumen beserta status workflow
-    public function show(Document $document)
+    
+    // updateRevision - DITAHAN UNTUK REVISI (Fitur TU)
+    public function updateRevision(Request $request, $id)
     {
-        // Mengambil semua langkah workflow berdasarkan urutan
-        $workflowSteps = WorkflowStep::where('document_id', $document->id)
-            ->orderBy('urutan')
-            ->get();
+        $request->validate([
+            'file_surat' => 'required|file|mimes:pdf|max:2048',
+            'judul_surat'=> 'required|string|max:255',
+            'kategori'   => 'required|string',
+            'tanggal'    => 'required|date',
+            'alur'       => 'required|string', // Perlu dipertimbangkan validasi alur kustom di sini juga
+        ]);
 
-        // Mengambil step khusus untuk user yang sedang login
-        $currentStep = $workflowSteps->firstWhere('user_id', Auth::id());
+        $document = Document::findOrFail($id);
 
-        // Jika user tidak punya akses pada dokumen
-        if (!$currentStep) {
-            return redirect()->back()->withErrors('Anda tidak memiliki hak akses untuk dokumen ini.');
+        if ($document->status !== DocumentStatusEnum::PERLU_REVISI) {
+            return back()->withErrors('Dokumen ini tidak sedang dalam status revisi.');
         }
 
-        return view('document.show', compact('document', 'currentStep', 'workflowSteps'));
-    }
-
-    // Mengupdate status penandatanganan workflow oleh user
-    public function updateStatus(Request $request, $documentId, $stepId)
-    {
+        DB::beginTransaction();
         try {
-            
-            // Ini adalah endpoint untuk user melakukan aksi (paraf/ttd)
-            $this->workflowService->completeStep($documentId, DocumentStatusEnum::DIPARAF);
-            $this->workflowService->updateDocumentStatus($documentId);
+            if ($document->file_path && Storage::exists($document->file_path)) {
+                Storage::delete($document->file_path);
+            }
 
-            return redirect()
-                ->back()
-                ->with('success', 'Status berhasil diperbarui.');
+            $file = $request->file('file_surat');
+            $ext  = $file->getClientOriginalExtension();
+            $filename = Str::uuid()->toString() . '.' . $ext;
+            $filePath = $file->storeAs('documents', $filename); 
+
+            $document->update([
+                'judul_surat'   => $request->judul_surat,
+                'kategori'      => $request->kategori,
+                'tanggal_surat' => $request->tanggal,
+                'file_path'     => $filePath,
+                'file_name'     => $file->getClientOriginalName(),
+                'status'        => DocumentStatusEnum::DITINJAU 
+            ]);
+
+            WorkflowStep::where('document_id', $id)->delete();
+
+            $alurUserIds = explode(',', $request->alur);
+            foreach ($alurUserIds as $index => $userId) {
+                WorkflowStep::create([
+                    'document_id' => $document->id,
+                    'user_id'     => $userId,
+                    'urutan'      => $index + 1,
+                    'status'      => DocumentStatusEnum::DITINJAU,
+                ]);
+            }
+
+            DB::commit();
+
+            if ($request->input('send_notification') == '1') {
+                $firstStep = WorkflowStep::where('document_id', $document->id)->orderBy('urutan')->first();
+                if($firstStep && $firstStep->user) {
+                     try {
+                        Mail::to($firstStep->user->email)
+                            ->send(new DocumentWorkflowNotification($document, $firstStep->user, 'next_turn'));
+                    } catch (\Exception $e) {}
+                }
+            }
+
+            return redirect()->route('tu.upload.create')->with('success', 'Revisi berhasil disimpan dan alur dimulai ulang.');
 
         } catch (\Exception $e) {
-            return redirect()->back()->withErrors($e->getMessage());
+            DB::rollBack();
+            return back()->withErrors('Gagal update revisi: ' . $e->getMessage());
         }
     }
 
+    // show - DITAHAN (Logika lama)
+    public function show(Document $document)
+    {
+        $workflowSteps = WorkflowStep::where('document_id', $document->id)->orderBy('urutan')->get();
+        $currentStep = $workflowSteps->firstWhere('user_id', Auth::id());
+
+        if (!$currentStep) {
+            return redirect()->back()->withErrors('Anda tidak memiliki hak akses.');
+        }
+        return view('document.show', compact('document', 'currentStep', 'workflowSteps'));
+    }
+    
+    // download - DITAHAN (Digunakan oleh Review & Paraf)
     public function download(Document $document)
     {
-        // Path dari database
         $relativePath = $document->file_path;
-        
-        // Cek Lokasi 1: Folder Private (Dokumen Original)
         $privatePath = storage_path('app/private/' . $relativePath);
-
-        // Cek Lokasi 2: Folder Public (Dokumen Hasil Paraf)
         $publicPath = storage_path('app/public/' . $relativePath);
-
-        // Cek Lokasi 3: Folder App Default (Jaga-jaga)
         $appPath = storage_path('app/' . $relativePath);
 
         $finalPath = null;
+        if (file_exists($privatePath)) $finalPath = $privatePath;
+        elseif (file_exists($publicPath)) $finalPath = $publicPath;
+        elseif (file_exists($appPath)) $finalPath = $appPath;
+        else abort(404, 'File fisik tidak ditemukan.');
 
-        if (file_exists($privatePath)) {
-            $finalPath = $privatePath;
-        } elseif (file_exists($publicPath)) {
-            $finalPath = $publicPath;
-        } elseif (file_exists($appPath)) {
-            $finalPath = $appPath;
-        } else {
-            abort(404, 'File fisik tidak ditemukan.');
-        }
-
-        // Return file ke browser (inline = preview) dengan error handling
-        try {
-            return response()->file($finalPath, [
-                'Content-Type' => 'application/pdf',
-                'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0', 
-            ]);
-        } catch (\Exception $e) {
-            abort(500, 'Gagal membaca file: ' . $e->getMessage());
-        }
+        return response()->file($finalPath, [
+            'Content-Type' => 'application/pdf',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0', 
+        ]);
     }
 
-    // Di dalam class DocumentController
-
-public function preview($id) // Terima $id, bukan Document $document
-{
-    $document = Document::findOrFail($id); 
-
-    $filePath = $document->file_path; 
-
-    // Menggunakan Storage::get untuk mengambil konten file
-    if (!Storage::exists($filePath)) {
-        abort(404, 'File tidak ditemukan di storage: ' . $filePath);
+    // preview - DITAHAN (Digunakan oleh Finalisasi & Arsip)
+    public function preview($id)
+    {
+        $document = Document::findOrFail($id); 
+        $filePath = $document->file_path; 
+        if (!Storage::exists($filePath)) {
+            abort(404);
+        }
+        $fileContent = Storage::get($filePath); 
+        return response()->make($fileContent, 200, ['Content-Type' => 'application/pdf']);
     }
-    
-    $fileContent = Storage::get($filePath); 
-
-    // PENTING: Pastikan Content-Type adalah application/pdf 
-    // dan tidak ada header Content-Disposition yang memaksa download
-    return response()->make($fileContent, 200, [
-        'Content-Type' => 'application/pdf',
-    ]);
-}
 }

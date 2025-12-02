@@ -1,10 +1,9 @@
 @extends('layouts.app')
 
-@section('title', 'Unggah Surat')
+@section('title', isset($document) ? 'Revisi Surat' : 'Unggah Surat')
 
 @section('content')
 
-<!-- Notifikasi modern pakai SweetAlert2 -->
 @if(session('success'))
 <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -15,7 +14,6 @@
             position: 'top-end',
             timer: 2500,
             timerProgressBar: true,
-            showConfirmButton: false,
         });
     });
 </script>
@@ -33,79 +31,163 @@
 </script>
 @endif
 
-<!-- Load CSS halaman unggah surat -->
 <link rel="stylesheet" href="{{ asset('css/tu/upload.css') }}">
 
-<h1>Unggah Surat</h1>
+<h1>{{ isset($document) ? 'Revisi Surat: ' . ($document->judul_surat ?? 'Dokumen') : 'Unggah Surat' }}</h1>
 
-<!-- Form utama untuk upload surat -->
-<form method="POST" action="{{ route('tu.upload.store') }}" enctype="multipart/form-data">
+<form method="POST" 
+      action="{{ isset($document) ? route('tu.document.revisi', $document->id) : route('tu.upload.store') }}" 
+      enctype="multipart/form-data">
+    
     @csrf
+    
+    @if(isset($document))
+        @method('PUT')
+    @endif
 
-    <!-- Area drag & drop untuk upload file -->
     <div class="upload-box" id="drop-area">
         <p class="upload-title">Seret & letakan file disini</p>
         <p class="upload-subtitle">hanya mendukung file PDF</p>
         <button type="button" class="upload-btn">Pilih File</button>
     </div>
 
-    <!-- Input file yang disembunyikan -->
     <input id="file-input" name="file_surat" type="file" accept=".pdf" style="display:none;" required>
 
-    <!-- Container bagian input detail surat -->
     <div class="form-container">
         <div class="detail-container">
             <div class="detail-title">Detail Surat</div>
 
             <div class="detail-wrapper">
 
-                <!-- Judul surat (otomatis dari nama file) -->
                 <div class="detail-field-box">
                     <label for="judul_surat">Judul Surat :</label>
-                    <input id="judul_surat" name="judul_surat" type="text" class="detail-input-inner" required readonly>
+                    <input id="judul_surat" name="judul_surat" type="text" class="detail-input-inner" 
+                           value="{{ old('judul_surat', $document->judul_surat ?? '') }}" 
+                           required placeholder="Judul akan terisi otomatis dari nama file">
                 </div>
 
-                <!-- Input kategori surat -->
                 <div class="detail-field-box">
                     <label for="kategori">Kategori surat :</label>
-                    <input id="kategori" name="kategori" type="text" class="detail-input-inner" required>
+                    <input id="kategori" name="kategori" type="text" class="detail-input-inner" 
+                           value="{{ old('kategori', $document->kategori ?? '') }}"
+                           required>
                 </div>
 
-                <!-- Input tanggal surat -->
                 <div class="detail-field-box">
                     <label for="tanggal">Tanggal :</label>
-                    <input id="tanggal" name="tanggal" type="date" class="detail-input-inner" required>
+                    <input id="tanggal" name="tanggal" type="date" class="detail-input-inner" 
+                           value="{{ old('tanggal', $document->tanggal_surat ?? '') }}"
+                           required>
                 </div>
 
-                <!-- Dropdown untuk memilih penandatangan -->
+                {{-- 1. Pemilihan Pemaraf (Kaprodi) --}}
                 <div class="detail-field-box">
-                    <label for="userSelect">Pilih Alur Penandatanganan :</label>
-                    <select id="userSelect" class="detail-input-inner">
-                        <option value="">Pilih penandatangan...</option>
-                        @foreach($users as $user)
-                            <option value="{{ $user->id }}">{{ $user->nama_lengkap }}</option>
+                    <label for="parafSelect">1. Pilih Pemaraf (Kaprodi):</label>
+                    <select id="parafSelect" class="detail-input-inner">
+                        <option value="" disabled selected hidden>Pilih untuk Paraf...</option>
+                        @foreach($kaprodis as $user)
+                            <option value="{{ $user->id }}" data-name="{{ $user->nama_lengkap }}" data-role="{{ $user->role->nama_role ?? 'Kaprodi' }}">{{ $user->nama_lengkap }} ({{ $user->role->nama_role ?? 'Kaprodi' }})</option>
                         @endforeach
                     </select>
+                    <small class="text-muted" style="font-size:0.8rem; margin-top:4px;">*Opsional, Paraf maksimal 2 Kaprodi.</small>
+                    
+                    {{-- Kontainer custom list untuk Paraf --}}
+                    <div id="selectedParafContainer" class="alur-list" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+                        {{-- Paraf terpilih akan dirender di sini oleh JS --}}
+                    </div>
                 </div>
 
-                <!-- Daftar urutan penandatangan -->
-                <div id="alurStepsContainer" class="alur-steps">
-                    <p class="alur-placeholder">Alur surat.</p>
-                    <ol id="alurList" class="alur-list"></ol>
+                {{-- 2. Pemilihan Penandatangan (Kajur/Sekjur) --}}
+                <div class="detail-field-box">
+                    <label for="ttdSelect">2. Pilih Penandatangan (Kajur/Sekjur):</label>
+                    <select id="ttdSelect" class="detail-input-inner">
+                        <option value="" disabled selected hidden>Pilih untuk Tanda Tangan...</option>
+                        @foreach($penandatangan as $user)
+                            <option value="{{ $user->id }}" data-name="{{ $user->nama_lengkap }}" data-role="{{ $user->role->nama_role ?? 'Pejabat' }}">{{ $user->nama_lengkap }} ({{ $user->role->nama_role ?? 'Pejabat' }})</option>
+                        @endforeach
+                    </select>
+                    <small class="text-muted" style="font-size:0.8rem; margin-top:4px;">*Wajib, Tanda Tangan hanya boleh 1.</small>
+                    
+                    {{-- Kontainer custom list untuk TTD --}}
+                    <div id="selectedTtdContainer" class="alur-list" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+                        {{-- TTD terpilih akan dirender di sini oleh JS --}}
+                    </div>
                 </div>
-
-                <!-- Input tersembunyi untuk menyimpan urutan user -->
-                <input type="hidden" name="alur" id="alurInput">
-
+                
+                @php
+                    // Untuk Mode Revisi: Ambil data alur lama
+                    $existingAlur = isset($existingAlurIds) ? implode(',', $existingAlurIds) : '';
+                @endphp
+                
+                <input type="hidden" name="alur" id="alurInput" value="{{ $existingAlur }}">
             </div>
         </div>
     </div>
 
-    <!-- Tombol unggah muncul setelah file dipilih -->
-    <div id="submit-button-wrapper" style="text-align: center; margin-top: 32px; display: none;">
-        <button type="submit" class="upload-btn" style="cursor: pointer;">Unggah</button>
+    {{-- Hidden Notifikasi --}}
+    <input type="hidden" name="send_notification" id="sendNotificationValue" value="0">
+
+    {{-- Tombol Submit --}}
+    <div id="submit-button-wrapper" style="text-align: center; margin-top: 32px; {{ isset($document) ? '' : 'display: none;' }}">
+        <button type="button" class="upload-btn" data-bs-toggle="modal" data-bs-target="#confirmUploadModal" style="cursor: pointer;">
+            {{ isset($document) ? 'Simpan Revisi' : 'Unggah Surat' }}
+        </button>
     </div>
 </form>
+
+<div class="modal fade" id="confirmUploadModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Konfirmasi Pengiriman</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <p>{{ isset($document) ? 'Dokumen lama akan diganti dengan yang baru.' : 'Surat akan disimpan ke sistem.' }}</p>
+                <p class="fw-bold">Kirim notifikasi email ke penandatangan pertama?</p>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-success" onclick="submitFormWithNotif(1)">
+                    Ya, Kirim Notifikasi
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="submitFormWithNotif(0)">
+                    Ya, Jangan Kirim
+                </button>
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">
+                    Batal
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Fungsi ini tetap diperlukan di Blade karena menggunakan variabel global 'bootstrap'
+    function submitFormWithNotif(val) {
+        document.getElementById('sendNotificationValue').value = val;
+        
+        // Ambil form dan tombol
+        const form = document.getElementById('sendNotificationValue').closest('form');
+        const modal = bootstrap.Modal.getInstance(document.getElementById('confirmUploadModal'));
+        const submitButtons = document.querySelectorAll('#confirmUploadModal button[type="button"]');
+        
+        // Disable semua tombol di modal
+        submitButtons.forEach(btn => {
+            btn.disabled = true;
+            if (btn.classList.contains('btn-success') || btn.classList.contains('btn-secondary')) {
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Memproses...';
+            }
+        });
+        
+        // Close modal
+        if (modal) {
+            modal.hide();
+        }
+        
+        // Submit form
+        form.submit();
+    }
+</script>
 
 @endsection
 
@@ -114,9 +196,49 @@
 @endsection
 
 @push('scripts')
-    <!-- SweetAlert2 (untuk notifikasi modern) -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-    <!-- Script untuk logika drag-and-drop dan alur sign -->
     <script src="{{ asset('js/tu/upload.js') }}"></script>
+    
+    @if(isset($document))
+    <script>
+        // Fungsi ini akan dipanggil setelah DOM siap
+        document.addEventListener("DOMContentLoaded", function () {
+            // Ambil nilai alur dari hidden input (yang sudah diisi oleh PHP)
+            const existingAlur = document.getElementById("alurInput").value;
+            
+            // Variabel parafUsers dan ttdUser dideklarasikan di tu/upload.js
+            
+            if (existingAlur) {
+                const userIds = existingAlur.split(',');
+                const parafSelect = document.getElementById("parafSelect");
+                const ttdSelect = document.getElementById("ttdSelect");
+
+                userIds.forEach(id => {
+                    // Cari opsi di kedua dropdown
+                    let parafOption = parafSelect.querySelector(`option[value="${id}"]`);
+                    let ttdOption = ttdSelect.querySelector(`option[value="${id}"]`);
+
+                    if (parafOption) {
+                        // Tambahkan ke array parafUsers
+                        window.parafUsers.push({
+                            id: id,
+                            name: parafOption.dataset.name,
+                            role: parafOption.dataset.role
+                        });
+                    } else if (ttdOption) {
+                        // Set ttd user
+                        window.ttdUser = {
+                            id: id,
+                            name: ttdOption.dataset.name,
+                            role: ttdOption.dataset.role
+                        };
+                    }
+                });
+
+                // Panggil fungsi global dari upload.js untuk merender ulang UI
+                updateAlur();
+            }
+        });
+    </script>
+    @endif
 @endpush

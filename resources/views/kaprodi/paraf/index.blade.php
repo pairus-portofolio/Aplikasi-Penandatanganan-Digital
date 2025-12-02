@@ -6,6 +6,8 @@
 
   <h1 class="page-title">Daftar Surat Perlu Diparaf</h1>
 
+  @include('partials.search-filter')
+
   <div class="table-shell">
     <table>
       <thead>
@@ -37,10 +39,9 @@
                   </td>
 
                   <td>
-                      {{-- LINK KE HALAMAN REVIEW --}}
-                      {{-- 5. ID (Key di controller: 'id_raw') --}}
-                      <a class="aksi" href="{{ route('kaprodi.paraf.show', $tugas['id_raw']) }}">
-                          Lihat
+                      {{-- LINK DYNAMIC ACTION --}}
+                      <a href="{{ $tugas['action_url'] }}" class="btn-action {{ $tugas['action_class'] }}">
+                          {{ $tugas['action_label'] }}
                       </a>
                   </td>
               </tr>
@@ -63,5 +64,5 @@
 @endsection
 
 @section('popup')
-    @include('partials.logout-popup')
+
 @endsection

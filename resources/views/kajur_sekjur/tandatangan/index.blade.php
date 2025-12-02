@@ -6,6 +6,8 @@
 
   <h1 class="page-title">Daftar Surat Perlu Tanda Tangan</h1>
 
+  @include('partials.search-filter')
+
   <div class="table-shell">
     <table>
       <thead>
@@ -22,7 +24,6 @@
         <tr>
           <td>
              <div style="font-weight:bold;">{{ $s['nama'] }}</div>
-             <div style="font-size:12px; color:#64748b;">{{ $s['nomor'] }}</div>
           </td>
           <td>{{ $s['pengunggah'] }}</td>
           <td>{{ $s['tanggal'] }}</td>
@@ -32,8 +33,8 @@
             </span>
           </td>
           <td>
-            <a class="aksi" href="{{ route('kajur.tandatangan.show', $s['id_raw']) }}">
-               Lihat
+            <a href="{{ $s['action_url'] }}" class="btn-action {{ $s['action_class'] }}">
+                {{ $s['action_label'] }}
             </a>
           </td>
         </tr>

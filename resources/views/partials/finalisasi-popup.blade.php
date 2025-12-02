@@ -15,7 +15,7 @@
             </span>
 
             <div class="file-name">
-                {{ $document->original_name ?? $document->judul_surat }}
+                {{ $document->file_name ?? $document->judul_surat }}
             </div>
         </div>
 

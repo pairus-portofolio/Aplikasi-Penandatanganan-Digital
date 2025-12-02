@@ -16,6 +16,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Membuka file picker ketika area upload diklik
     dropArea.addEventListener("click", () => {
+        // Reset file input agar event 'change' ter-trigger meskipun file yang sama dipilih
         fileInput.value = "";
         fileInput.click();
     });
@@ -42,6 +43,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 fileInput.files = files;
             } catch (err) {
                 console.error("Tidak dapat meng-assign fileInput.files:", err);
+                alert("Gagal memproses file. Silakan coba lagi atau gunakan tombol 'Pilih File'.");
+                return;
             }
             handleFile(files[0]);
         }
@@ -75,74 +78,177 @@ document.addEventListener("DOMContentLoaded", function () {
             </div>
         `;
 
-        // Mengisi judul otomatis berdasarkan nama file
-        judulSuratInput.value = file.name;
+        // FIX BUG #11: Sanitize nama file sebelum assign ke judul
+        const sanitizedFileName = sanitizeFileName(file.name);
+        judulSuratInput.value = sanitizedFileName;
 
         // Menampilkan tombol submit setelah file valid
         submitButtonWrapper.style.display = "block";
     }
 
-    // Mengambil elemen untuk input alur penandatanganan
-    const userSelect = document.getElementById("userSelect");
-    const alurList = document.getElementById("alurList");
+    // FIX BUG #11: Fungsi untuk sanitasi nama file
+    function sanitizeFileName(fileName) {
+        // Hapus karakter berbahaya dan HTML tags
+        let sanitized = fileName.replace(/[<>:"\/\\|?*\x00-\x1f]/g, '');
+        // Decode HTML entities jika ada
+        const textarea = document.createElement('textarea');
+        textarea.innerHTML = sanitized;
+        sanitized = textarea.value;
+        // Trim whitespace
+        return sanitized.trim();
+    }
+
+    // --- NEW WORKFLOW LOGIC ---
+
+    const parafSelect = document.getElementById("parafSelect");
+    const ttdSelect = document.getElementById("ttdSelect");
+    const parafContainer = document.getElementById("selectedParafContainer");
+    const ttdContainer = document.getElementById("selectedTtdContainer");
     const alurInput = document.getElementById("alurInput");
+    const isRevisionMode = document.getElementById("alurInput").hasAttribute('data-existing-alur');
 
-    // Menambahkan user ke daftar alur ketika dipilih
-    userSelect.addEventListener("change", function () {
-        const userId = this.value;
-        const selectedOption = this.options[this.selectedIndex];
-        const userName = selectedOption.text;
+    // Data internal: Array untuk Pemaraf (Kaprodi)
+    let parafUsers = []; // Stores { id: string, name: string, role: string }
+    // Data internal: TTD user
+    let ttdUser = null; // Stores { id: string, name: string, role: string }
 
-        if (userId) {
-            // Cek apakah user sudah ada di list (preventif)
-            const existingItem = alurList.querySelector(`li[data-user-id="${userId}"]`);
-            if (existingItem) {
-                alert("User ini sudah ada dalam alur.");
-                this.value = "";
-                return;
+    // Fungsi bantuan untuk mendapatkan data opsi dari select
+    function getOptionData(option) {
+        return {
+            id: option.value,
+            // Untuk revisi, kita pakai text jika data-name tidak ada
+            name: option.dataset.name || option.text, 
+            role: option.dataset.role
+        };
+    }
+
+    // Fungsi untuk merender list item di containernya
+    function renderListItem(user, indexTotal, isParaf) {
+        const listItem = document.createElement("li");
+        listItem.classList.add("alur-item");
+        
+        // Penomoran urut (FIX SYNTAX ERROR DI BARIS INI)
+        const stepLabel = document.createElement("span");
+        stepLabel.classList.add("alur-step-label");
+        stepLabel.innerHTML = `<span class="alur-step-number">${indexTotal + 1}.</span> ${user.name} (${user.role})`;
+        
+        // Tombol Hapus (Teks "Hapus")
+        const removeButton = document.createElement("button");
+        removeButton.classList.add("alur-remove-btn");
+        removeButton.textContent = "Hapus";
+
+        removeButton.onclick = function () {
+            // Logika Hapus: TTD atau Paraf
+            if (!isParaf) {
+                ttdUser = null;
+                // Pastikan select TTD kembali ke placeholder
+                if (ttdSelect) ttdSelect.value = ttdSelect.querySelector('option[disabled][hidden]').value;
+            } else {
+                parafUsers = parafUsers.filter(u => u.id !== user.id);
             }
+            // Reset select Kaprodi ke placeholder
+            if (parafSelect && isParaf) parafSelect.value = parafSelect.querySelector('option[disabled][hidden]').value;
+            updateAlur(); // Re-render dan update hidden input
+        };
+        
+        // Susunan elemen: Label + Tombol Hapus
+        listItem.appendChild(stepLabel);
+        listItem.appendChild(removeButton); 
+        return listItem;
+    }
 
-            const listItem = document.createElement("li");
-            listItem.classList.add("alur-item");
-            listItem.textContent = userName;
-            listItem.dataset.userId = userId;
-
-            // Tombol untuk menghapus user dari alur
-            const removeButton = document.createElement("button");
-            removeButton.classList.add("remove-alur-btn");
-            removeButton.textContent = "Hapus";
-
-            removeButton.onclick = function () {
-                alurList.removeChild(listItem);
-                updateAlurInput();
-                
-                // Re-enable option di dropdown saat dihapus
-                const optionToEnable = userSelect.querySelector(`option[value="${userId}"]`);
-                if (optionToEnable) {
-                    optionToEnable.disabled = false;
-                }
-            };
-
-            listItem.appendChild(removeButton);
-            alurList.appendChild(listItem);
-
-            updateAlurInput();
-            
-            // Disable option yang dipilih agar tidak bisa dipilih lagi
-            selectedOption.disabled = true;
-            
-            // Reset dropdown ke default
-            this.value = "";
-        }
-    });
-
-    // Memperbarui input hidden sesuai urutan alur
-    function updateAlurInput() {
+    // Fungsi untuk merender kedua list dan update hidden input
+    function renderAllLists() {
+        parafContainer.innerHTML = '';
+        ttdContainer.innerHTML = '';
         const alurUserIds = [];
-        alurList.querySelectorAll("li").forEach((item) => {
-            alurUserIds.push(item.dataset.userId);
+        let totalIndex = 0; // Index global untuk penomoran urut
+
+        // A. Render Paraf Users
+        parafUsers.forEach((user) => {
+            const item = renderListItem(user, totalIndex, true);
+            parafContainer.appendChild(item);
+            alurUserIds.push(user.id);
+            totalIndex++;
         });
+
+        // B. Render TTD User
+        if (ttdUser) {
+            const item = renderListItem(ttdUser, totalIndex, false);
+            ttdContainer.appendChild(item);
+            alurUserIds.push(ttdUser.id);
+            totalIndex++;
+        }
+
+        // C. Update hidden input
         alurInput.value = alurUserIds.join(",");
+        
+        // D. Tentukan status required dan tampilkan tombol submit
+        if (!ttdUser) {
+            alurInput.value = ""; 
+            alurInput.setAttribute('required', 'required');
+            submitButtonWrapper.style.display = "none";
+        } else {
+             alurInput.removeAttribute('required');
+             // Hanya tampilkan tombol submit jika ada file upload (judul_surat terisi)
+             if (judulSuratInput.value) {
+                 submitButtonWrapper.style.display = "block";
+             }
+        }
+    }
+
+
+    // 1. TAMBAH PEMARAF (Kaprodi) saat dropdown berubah
+    if (parafSelect) {
+        parafSelect.addEventListener("change", function () {
+            const selectedOption = this.options[this.selectedIndex];
+            
+            if (selectedOption.value) {
+                const userData = getOptionData(selectedOption);
+
+                if (parafUsers.length >= 2) {
+                     Swal.fire('Info', 'Maksimal hanya 2 Pemaraf (Kaprodi) yang diperbolehkan.', 'info');
+                }
+                else if (ttdUser && ttdUser.id === userData.id) {
+                     Swal.fire('Error', 'Pemaraf tidak boleh merangkap sebagai Penandatangan.', 'error');
+                }
+                else if (!parafUsers.some(u => u.id === userData.id)) {
+                    parafUsers.push(userData);
+                }
+                
+                this.value = parafSelect.querySelector('option[disabled][hidden]').value;
+                updateAlur();
+            }
+        });
+    }
+
+    // 2. TTD user berubah (hanya 1)
+    if (ttdSelect) {
+        ttdSelect.addEventListener("change", function() {
+            const selectedValue = this.value;
+
+            if (selectedValue) {
+                 const selectedOption = this.options[this.selectedIndex];
+                 const userData = getOptionData(selectedOption);
+                 
+                 // Cek duplikasi dengan Paraf
+                if (parafUsers.some(u => u.id === selectedValue)) {
+                    Swal.fire('Error', 'Penandatangan tidak boleh merangkap sebagai Pemaraf. Silakan hapus Pemaraf yang sama terlebih dahulu.', 'error');
+                    this.value = ttdSelect.querySelector('option[disabled][hidden]').value; // Reset TTD selection
+                    ttdUser = null;
+                } else {
+                    ttdUser = userData;
+                }
+            } else {
+                ttdUser = null;
+            }
+            updateAlur();
+        });
+    }
+    
+    // Alias untuk updateAlur agar mudah dipanggil
+    function updateAlur() {
+        renderAllLists();
     }
 
     // Mengembalikan UI upload ke kondisi awal
@@ -152,5 +258,15 @@ document.addEventListener("DOMContentLoaded", function () {
         dropArea.innerHTML = initialDropAreaHTML;
         submitButtonWrapper.style.display = "none";
         judulSuratInput.value = "";
+        
+        // Reset alur
+        parafUsers = [];
+        ttdUser = null;
+        if (parafSelect) parafSelect.value = parafSelect.querySelector('option[disabled][hidden]').value;
+        if (ttdSelect) ttdSelect.value = ttdSelect.querySelector('option[disabled][hidden]').value;
+        updateAlur();
     };
+
+    // Panggil update alur saat DOM siap
+    updateAlur();
 });
