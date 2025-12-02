@@ -28,15 +28,9 @@
         @forelse($documents as $d)
         <tr>
 
-          {{-- Judul + Nomor surat --}}
+          {{-- Judul surat --}}
           <td>
              <div style="font-weight:bold;">{{ $d->judul_surat }}</div>
-
-             @if($d->nomor_surat)
-             <div style="font-size:12px; color:#64748b;">
-                 {{ $d->nomor_surat }}
-             </div>
-             @endif
           </td>
 
           {{-- Pengunggah --}}
