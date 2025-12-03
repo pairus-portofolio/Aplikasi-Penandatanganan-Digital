@@ -4,7 +4,7 @@
     @include('partials.shared.zoom-controls')
 
     {{-- Tombol Selesai --}}
-    <button type="button" class="pv-primary-btn" data-bs-toggle="modal" data-bs-target="#parafNotifPopup">
+    <button type="button" class="pv-primary-btn btn-blue" data-bs-toggle="modal" data-bs-target="#parafNotifPopup">
         Selesai
     </button>
 
