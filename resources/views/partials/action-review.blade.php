@@ -5,7 +5,7 @@
 
     <!-- Tombol pemicu modal -->
     <!-- type="button" sangat penting agar tidak dianggap submit -->
-    <button type="button" class="pv-primary-btn" data-bs-toggle="modal" data-bs-target="#revisiPopup">
+    <button type="button" class="pv-primary-btn btn-blue" data-bs-toggle="modal" data-bs-target="#revisiPopup">
         Minta Revisi
     </button>
 </div>
