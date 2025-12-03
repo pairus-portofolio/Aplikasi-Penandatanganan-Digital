@@ -213,13 +213,9 @@ class TableController extends Controller
         if (in_array($user->role->nama_role, RoleEnum::getKaprodiRoles())) {
             // Jika aktif -> ke halaman paraf
             // Jika view -> ke halaman review
-            if ($isActive) {
-                $baseUrl = route('kaprodi.paraf.show', $doc->id);
-            } else {
-                // Gunakan route preview yang tersedia.
-                // Jika proyek Anda menggunakan route lain untuk preview ganti nama route di bawah.
-                $baseUrl = route('tu.finalisasi.preview', $doc->id);
-            }
+            $baseUrl = $isActive 
+                ? route('kaprodi.paraf.show', $doc->id) 
+                : route('kaprodi.review.show', $doc->id);
 
         } elseif (in_array($user->role->nama_role, RoleEnum::getKajurSekjurRoles())) {
              // Kajur/Sekjur menggunakan controller yang sama, nanti kita sesuaikan logic di controller-nya
