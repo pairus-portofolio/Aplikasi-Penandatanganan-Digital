@@ -3,7 +3,7 @@
 
     @include('partials.shared.zoom-controls')
 
-    <button type="button" class="pv-primary-btn" data-bs-toggle="modal" data-bs-target="#ttdNotifPopup">
+    <button type="button" class="pv-primary-btn btn-blue" data-bs-toggle="modal" data-bs-target="#ttdNotifPopup">
         Selesai
     </button>
 </div>

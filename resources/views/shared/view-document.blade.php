@@ -1,9 +1,9 @@
 @extends('layouts.app')
 
-@section('title', 'Review Surat')
+@section('title', 'Lihat Dokumen')
 
 @push('styles')
-    {{-- CSS Review --}}
+    {{-- CSS Shared View --}}
     <link rel="stylesheet" href="{{ asset('css/kaprodi/preview-top.css') }}">
     <link rel="stylesheet" href="{{ asset('css/kaprodi/preview-bottom.css') }}">
     <link rel="stylesheet" href="{{ asset('css/kaprodi/zoom-button.css') }}">
@@ -32,7 +32,16 @@
 @endsection
 
 @section('popup')
-    @include('partials.action-review')
+    @if(isset($showRevisionButton) && $showRevisionButton)
+        {{-- Jika tombol revisi aktif (Kaprodi & Giliran Aktif) --}}
+        @include('partials.action-review')
+    @else
+        {{-- Jika View Only murni (Hanya Zoom) --}}
+        <div class="pv-controls">
+            @include('partials.shared.zoom-controls')
+        </div>
+    @endif
+
     @include('partials.logout-popup')
 @endsection
 
@@ -48,6 +57,6 @@
         };
     </script>
 
-    {{-- 3. Panggil Script Eksternal yang baru dibuat --}}
+    {{-- 3. Panggil Script Eksternal (Reuse script review-surat.js karena fungsinya sama: render PDF) --}}
     <script src="{{ asset('js/kaprodi/review-surat.js') }}"></script>
 @endpush

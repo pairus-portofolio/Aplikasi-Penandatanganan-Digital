@@ -4,17 +4,11 @@
 
 @section('content')
 
+<!-- Notifikasi SweetAlert -->
 @if(session('success'))
 <script>
     document.addEventListener("DOMContentLoaded", function () {
-        Swal.fire({
-            toast: true,
-            icon: 'success',
-            title: '{{ session('success') }}',
-            position: 'top-end',
-            timer: 2500,
-            timerProgressBar: true,
-        });
+        Swal.fire({ toast: true, icon: 'success', title: '{{ session('success') }}', position: 'top-end', timer: 2500, showConfirmButton: false });
     });
 </script>
 @endif
@@ -22,19 +16,18 @@
 @if ($errors->any())
 <script>
     document.addEventListener("DOMContentLoaded", function () {
-        Swal.fire({
-            icon: 'error',
-            title: 'Validasi Gagal',
-            html: `{!! implode('<br>', $errors->all()) !!}`,
-        });
+        Swal.fire({ icon: 'error', title: 'Validasi Gagal', html: `{!! implode('<br>', $errors->all()) !!}` });
     });
 </script>
 @endif
 
 <link rel="stylesheet" href="{{ asset('css/tu/upload.css') }}">
 
-<h1>{{ isset($document) ? 'Revisi Surat: ' . ($document->judul_surat ?? 'Dokumen') : 'Unggah Surat' }}</h1>
+<!-- JUDUL DINAMIS -->
+<h1>{{ isset($document) ? 'Revisi Surat: ' . $document->judul_surat : 'Unggah Surat' }}</h1>
 
+<!-- FORM UTAMA -->
+<!-- Action dinamis: Ke 'revisi' (PUT) jika ada dokumen, atau ke 'store' (POST) jika baru -->
 <form method="POST" 
       action="{{ isset($document) ? route('tu.document.revisi', $document->id) : route('tu.upload.store') }}" 
       enctype="multipart/form-data">
@@ -127,67 +120,10 @@
     {{-- Hidden Notifikasi --}}
     <input type="hidden" name="send_notification" id="sendNotificationValue" value="0">
 
-    {{-- Tombol Submit --}}
-    <div id="submit-button-wrapper" style="text-align: center; margin-top: 32px; {{ isset($document) ? '' : 'display: none;' }}">
-        <button type="button" class="upload-btn" data-bs-toggle="modal" data-bs-target="#confirmUploadModal" style="cursor: pointer;">
-            {{ isset($document) ? 'Simpan Revisi' : 'Unggah Surat' }}
-        </button>
-    </div>
+    <!-- PANGGIL PARTIAL TOMBOL & MODAL (Yang baru kamu buat) -->
+    @include('partials.action-upload')
+
 </form>
-
-<div class="modal fade" id="confirmUploadModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Konfirmasi Pengiriman</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body text-center">
-                <p>{{ isset($document) ? 'Dokumen lama akan diganti dengan yang baru.' : 'Surat akan disimpan ke sistem.' }}</p>
-                <p class="fw-bold">Kirim notifikasi email ke penandatangan pertama?</p>
-            </div>
-            <div class="modal-footer justify-content-center">
-                <button type="button" class="btn btn-success" onclick="submitFormWithNotif(1)">
-                    Ya, Kirim Notifikasi
-                </button>
-                <button type="button" class="btn btn-secondary" onclick="submitFormWithNotif(0)">
-                    Ya, Jangan Kirim
-                </button>
-                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">
-                    Batal
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    // Fungsi ini tetap diperlukan di Blade karena menggunakan variabel global 'bootstrap'
-    function submitFormWithNotif(val) {
-        document.getElementById('sendNotificationValue').value = val;
-        
-        // Ambil form dan tombol
-        const form = document.getElementById('sendNotificationValue').closest('form');
-        const modal = bootstrap.Modal.getInstance(document.getElementById('confirmUploadModal'));
-        const submitButtons = document.querySelectorAll('#confirmUploadModal button[type="button"]');
-        
-        // Disable semua tombol di modal
-        submitButtons.forEach(btn => {
-            btn.disabled = true;
-            if (btn.classList.contains('btn-success') || btn.classList.contains('btn-secondary')) {
-                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Memproses...';
-            }
-        });
-        
-        // Close modal
-        if (modal) {
-            modal.hide();
-        }
-        
-        // Submit form
-        form.submit();
-    }
-</script>
 
 @endsection
 
@@ -199,46 +135,51 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="{{ asset('js/tu/upload.js') }}"></script>
     
-    @if(isset($document))
+    <!-- Script Load Data Revisi (Alur Lama) -->
     <script>
-        // Fungsi ini akan dipanggil setelah DOM siap
         document.addEventListener("DOMContentLoaded", function () {
-            // Ambil nilai alur dari hidden input (yang sudah diisi oleh PHP)
             const existingAlur = document.getElementById("alurInput").value;
             
-            // Variabel parafUsers dan ttdUser dideklarasikan di tu/upload.js
-            
+            // Jika ada data alur lama (Mode Revisi)
             if (existingAlur) {
                 const userIds = existingAlur.split(',');
-                const parafSelect = document.getElementById("parafSelect");
-                const ttdSelect = document.getElementById("ttdSelect");
+                const userSelect = document.getElementById("userSelect");
+                const alurList = document.getElementById("alurList");
+                const placeholder = document.querySelector(".alur-placeholder");
+                
+                // Sembunyikan placeholder "Alur surat"
+                if(placeholder) placeholder.style.display = 'none';
 
                 userIds.forEach(id => {
-                    // Cari opsi di kedua dropdown
-                    let parafOption = parafSelect.querySelector(`option[value="${id}"]`);
-                    let ttdOption = ttdSelect.querySelector(`option[value="${id}"]`);
+                    // Cari nama user di option dropdown berdasarkan ID
+                    let option = userSelect.querySelector(`option[value="${id}"]`);
+                    if (option) {
+                        const userName = option.text;
+                        
+                        // Buat elemen list (tampilan visual alur)
+                        const listItem = document.createElement("li");
+                        listItem.classList.add("alur-item");
+                        listItem.textContent = userName;
+                        listItem.dataset.userId = id;
 
-                    if (parafOption) {
-                        // Tambahkan ke array parafUsers
-                        window.parafUsers.push({
-                            id: id,
-                            name: parafOption.dataset.name,
-                            role: parafOption.dataset.role
-                        });
-                    } else if (ttdOption) {
-                        // Set ttd user
-                        window.ttdUser = {
-                            id: id,
-                            name: ttdOption.dataset.name,
-                            role: ttdOption.dataset.role
+                        // Tombol hapus
+                        const removeButton = document.createElement("button");
+                        removeButton.classList.add("remove-alur-btn");
+                        removeButton.textContent = "Hapus";
+                        removeButton.onclick = function () {
+                            alurList.removeChild(listItem);
+                            updateAlurInput(); // Panggil fungsi global dari upload.js
+                            option.disabled = false;
                         };
+
+                        listItem.appendChild(removeButton);
+                        alurList.appendChild(listItem);
+                        
+                        // Disable opsi di dropdown biar gak dipilih 2x
+                        option.disabled = true;
                     }
                 });
-
-                // Panggil fungsi global dari upload.js untuk merender ulang UI
-                updateAlur();
             }
         });
     </script>
-    @endif
 @endpush
