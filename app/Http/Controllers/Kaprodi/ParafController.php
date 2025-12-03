@@ -15,11 +15,9 @@ use App\Enums\DocumentStatusEnum;
 
 /**
  * Controller untuk mengelola proses paraf dokumen.
- * 
- * Menangani upload gambar paraf, penempatan paraf pada PDF,
+ * * Menangani upload gambar paraf, penempatan paraf pada PDF,
  * dan submit paraf ke dalam workflow dokumen.
- * 
- * @package App\Http\Controllers\Kaprodi
+ * * @package App\Http\Controllers\Kaprodi
  */
 class ParafController extends Controller
 {
@@ -62,8 +60,7 @@ class ParafController extends Controller
 
     /**
      * Tampilkan halaman detail dokumen untuk proses paraf.
-     * 
-     * Menampilkan PDF viewer dan sidebar untuk drag & drop paraf.
+     * * Menampilkan PDF viewer dan sidebar untuk drag & drop paraf.
      * Jika user sudah pernah menempatkan paraf, posisi akan dimuat kembali.
      *
      * @param int $id ID dokumen
@@ -73,10 +70,31 @@ class ParafController extends Controller
     {
         $document = Document::findOrFail($id);
 
-        if (!$this->workflowService->checkAccess($document->id)) {
+        // 1. Cek apakah user adalah giliran aktif (Mode Kerjakan)
+        $isCurrentTurn = $this->workflowService->checkAccess($document->id);
+        
+        // 2. Cek apakah user ada di history workflow (Mode Lihat-Saja)
+        $isInWorkflow = WorkflowStep::where('document_id', $id)->where('user_id', Auth::id())->exists();
+
+        // Jika user tidak aktif dan tidak ada di history, tolak akses
+        if (!$isCurrentTurn && !$isInWorkflow) {
             return redirect()->route('kaprodi.paraf.index')
-                ->withErrors('Belum giliran Anda untuk memparaf dokumen ini.');
+                ->withErrors('Anda tidak memiliki akses ke dokumen ini.');
         }
+
+        // Jika user ada di workflow tapi bukan giliran aktif, set view-only mode
+        $isViewOnly = !$isCurrentTurn;
+
+        // [PERBAIKAN UTAMA] Jika View Only, gunakan tampilan shared view-document
+        if ($isViewOnly) {
+            // Karena ini mode Lihat-Saja, tombol Revisi juga disembunyikan
+            return view('shared.view-document', [
+                'document' => $document,
+                'showRevisionButton' => false
+            ]);
+        }
+        
+        // --- LANJUT KE MODE KERJAKAN (GILIRAN AKTIF) ---
 
         $activeStep = WorkflowStep::where('document_id', $id)
             ->where('user_id', Auth::id())
@@ -103,8 +121,7 @@ class ParafController extends Controller
 
     /**
      * Upload gambar paraf baru untuk user yang sedang login.
-     * 
-     * Menggantikan gambar paraf lama jika sudah ada.
+     * * Menggantikan gambar paraf lama jika sudah ada.
      * File disimpan di storage/app/public/paraf.
      *
      * @param Request $request Request dengan file image
@@ -112,69 +129,96 @@ class ParafController extends Controller
      */
     public function uploadParaf(Request $request)
     {
-        // Validasi standar
-        $request->validate([
-            'image' => 'required|image|mimes:png,jpg,jpeg|max:2048',
-        ]);
+                // Validasi standarpublic function uploadParaf(Request $request)
+        {
+            $errorResponse = null;
 
-        if (!$request->hasFile('image')) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'File tidak terbaca oleh sistem.'
-            ], 400);
-        }
-
-        if (!$request->file('image')->isValid()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'File corrupt. Error Code: ' . $request->file('image')->getError()
-            ], 400);
-        }
-
-        try {
-            $user = Auth::user();
-
-            // Hapus paraf lama jika ada
-            try {
-                if ($user->img_paraf_path && Storage::disk('public')->exists($user->img_paraf_path)) {
-                    Storage::disk('public')->delete($user->img_paraf_path);
-                    Log::info('Old paraf deleted', ['user_id' => $user->id, 'path' => $user->img_paraf_path]);
-                }
-            } catch (\Exception $e) {
-                Log::warning('Failed to delete old paraf', [
-                    'user_id' => $user->id,
-                    'path' => $user->img_paraf_path,
-                    'error' => $e->getMessage()
-                ]);
-            }
-
-            // Simpan file baru
-            $path = $request->file('image')->store('paraf', 'public');
-
-            // Update DB
-            $user->update(['img_paraf_path' => $path]);
-
-            Log::info('Paraf uploaded successfully', ['user_id' => $user->id, 'path' => $path]);
-
-            return response()->json([
-                'status' => 'success',
-                'path' => asset('storage/' . $path),
-                'message' => 'Paraf berhasil disimpan!'
+            // Validasi standar
+            $request->validate([
+                'image' => 'required|image|mimes:png,jpg,jpeg|max:2048',
             ]);
 
-        } catch (\Exception $e) {
-            Log::error('Paraf upload failed', ['user_id' => Auth::id(), 'error' => $e->getMessage()]);
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Server Error: ' . $e->getMessage()
-            ], 500);
+            if (!$request->hasFile('image')) {
+                $errorResponse = [
+                    'status'  => 'error',
+                    'message' => 'File tidak terbaca oleh sistem.',
+                    'code'    => 400
+                ];
+            }
+
+            if (!$errorResponse && !$request->file('image')->isValid()) {
+                $errorResponse = [
+                    'status'  => 'error',
+                    'message' => 'File corrupt. Error Code: ' . $request->file('image')->getError(),
+                    'code'    => 400
+                ];
+            }
+
+            // Jika ada error validasi manual → return satu kali
+            if ($errorResponse) {
+                return response()->json([
+                    'status'  => $errorResponse['status'],
+                    'message' => $errorResponse['message']
+                ], $errorResponse['code']);
+            }
+
+            // Proses utama
+            try {
+                $user = Auth::user();
+
+                // Hapus paraf lama
+                try {
+                    if ($user->img_paraf_path && Storage::disk('public')->exists($user->img_paraf_path)) {
+                        Storage::disk('public')->delete($user->img_paraf_path);
+                        Log::info('Old paraf deleted', [
+                            'user_id' => $user->id,
+                            'path'    => $user->img_paraf_path
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('Failed to delete old paraf', [
+                        'user_id' => $user->id,
+                        'path'    => $user->img_paraf_path,
+                        'error'   => $e->getMessage()
+                    ]);
+                }
+
+                // Simpan file baru
+                $path = $request->file('image')->store('paraf', 'public');
+
+                // Update DB
+                $user->update(['img_paraf_path' => $path]);
+
+                Log::info('Paraf uploaded successfully', [
+                    'user_id' => $user->id,
+                    'path'    => $path
+                ]);
+
+                return response()->json([
+                    'status'  => 'success',
+                    'path'    => asset('storage/' . $path),
+                    'message' => 'Paraf berhasil disimpan!'
+                ]);
+
+            } catch (\Exception $e) {
+
+                Log::error('Paraf upload failed', [
+                    'user_id' => Auth::id(),
+                    'error'   => $e->getMessage()
+                ]);
+
+                // Return catch → 1 kali saja
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Server Error: ' . $e->getMessage()
+                ], 500);
+            }
         }
     }
 
     /**
      * Hapus gambar paraf user secara permanen.
-     * 
-     * Menghapus file dari storage dan reset path di database.
+     * * Menghapus file dari storage dan reset path di database.
      *
      * @return \Illuminate\Http\JsonResponse
      */
@@ -206,8 +250,7 @@ class ParafController extends Controller
 
     /**
      * Submit paraf ke dokumen dan lanjutkan workflow.
-     * 
-     * Proses:
+     * * Proses:
      * 1. Validasi akses dan posisi paraf
      * 2. Stamp paraf ke PDF menggunakan PdfService
      * 3. Update status workflow step
@@ -219,49 +262,60 @@ class ParafController extends Controller
      */
     public function submit(Request $request, $documentId)
     {
-        // 1. VALIDASI DULU SEBELUM PROSES PDF
+        $error = null;
+
+        // 1. Validasi akses
         if (!$this->workflowService->checkAccess($documentId)) {
-            return back()->withErrors('Bukan giliran Anda untuk memparaf dokumen ini.');
+            $error = 'Bukan giliran Anda untuk memparaf dokumen ini.';
         }
 
         $activeStep = WorkflowStep::where('document_id', $documentId)
             ->where('user_id', Auth::id())
             ->first();
 
-        // VALIDASI POSISI
-        if (is_null($activeStep->posisi_x) || is_null($activeStep->posisi_y) || !$activeStep->halaman) {
-            return back()->withErrors('Anda belum menempatkan paraf pada dokumen.');
+        // 2. Validasi posisi
+        if (!$error && (is_null($activeStep->posisi_x) || is_null($activeStep->posisi_y) || !$activeStep->halaman)) {
+            $error = 'Anda belum menempatkan paraf pada dokumen.';
         }
 
-        // 2. PROSES PDF
+        // Jika ada error → return satu kali saja
+        if ($error) {
+            return back()->withErrors($error);
+        }
+
+        // 3. Proses PDF & Workflow
         try {
             $this->pdfService->stampPdf($documentId, Auth::id(), 'paraf');
 
-            // 3. UPDATE STEP
             $this->workflowService->completeStep($documentId, DocumentStatusEnum::DIPARAF);
-            
-            // --- PERBAIKAN DISINI ---
-            // Tangkap input dari Modal (1 = Ya, 0 = Tidak)
+
             $sendNotification = $request->input('send_notification') == '1';
-
-            // Kirim status notifikasi ke service
             $this->workflowService->processNextStep($documentId, $sendNotification);
-            
-            Log::info('Document paraf submitted', ['document_id' => $documentId, 'user_id' => Auth::id()]);
 
-            return redirect()->route('kaprodi.paraf.index')
+            Log::info('Document paraf submitted', [
+                'document_id' => $documentId,
+                'user_id'     => Auth::id()
+            ]);
+
+            return redirect()
+                ->route('kaprodi.paraf.index')
                 ->with('success', 'Dokumen berhasil diparaf.');
 
         } catch (\Exception $e) {
-            Log::error('Paraf submission failed', ['document_id' => $documentId, 'error' => $e->getMessage()]);
+
+            Log::error('Paraf submission failed', [
+                'document_id' => $documentId,
+                'error'       => $e->getMessage()
+            ]);
+
+            // Tetap 1 return
             return back()->withErrors('Gagal memproses PDF: ' . $e->getMessage());
         }
     }
 
     /**
      * Simpan posisi paraf yang ditempatkan user pada PDF.
-     * 
-     * Dipanggil via AJAX saat user drag & drop paraf.
+     * * Dipanggil via AJAX saat user drag & drop paraf.
      * Menyimpan koordinat X, Y, dan nomor halaman.
      *
      * @param Request $request Request dengan posisi_x, posisi_y, halaman
