@@ -2,6 +2,10 @@
 
 @section('title', 'Finalisasi Surat')
 
+@push('styles')
+  <link rel="stylesheet" href="{{ asset('css/tu/arsip/index.css') }}">
+@endpush
+
 @section('content')
 
 <h1 class="page-title">Daftar Surat Siap Finalisasi</h1>
@@ -23,24 +27,19 @@
         <tr>
           <td>
             <div style="font-weight:bold;">{{ $s->judul_surat }}</div>
-            @if($s->nomor_surat)
-                <div style="font-size:12px; color:#64748b;">
-                    {{ $s->nomor_surat }}
-                </div>
-            @endif
           </td>
 
           <td>{{ $s->uploader->nama_lengkap ?? '-' }}</td>
 
-          <td>{{ $s->created_at->format('d M Y') }}</td>
+          <td>{{ $s->created_at->format('d/m/Y') }}</td>
 
           <td>
             <span class="pill hijau">Ditandatangani</span>
           </td>
 
           <td>
-            <a class="aksi" href="{{ route('tu.finalisasi.show', $s->id) }}">
-              Lihat
+            <a class="btn-action abu" href="{{ route('tu.finalisasi.show', $s->id) }}">
+                Lihat
             </a>
           </td>
         </tr>
