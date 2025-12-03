@@ -4,69 +4,41 @@
 
 @section('content')
 
-<div style="width: 100%; display: flex; justify-content: center; margin-top: 40px;">
-    <div style="text-align: center;">
+<link rel="stylesheet" href="{{ asset('css/tu/finalisasi.css') }}">
 
-        <h2 style="font-size: 22px; font-weight: 700; margin-bottom: 5px;">
-            Dokumen siap di finalisasi
-        </h2>
+<div class="preview-wrapper">
+    <div class="preview-content">
 
-        <p style="color: #555; margin-bottom: 30px; font-size: 14px;">
+        <h2>Dokumen siap di finalisasi</h2>
+
+        <p class="desc">
             Pratinjau dokumen Anda di sini sebelum menyelesaikan,
         </p>
 
-        <div style="
-            width: 350px;
-            height: 430px;
-            border: 2px dashed #bfbfbf;
-            border-radius: 10px; 
-            margin: auto;
-            background: #fff;
-            overflow: hidden;
-        ">
-            <iframe 
-                src="{{ route('tu.finalisasi.preview', $document->id) }}#toolbar=0&navpanes=0&scrollbar=0" 
-                width="100%"
-                height="100%"
-                frameborder="0"
-                style="overflow: hidden;"
+        <div class="preview-box">
+            <iframe
+                src="{{ route('tu.finalisasi.preview', $document->id) }}#toolbar=0&navpanes=0&scrollbar=0"
+                title="Pratinjau dokumen finalisasi"
             >
                 Dokumen tidak dapat ditampilkan. Coba unduh.
             </iframe>
         </div>
 
-        {{-- TOMBOL TIDAK LANGSUNG SUBMIT --}}
-        <button 
+        {{-- BUTTON FINALISASI --}}
+        <button
             type="button"
             data-bs-toggle="modal"
             data-bs-target="#modalFinalisasi"
-            style="
-                width: 350px;
-                margin-top: 30px;
-                background: #0d99ff;
-                color: white;
-                padding: 12px 0;
-                border: none;
-                border-radius: 30px;
-                font-size: 16px;
-                font-weight: 600;
-                cursor: pointer;
-            ">
+            class="btn-final"
+        >
             Finalisasi Surat
         </button>
 
-        <p style="margin-top: 12px; color: #555; font-size: 13px;">
+        <p class="warning">
             Pastikan semua informasi sudah benar sebelum melakukan finalisasi.
         </p>
 
-        <a href="{{ route('tu.finalisasi.index') }}"
-            style="
-                display: inline-block;
-                margin-top: 20px;
-                text-decoration: none;
-                color: #555;
-                font-size: 14px;
-            ">
+        <a href="{{ route('tu.finalisasi.index') }}" class="back-link">
             Kembali
         </a>
 
@@ -74,7 +46,6 @@
 </div>
 
 @endsection
-
 
 {{-- ===================== MODAL ===================== --}}
 @section('popup')
