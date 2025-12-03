@@ -26,7 +26,17 @@ class ReviewController extends Controller
     {
         $document = Document::findOrFail($id);
         
-        return view('kaprodi.review-surat', compact('document'));
+        // Cek apakah user adalah giliran aktif
+        // Kita gunakan helper dari TableController agar logic konsisten
+        $isActive = TableController::isUserActiveInWorkflow($document, Auth::id());
+
+        // Tombol "Minta Revisi" hanya muncul jika:
+        // 1. Status dokumen = DITINJAU
+        // 2. User adalah giliran aktif
+        $showRevisionButton = ($document->status === DocumentStatusEnum::DITINJAU) && $isActive;
+        
+        // Gunakan shared view
+        return view('shared.view-document', compact('document', 'showRevisionButton'));
     }
 
     // 3. PROSES REVISI (Action dari Pop-up)

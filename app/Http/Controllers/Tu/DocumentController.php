@@ -284,16 +284,16 @@ class DocumentController extends Controller
         }
     }
 
-    // show - DITAHAN (Logika lama)
-    public function show(Document $document)
+    // show - Menampilkan dokumen untuk TU (View Only)
+    public function show($id)
     {
-        $workflowSteps = WorkflowStep::where('document_id', $document->id)->orderBy('urutan')->get();
-        $currentStep = $workflowSteps->firstWhere('user_id', Auth::id());
-
-        if (!$currentStep) {
-            return redirect()->back()->withErrors('Anda tidak memiliki hak akses.');
-        }
-        return view('document.show', compact('document', 'currentStep', 'workflowSteps'));
+        $document = Document::findOrFail($id);
+        
+        // TU selalu bisa melihat dokumen (View Only)
+        return view('shared.view-document', [
+            'document' => $document,
+            'showRevisionButton' => false
+        ]);
     }
     
     // download - DITAHAN (Digunakan oleh Review & Paraf)

@@ -89,6 +89,14 @@ class TandatanganController extends Controller
         // Jika bukan giliran tapi ada di workflow, kita set flag view-only
         $isViewOnly = !$isCurrentTurn;
 
+        // [MODIFIED] Jika View Only, gunakan tampilan shared yang bersih
+        if ($isViewOnly) {
+            return view('shared.view-document', [
+                'document' => $document,
+                'showRevisionButton' => false
+            ]);
+        }
+
         $activeStep = WorkflowStep::where('document_id', $id)
             ->where('user_id', Auth::id())
             ->first();
