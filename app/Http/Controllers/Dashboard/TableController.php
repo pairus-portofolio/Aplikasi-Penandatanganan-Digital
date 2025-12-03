@@ -178,7 +178,6 @@ class TableController extends Controller
 
             return [
                 'id_raw'       => $doc->id,
-                'nomor'        => 'SRT-' . str_pad($doc->id, 4, '0', STR_PAD_LEFT),
                 'nama'         => $doc->judul_surat,
                 'pengunggah'   => $doc->uploader->nama_lengkap ?? 'Tidak Diketahui',
                 'tanggal'      => $tanggalTampil,

@@ -28,22 +28,16 @@
         @forelse($documents as $d)
         <tr>
 
-          {{-- Judul + Nomor surat --}}
+          {{-- Judul surat --}}
           <td>
              <div style="font-weight:bold;">{{ $d->judul_surat }}</div>
-
-             @if($d->nomor_surat)
-             <div style="font-size:12px; color:#64748b;">
-                 {{ $d->nomor_surat }}
-             </div>
-             @endif
           </td>
 
           {{-- Pengunggah --}}
           <td>{{ $d->uploader->nama_lengkap ?? '-' }}</td>
 
           {{-- Tanggal Updated --}}
-          <td>{{ $d->updated_at->format('d M Y') }}</td>
+          <td>{{ $d->updated_at->format('d/m/Y') }}</td>
 
           {{-- Status --}}
           <td>
