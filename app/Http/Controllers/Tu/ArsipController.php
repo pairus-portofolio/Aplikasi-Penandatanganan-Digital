@@ -24,15 +24,15 @@ class ArsipController extends Controller
 
         // Logika pencarian (judul surat atau nama pengunggah)
         $documents->when($request->filled('search'), function ($query) use ($request) {
-            $searchTerm = '%' . $request->search . '%';
+        $searchTerm = '%' . strtolower($request->search) . '%';
 
-            $query->where(function ($subQuery) use ($searchTerm) {
-                $subQuery->where('judul_surat', 'like', $searchTerm)
-                         ->orWhereHas('uploader', function ($q) use ($searchTerm) {
-                             $q->where('nama_lengkap', 'like', $searchTerm);
-                         });
-            });
+        $query->where(function ($subQuery) use ($searchTerm) {
+            $subQuery->whereRaw('LOWER(judul_surat) LIKE ?', [$searchTerm])
+                    ->orWhereHas('uploader', function ($q) use ($searchTerm) {
+                        $q->whereRaw('LOWER(nama_lengkap) LIKE ?', [$searchTerm]);
+                    });
         });
+    });
 
         // Sorting & pagination
         $documents = $documents->orderBy('updated_at', 'desc')
