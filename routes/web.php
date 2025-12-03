@@ -39,6 +39,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/tu/upload/{id?}', [DocumentController::class, 'create'])->name('tu.upload.create');
     Route::post('/tu/upload', [DocumentController::class, 'store'])->name('tu.upload.store');
     Route::put('/tu/document/{id}/revisi', [DocumentController::class, 'updateRevision'])->name('tu.document.revisi');
+    
+    // View Document (Read-Only)
+    Route::get('/tu/document/{id}', [DocumentController::class, 'show'])->name('tu.document.show');
 
     // Finalisasi TU
     Route::prefix('tu/finalisasi')->name('tu.finalisasi.')->group(function() {

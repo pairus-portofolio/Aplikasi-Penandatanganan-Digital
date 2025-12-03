@@ -222,8 +222,8 @@ class TableController extends Controller
              $baseUrl = route('kajur.tandatangan.show', $doc->id);
         } else {
             // TU atau lainnya
-             // Sementara arahkan ke # karena belum ada route detail TU
-             $baseUrl = '#'; 
+             // Arahkan ke halaman view-only TU
+             $baseUrl = route('tu.document.show', $doc->id); 
         }
 
         // Jika User Aktif (Giliran dia) -> Work Mode
