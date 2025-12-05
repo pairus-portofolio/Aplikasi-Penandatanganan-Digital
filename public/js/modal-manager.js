@@ -1,6 +1,6 @@
-// Simple Modal Manager (FINAL)
+// Simple Modal Manager (FINAL - FIX MINTA REVISI DAN NAME COLLISION)
 // Usage:
-// ModalManager.show({title, body, footer})
+// ModalManager.show({title, body, footer, shouldShowCloseButton: true/false})
 // ModalManager.loadAndShow(url, options)
 // Handles built-in keys including upload-confirm and paraf-confirm (Ya / Tidak)
 
@@ -9,32 +9,39 @@
     const titleEl = document.getElementById('globalModalTitle');
     const bodyEl = document.getElementById('globalModalBody');
     const footerEl = document.getElementById('globalModalFooter');
+    const closeBtn = document.getElementById('globalModalCloseBtn');
     let bsModal = null;
 
     function ensureInstance() {
         if (!bsModal && modalEl) bsModal = new bootstrap.Modal(modalEl, { backdrop: 'static' });
     }
 
-    function clear() {
-        if (titleEl) titleEl.innerHTML = '';
-        if (bodyEl) bodyEl.innerHTML = '';
-        if (footerEl) footerEl.innerHTML = '';
-        // Reset close button visibility
-        showCloseButton();
-    }
-
     function hideCloseButton() {
-        const closeBtn = document.getElementById('globalModalCloseBtn');
         if (closeBtn) closeBtn.style.display = 'none';
     }
 
     function showCloseButton() {
-        const closeBtn = document.getElementById('globalModalCloseBtn');
         if (closeBtn) closeBtn.style.display = '';
     }
 
-    function show({ title = '', body = '', footer = '', modalSize = 'sm' } = {}) {
+    function clear() {
+        if (titleEl) titleEl.innerHTML = '';
+        if (bodyEl) bodyEl.innerHTML = '';
+        if (footerEl) footerEl.innerHTML = '';
+        showCloseButton();
+    }
+
+    // Parameter diubah dari 'showCloseButton' menjadi 'shouldShowCloseButton' untuk menghindari name collision
+    function show({ title = '', body = '', footer = '', modalSize = 'sm', shouldShowCloseButton = true } = {}) {
         if (!titleEl || !bodyEl || !footerEl) return;
+        
+        // Handle close button visibility based on option
+        if (shouldShowCloseButton) {
+            showCloseButton(); // Memanggil fungsi helper
+        } else {
+            hideCloseButton(); // Memanggil fungsi helper
+        }
+
         titleEl.innerHTML = title || 'Informasi';
         bodyEl.innerHTML = body || '';
         footerEl.innerHTML = footer || '';
@@ -57,7 +64,18 @@
             const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
             if (!res.ok) throw new Error('Network error');
             const html = await res.text();
-            show({ title: options.title || '', body: html, footer: options.footer || '' });
+            
+            // Perbaikan: Menggunakan shouldShowCloseButton
+            const mergedOptions = {
+                title: options.title || '', 
+                body: html, 
+                footer: options.footer || '',
+                modalSize: options.modalSize || 'sm',
+                // Menerima nilai dari key lama dan meneruskannya ke key baru
+                shouldShowCloseButton: options.showCloseButton !== undefined ? options.showCloseButton : true 
+            };
+            
+            show(mergedOptions);
         } catch (err) {
             console.error('Modal load error', err);
             show({ title: 'Error', body: '<p>Gagal memuat konten.</p>' });
@@ -78,6 +96,8 @@
             modalDialog.classList.remove('modal-md', 'modal-lg');
             modalDialog.classList.add('modal-sm');
         }
+        // Reset close button just in case
+        showCloseButton();
     }
 
     // Convenience confirm dialog (Bootstrap-only styling)
@@ -88,6 +108,7 @@
         const cancelText = options.cancelText || 'Tidak';
         const onOk = options.onOk || function () { };
         const onCancel = options.onCancel || function () { };
+        const shouldShowCloseButton = options.showCloseButton !== undefined ? options.showCloseButton : true;
 
         const footer = `
             <div class="d-flex justify-content-center gap-2 w-100">
@@ -99,8 +120,8 @@
         // Body center aligned; caller can include <p class="fw-bold"> untuk pertanyaan tebal
         const bodyHtml = `<div class="text-center"><p class="mb-2">${message}</p></div>`;
 
-        // Tampilkan modal
-        show({ title: `<span class="fs-6 fw-bold">${title}</span>`, body: bodyHtml, footer });
+        // Kirim sebagai shouldShowCloseButton ke show()
+        show({ title: `<span class="fs-6 fw-bold">${title}</span>`, body: bodyHtml, footer, shouldShowCloseButton: shouldShowCloseButton });
 
         if (modalEl) modalEl.classList.add('modal-custom-applied');
 
@@ -142,46 +163,19 @@
         const url = btn.getAttribute('data-modal-url');
         const title = btn.getAttribute('data-modal-title') || '';
         const bodyContent = btn.getAttribute('data-modal-body');
+        
+        let shouldShowCloseButton = true;
+        let modalSize = 'sm';
 
-        // If data-modal-url present, load remote html
-        if (url) {
-            loadAndShow(url, { title });
-            return;
+        // --- HANDLE: Specific built-in keys for custom logic ---
+        
+        // Edit User (Hide 'X' button)
+        if (modalKey === 'edit-user') {
+            shouldShowCloseButton = false;
+            modalSize = 'md';
         }
-
-        // --- HANDLE: Upload confirm (Ya / Tidak) ---
-        if (modalKey === 'upload-confirm') {
-            const isEdit = btn.getAttribute('data-is-edit') === 'true';
-            const message = isEdit ? 'Dokumen lama akan diganti dengan yang baru.' : 'Surat akan disimpan ke sistem.';
-
-            confirm({
-                title: 'Konfirmasi',
-                message: message + '<p class="fw-bold mt-3">Kirim notifikasi email ke penandatangan pertama?</p>',
-                okText: 'Ya',
-                cancelText: 'Tidak',
-                onOk: function () {
-                    const hidden = document.getElementById('sendNotificationValue');
-                    if (hidden) {
-                        hidden.value = '1';
-                        const f = hidden.closest('form');
-                        if (f) f.submit();
-                    }
-                },
-                onCancel: function () {
-                    const hidden = document.getElementById('sendNotificationValue');
-                    if (hidden) {
-                        hidden.value = '0';
-                        const f = hidden.closest('form');
-                        if (f) f.submit();
-                    }
-                }
-            });
-            return;
-        }
-
-        // Specific built-in keys
+        
         if (modalKey === 'logout') {
-            // Build logout form with CSRF
             const csrf = getCsrf();
             const form = `
                 <form method="POST" action="/logout" id="logoutForm">
@@ -194,8 +188,8 @@
                     <button type="button" class="btn btn-danger rounded-pill px-3" id="modalLogoutConfirm">Logout</button>
                 </div>
             `;
-            show({ title: title || '<span class="fs-6 fw-bold">Konfirmasi Logout</span>', body: '<p class="mb-2">Apakah Anda yakin ingin logout?</p>' + form, footer });
-            hideCloseButton();
+            // Force hide 'X'
+            show({ title: title || '<span class="fs-6 fw-bold">Konfirmasi Logout</span>', body: '<p class="mb-2">Apakah Anda yakin ingin logout?</p>' + form, footer, shouldShowCloseButton: false }); 
 
             setTimeout(() => {
                 const cancelBtn = document.getElementById('modalCancelBtn');
@@ -209,6 +203,21 @@
             return;
         }
 
+        // --- HANDLE: General Logic ---
+        
+        // If data-modal-url present, load remote html
+        if (url) {
+            // Menggunakan key lama untuk kompatibilitas, akan dikonversi di loadAndShow
+            loadAndShow(url, { 
+                title: title, 
+                showCloseButton: shouldShowCloseButton, 
+                modalSize: modalSize 
+            });
+            return;
+        }
+
+        // --- Handle other built-in keys... ---
+        
         // Paraf confirmation (Ya / Tidak only)
         if (modalKey === 'paraf-confirm') {
             const body = '<p>Paraf tidak bisa diubah lagi setelah Anda konfirmasi.</p><p class="fw-bold mt-3">Apakah Anda ingin mengirim email notifikasi ke orang selanjutnya?</p>';
@@ -242,55 +251,119 @@
             }, 60);
             return;
         }
+        
+        // Tombol TTD Confirm
+        if (modalKey === 'ttd-confirm') {
+            const body = 'Tanda tangan tidak bisa diubah lagi setelah Anda konfirmasi.<p class="fw-bold mt-3">Apakah Anda ingin mengirim email notifikasi ke orang selanjutnya?</p>';
 
-        // If inline body provided
-        if (bodyContent) {
-            const footer = btn.getAttribute('data-modal-footer') || '';
-            show({ title, body: bodyContent, footer });
+            confirm({
+                title: 'Konfirmasi Tanda Tangan',
+                message: body,
+                okText: 'Ya',
+                cancelText: 'Tidak',
+                showCloseButton: false, 
+                onOk: function(){
+                    const input = document.getElementById('sendNotifTtd');
+                    if (input) input.value = '1';
+                    const f = document.getElementById('formTtd');
+                    if (f) f.submit();
+                },
+                onCancel: function(){
+                    const input = document.getElementById('sendNotifTtd');
+                    if (input) input.value = '0';
+                    const f = document.getElementById('formTtd');
+                    if (f) f.submit();
+                }
+            });
             return;
         }
 
-        // Review -> open revise form and submit to provided action URL
+        // Tombol Upload Confirm (Revisi / Baru)
+        if (modalKey === 'upload-confirm') {
+            const isEdit = btn.getAttribute('data-is-edit') === 'true';
+            const message = isEdit ? 'Dokumen lama akan diganti dengan yang baru.' : 'Surat akan disimpan ke sistem.';
+
+            confirm({
+                title: 'Konfirmasi',
+                message: message + '<p class="fw-bold mt-3">Kirim notifikasi email ke penandatangan pertama?</p>',
+                okText: 'Ya',
+                cancelText: 'Tidak',
+                onOk: function () {
+                    const hidden = document.getElementById('sendNotificationValue');
+                    if (hidden) {
+                        hidden.value = '1';
+                        const f = hidden.closest('form');
+                        if (f) f.submit();
+                    }
+                },
+                onCancel: function () {
+                    const hidden = document.getElementById('sendNotificationValue');
+                    if (hidden) {
+                        hidden.value = '0';
+                        const f = hidden.closest('form');
+                        if (f) f.submit();
+                    }
+                }
+            });
+            return;
+        }
+        
+        // ** PERBAIKAN TOMBOL MINTA REVISI **
         if (modalKey === 'review-revise') {
             const actionUrl = btn.getAttribute('data-action-url');
             const uploaderEmail = btn.getAttribute('data-uploader-email') || '';
             const defaultSubject = btn.getAttribute('data-default-subject') || '';
+            const csrf = getCsrf(); // Panggil CSRF di sini
 
             const body = `
                 <div class="mb-3">
                     <label class="form-label fw-bold">Email Tujuan</label>
-                    <input type="email" class="form-control" value="${uploaderEmail}" readonly style="background-color: #e9ecef;">
+                    <input type="email" class="form-control form-control-sm" value="${uploaderEmail}" readonly style="background-color: #e9ecef;">
                 </div>
                 <div class="mb-3">
                     <label class="form-label fw-bold">Subjek</label>
-                    <input type="text" name="subjek" id="modalReviseSubjek" class="form-control" value="${defaultSubject}" required>
+                    <input type="text" name="subjek" id="modalReviseSubjek" class="form-control form-control-sm" value="${defaultSubject}" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label fw-bold">Catatan Revisi</label>
-                    <textarea name="catatan" id="modalReviseCatatan" class="form-control" rows="4" required placeholder="Jelaskan perbaikan..."></textarea>
+                    <textarea name="catatan" id="modalReviseCatatan" class="form-control form-control-sm" rows="4" required placeholder="Jelaskan perbaikan..."></textarea>
                 </div>
             `;
 
             const footer = `
                 <div class="d-flex justify-content-end gap-2 w-100">
-                    <button type="button" class="btn btn-secondary rounded-pill px-3" id="modalCancelBtn">Batal</button>
+                    <button type="button" class="btn btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Batal</button>
                     <button type="button" class="btn btn-danger rounded-pill px-3" id="modalSendRevise">Kirim Revisi</button>
                 </div>
             `;
-
-            show({ title: title || '<span class="fs-6 fw-bold">Kirim Permintaan Revisi</span>', body, footer });
-            hideCloseButton();
-
+            
+            // Tampilkan Modal dengan tombol 'X' disembunyikan
+            show({ 
+                title: title || '<span class="fs-6 fw-bold">Kirim Permintaan Revisi</span>', 
+                body, 
+                footer,
+                modalSize: 'md',
+                shouldShowCloseButton: false // Hilangkan tombol 'X'
+            }); 
+            
+            // Pasang listener untuk tombol Kirim Revisi
             setTimeout(() => {
-                const cancelBtn = document.getElementById('modalCancelBtn');
                 const sendBtn = document.getElementById('modalSendRevise');
-                if (cancelBtn) cancelBtn.addEventListener('click', hide, { once: true });
                 if (sendBtn) sendBtn.addEventListener('click', () => {
-                    // Build temporary form and submit
-                    const csrf = getCsrf();
-                    const subjek = document.getElementById('modalReviseSubjek')?.value || '';
-                    const catatan = document.getElementById('modalReviseCatatan')?.value || '';
+                    // Validasi manual sebelum kirim form
+                    const subjek = document.getElementById('modalReviseSubjek')?.value;
+                    const catatan = document.getElementById('modalReviseCatatan')?.value;
+                    
+                    if (!subjek || !catatan) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Validasi Gagal',
+                            text: 'Subjek dan Catatan Revisi wajib diisi.'
+                        });
+                        return;
+                    }
 
+                    // Buat form sementara dan submit
                     const form = document.createElement('form');
                     form.method = 'POST';
                     form.action = actionUrl;
@@ -310,6 +383,7 @@
             }, 60);
             return;
         }
+        // END PERBAIKAN TOMBOL MINTA REVISI
 
         // Download confirmation for finalisasi
         if (modalKey === 'finalisasi-download') {
@@ -335,9 +409,8 @@
                 </div>
             `;
 
-            show({ title: '<span class="fs-6 fw-bold">Unduh File</span>', body, footer });
-            hideCloseButton();
-
+            show({ title: '<span class="fs-6 fw-bold">Unduh File</span>', body, footer, shouldShowCloseButton: false });
+            
             setTimeout(() => {
                 const cancelBtn = document.getElementById('modalCancelBtn');
                 const downloadBtn = document.getElementById('modalDownloadBtn');
@@ -345,60 +418,6 @@
                 if (downloadBtn) downloadBtn.addEventListener('click', () => {
                     window.location.href = downloadUrl;
                     hide();
-                }, { once: true });
-            }, 60);
-            return;
-        }
-
-        // Submission notification - ask to send email
-        if (modalKey === 'submission-notification') {
-            const actionUrl = btn.getAttribute('data-action-url');
-            const defaultSubject = btn.getAttribute('data-default-subject') || 'Pemberitahuan Proses Alur';
-
-            const body = `
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Email Tujuan</label>
-                    <input type="email" id="modalSubmitEmail" class="form-control" placeholder="recipient@example.com" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Subjek</label>
-                    <input type="text" id="modalSubmitSubjek" class="form-control" value="${defaultSubject}" required>
-                </div>
-            `;
-
-            const footer = `
-                <div class="d-flex justify-content-end gap-2 w-100">
-                    <button type="button" class="btn btn-secondary rounded-pill px-3" id="modalCancelBtn">Batal</button>
-                    <button type="button" class="btn btn-success rounded-pill px-3" id="modalSubmitSend">Kirim</button>
-                </div>
-            `;
-
-            show({ title: '<span class="fs-6 fw-bold">Kirim Notifikasi</span>', body, footer });
-
-            setTimeout(() => {
-                const cancelBtn = document.getElementById('modalCancelBtn');
-                const sendBtn = document.getElementById('modalSubmitSend');
-                if (cancelBtn) cancelBtn.addEventListener('click', hide, { once: true });
-                if (sendBtn) sendBtn.addEventListener('click', () => {
-                    const csrf = getCsrf();
-                    const email = document.getElementById('modalSubmitEmail')?.value || '';
-                    const subjek = document.getElementById('modalSubmitSubjek')?.value || '';
-
-                    const form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = actionUrl;
-                    form.style.display = 'none';
-
-                    const token = document.createElement('input');
-                    token.type = 'hidden'; token.name = '_token'; token.value = csrf;
-                    const e = document.createElement('input'); e.type = 'hidden'; e.name = 'email'; e.value = email;
-                    const s = document.createElement('input'); s.type = 'hidden'; s.name = 'subjek'; s.value = subjek;
-
-                    form.appendChild(token);
-                    form.appendChild(e);
-                    form.appendChild(s);
-                    document.body.appendChild(form);
-                    form.submit();
                 }, { once: true });
             }, 60);
             return;
@@ -423,9 +442,8 @@
                 </div>
             `;
 
-            show({ title: '<span class="fs-6 fw-bold">Finalisasi Dokumen</span>', body, footer, modalSize: 'md' });
-            hideCloseButton();
-
+            show({ title: '<span class="fs-6 fw-bold">Finalisasi Dokumen</span>', body, footer, modalSize: 'md', shouldShowCloseButton: false });
+            
             setTimeout(() => {
                 const cancelBtn = document.getElementById('modalCancelBtn');
                 const finalBtn = document.getElementById('modalFinalizeBtn');
@@ -449,7 +467,7 @@
             }, 60);
             return;
         }
-
+        
         // Fallback: simple confirm with message data-modal-message
         const message = btn.getAttribute('data-modal-message') || '';
         if (message) {

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
+use App\Enums\RoleEnum;
 
 class AuthController extends Controller
 {
@@ -35,6 +36,9 @@ class AuthController extends Controller
         // Jika login berhasil
         if ($attempt) {
             $request->session()->regenerate();
+            if (Auth::user()->role_id == RoleEnum::ID_ADMIN) {
+                return redirect()->intended(route('admin.users.index')); 
+            }
             return redirect()->intended(route('dashboard'));
         }
 
@@ -56,6 +60,9 @@ class AuthController extends Controller
             // Jika berhasil setelah diperbaiki
             if ($attempt) {
                 $request->session()->regenerate();
+                if (Auth::user()->role_id == RoleEnum::ID_ADMIN) {
+                    return redirect()->intended(route('admin.users.index')); 
+                }
                 return redirect()->intended(route('dashboard'));
             }
         }

@@ -15,10 +15,17 @@
     <!-- Menu navigasi utama -->
     <nav class="menu">
 
-      <!-- Link dashboard (selalu tersedia untuk semua role) -->
-      <a href="/dashboard" class="{{ Request::is('dashboard') ? 'active' : '' }}">
-        <i class="fa-solid fa-chart-line fa-fw"></i><span>Dashboard</span>
-      </a>
+      {{-- Define Admin ID untuk perbandingan di Blade --}}
+      @php
+          $adminId = \App\Enums\RoleEnum::ID_ADMIN;
+      @endphp
+
+      {{-- Hanya tampilkan Dashboard jika BUKAN Admin --}}
+      @if(Auth::user()->role_id != $adminId)
+        <a href="/dashboard" class="{{ Request::is('dashboard') ? 'active' : '' }}">
+          <i class="fa-solid fa-chart-line fa-fw"></i><span>Dashboard</span>
+        </a>
+      @endif
 
       <!-- Menu khusus role TU -->
       @if(Auth::user()->role_id == 1)
@@ -55,6 +62,13 @@
         <!-- Halaman tanda tangan surat -->
         <a href="{{ route('kajur.tandatangan.index') }}" class="{{ Request::is('tandatangan-surat*') ? 'active' : '' }}">
           <i class="fa-solid fa-signature fa-fw"></i><span>Tanda Tangan Surat</span>
+        </a>
+      @endif
+
+      {{-- Menu khusus role ADMIN (NEW) --}}
+      @if(Auth::user()->role_id == $adminId)
+        <a href="{{ route('admin.users.index') }}" class="{{ Request::is('admin/users*') ? 'active' : '' }}">
+          <i class="fa-solid fa-users-gear fa-fw"></i><span>Manajemen Pengguna</span>
         </a>
       @endif
 

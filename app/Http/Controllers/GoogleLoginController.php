@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Exception;
 use Illuminate\Support\Carbon;
+use App\Enums\RoleEnum;
 
 class GoogleLoginController extends Controller
 {
@@ -43,6 +44,9 @@ class GoogleLoginController extends Controller
 
                 // Login user ke sistem
                 Auth::login($user);
+                if ($user->role_id == RoleEnum::ID_ADMIN) {
+                    return redirect()->intended(route('admin.users.index')); // Redirect ke Manajemen Pengguna
+                }
                 return redirect()->intended('/dashboard');
             } else {
 

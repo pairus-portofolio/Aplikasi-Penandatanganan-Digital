@@ -9,6 +9,7 @@ class RoleEnum
     const KAPRODI_D4 = 'Kaprodi D4';
     const KAJUR = 'Kajur';
     const SEKJUR = 'Sekjur';
+    const ADMIN = 'Admin';
 
     // ID Constants
     const ID_TU = 1;
@@ -16,6 +17,7 @@ class RoleEnum
     const ID_KAPRODI_D4 = 3;
     const ID_KAJUR = 4;
     const ID_SEKJUR = 5;
+    const ID_ADMIN = 6;
 
     /**
      * Get all Kaprodi roles
@@ -50,6 +52,7 @@ class RoleEnum
             self::KAPRODI_D4,
             self::KAJUR,
             self::SEKJUR,
+            self::ADMIN,
         ];
     }
 }

@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\User;
 use App\Models\Role; 
+use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
 {
@@ -18,6 +19,7 @@ class UserSeeder extends Seeder
         $roleKaprodiD4 = Role::where('nama_role', 'Kaprodi D4')->firstOrFail();
         $roleKajur   = Role::where('nama_role', 'Kajur')->firstOrFail();
         $roleSekjur   = Role::where('nama_role', 'Sekjur')->firstOrFail();
+        $roleAdmin   = Role::where('nama_role', 'Admin')->firstOrFail();
 
         User::firstOrCreate(
             ['email' => 'siti.soviyyah.tif24@polban.ac.id'],
@@ -66,6 +68,16 @@ class UserSeeder extends Seeder
                 'google_id'    => 'GOOGLE_ID_NIKE_987654', 
                 'password'     => 'password123', 
                 'role_id'      => $roleSekjur->id
+            ]
+        );
+
+        // ADDED ADMIN USER with HASHED PASSWORD
+        User::firstOrCreate(
+            ['email' => 'qlioamanda@gmail.com'],
+            [
+                'nama_lengkap' => 'Admin', 
+                'password'     => Hash::make('password123'), 
+                'role_id'      => $roleAdmin->id
             ]
         );
     }
