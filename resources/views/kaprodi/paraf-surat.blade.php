@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="{{ asset('css/kaprodi/zoom-button.css') }}">
     <link rel="stylesheet" href="{{ asset('css/kaprodi/revision-button.css') }}">
     <link rel="stylesheet" href="{{ asset('css/kaprodi/paraf-layout.css?v=4') }}">
-    <link rel="stylesheet" href="{{ asset('css/kaprodi/notif-button.css') }}">'
+    <link rel="stylesheet" href="{{ asset('css/kaprodi/notif-button.css') }}">
 @endpush
 
 @section('page-header')

@@ -1,4 +1,4 @@
-<div class="pv-header" style="position: sticky; top: 50px; z-index: 10;">
+<div class="pv-header">
     <div class="pv-name">{{ $judulSurat ?? 'Nama surat' }}</div>
 
     <div class="doc-pagination">

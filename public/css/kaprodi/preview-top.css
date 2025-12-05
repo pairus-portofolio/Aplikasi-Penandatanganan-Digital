@@ -9,9 +9,6 @@
   width: 100%;
   box-sizing: border-box;
   transition: margin-left var(--transition-speed) ease, width var(--transition-speed) ease;
-  position: sticky;
-  top: 66px;
-  z-index: 490;
 }
 
 /* Penyesuaian header saat sidebar dicollapse */
