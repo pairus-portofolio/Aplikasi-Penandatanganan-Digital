@@ -11,9 +11,6 @@
     <link rel="stylesheet" href="{{ asset('css/kaprodi/revision-button.css') }}">
     <link rel="stylesheet" href="{{ asset('css/kaprodi/notif-button.css') }}">
     <link rel="stylesheet" href="{{ asset('css/kaprodi/paraf-layout.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/kaprodi/popup.css') }}?v=3">
-    <!-- CSS khusus untuk reCAPTCHA -->
-    <link rel="stylesheet" href="{{ asset('css/kajur_sekjur/captcha.css') }}">
     <!-- CSS Paraf kita pakai ulang untuk styling box upload -->
     <link rel="stylesheet" href="{{ asset('css/kaprodi/paraf.css') }}">
 @endpush
@@ -83,8 +80,20 @@
 @endsection
 
 @section('popup')
-    @include('partials.captcha-popup')
-    @include('partials.logout-popup')
+    <!-- Bootstrap Modal untuk Captcha - Transparan, hanya robot -->
+    <div class="modal fade" id="captchaModal" tabindex="-1" aria-hidden="true"
+        data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered" style="pointer-events: none; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; max-width: 100%;">
+            <div style="pointer-events: auto; background: transparent; border: none; box-shadow: none;">
+                <div id="captchaBox">
+                    <div class="g-recaptcha" data-sitekey="{{ env('RECAPTCHA_SITE_KEY') }}"
+                        data-callback="onCaptchaSuccess">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     @include('partials.action-tandatangan')
 @endsection
 

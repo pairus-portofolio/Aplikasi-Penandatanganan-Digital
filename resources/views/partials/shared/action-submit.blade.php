@@ -3,26 +3,16 @@
 
     @include('partials.shared.zoom-controls')
 
-    <!-- Tombol SELESAI langsung submit Workflow -->
-    <form id="workflowSubmitForm"
-          action="{{ $actionUrl }}"
-          method="POST"
-          style="display: inline;">
-        @csrf
-        <button type="submit" class="pv-primary-btn btn-blue">
-            Selesai
-        </button>
-    </form>
+    <!-- Tombol SELESAI dengan ModalManager untuk notifikasi -->
+    <button type="button"
+            class="pv-primary-btn btn-blue"
+            data-modal="submission-notification"
+            data-action-url="{{ $actionUrl }}"
+            data-default-subject="{{ $defaultSubject ?? 'Pemberitahuan Proses Alur' }}">
+        Selesai
+    </button>
 
 </div>
 
-<!-- Tetap include popup notifikasi -->
-@include('partials.shared.popup-modal', [
-    'modalId'       => $modalId,
-    'title'         => 'Kirim Notifikasi Email',
-    'inputIdPrefix' => $inputIdPrefix,
-    'defaultSubject'=> $defaultSubject,
-    'showNotes'     => false,
-    'cancelBtnId'   => $cancelBtnId,
-    'confirmBtnId'  => $confirmBtnId
-])
+{{-- Note: Modal markup removed; handled by ModalManager (modal-manager.js) --}}
+

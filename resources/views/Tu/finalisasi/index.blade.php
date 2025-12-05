@@ -8,9 +8,9 @@
 
 @section('content')
 
-<h1 class="page-title">Daftar Surat Siap Finalisasi</h1>
+  <h1 class="page-title">Daftar Surat Siap Finalisasi</h1>
 
-<div class="table-shell">
+  <div class="table-shell">
     <table>
       <thead>
         <tr>
@@ -23,54 +23,42 @@
       </thead>
 
       <tbody>
-      @forelse($suratFinalisasi as $s)
-        <tr>
-          <td>
-            <div style="font-weight:bold;">{{ $s->judul_surat }}</div>
-          </td>
+        @forelse($suratFinalisasi as $s)
+          <tr>
+            <td>
+              <div style="font-weight:bold;">{{ $s->judul_surat }}</div>
+            </td>
 
-          <td>{{ $s->uploader->nama_lengkap ?? '-' }}</td>
+            <td>{{ $s->uploader->nama_lengkap ?? '-' }}</td>
 
-          <td>{{ $s->created_at->format('d/m/Y') }}</td>
+            <td>{{ $s->created_at->format('d/m/Y') }}</td>
 
-          <td>
-            <span class="pill hijau">Ditandatangani</span>
-          </td>
+            <td>
+              <span class="pill hijau">Ditandatangani</span>
+            </td>
 
-          <td>
-            <a class="btn-action abu" href="{{ route('tu.finalisasi.show', $s->id) }}">
+            <td>
+              <a class="btn-action abu" href="{{ route('tu.finalisasi.show', $s->id) }}">
                 Lihat
-            </a>
-          </td>
-        </tr>
-      @empty
-        <tr>
-          <td colspan="5" style="text-align:center;color:#94a3b8;padding:22px">
-            Tidak ada surat yang siap finalisasi.
-          </td>
-        </tr>
-      @endforelse
+              </a>
+            </td>
+          </tr>
+        @empty
+          <tr>
+            <td colspan="5" style="text-align:center;color:#94a3b8;padding:22px">
+              Tidak ada surat yang siap finalisasi.
+            </td>
+          </tr>
+        @endforelse
       </tbody>
     </table>
-</div>
+  </div>
 
 @endsection
 
-@section('popup')
+{{-- Popup handled by ModalManager (Bootstrap Modal) --}}
 
-  
-  {{-- 1. Logika untuk menampilkan popup konfirmasi download --}}
-  @if(Session::has('download_doc_id'))
-      @php
-          // Ambil model Document untuk mendapatkan nama file dan ID
-          $downloadDocument = App\Models\Document::find(Session::get('download_doc_id'));
-      @endphp
-      
-      {{-- Sertakan file finalisasi-popup.blade.php --}}
-      @include('partials.finalisasi-popup', ['document' => $downloadDocument])
-  @endif
 
-@endsection
 
 @push('scripts')
   <script src="{{ asset('js/tu/finalisasi.js') }}"></script>

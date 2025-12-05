@@ -59,5 +59,5 @@
 @section('popup')
 
     <!-- Popup konfirmasi logout -->
-    @include('partials.logout-popup')
+    
 @endsection

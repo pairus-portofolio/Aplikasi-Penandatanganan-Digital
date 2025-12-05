@@ -13,7 +13,7 @@ const PARAF_CONFIG = {
     // File validation
     MAX_FILE_SIZE: 2 * 1024 * 1024, // 2MB in bytes
     ALLOWED_TYPES: ['image/png', 'image/jpeg', 'image/jpg'],
-    
+
     // Messages
     MESSAGES: {
         FILE_TOO_LARGE: 'File Terlalu Besar',
@@ -110,7 +110,7 @@ function validateFile(file) {
 // ==========================================
 document.addEventListener('DOMContentLoaded', function () {
     const config = window.pdfConfig;
-    
+
     // Validasi konfigurasi lengkap
     if (!config || !config.pdfUrl || !config.saveUrl || !config.uploadUrl || !config.deleteUrl) {
         console.error('PDF configuration incomplete:', config);
@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', function () {
         pdfUrl: config.pdfUrl,
         workerSrc: config.workerSrc,
         savedData: config.savedParaf,
-        
+
         // Element IDs
         containerId: 'pdf-render-container',
         scrollContainerId: 'scrollContainer',
@@ -216,14 +216,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 halaman: data.page
             })
         })
-        .then(handleFetchResponse)
-        .then(resData => {
-            if (config.debug) console.log("DB Updated:", resData);
-        })
-        .catch(err => {
-            console.error("Save Failed:", err);
-            Swal.fire('Error', PARAF_CONFIG.MESSAGES.SAVE_FAILED, 'error');
-        });
+            .then(handleFetchResponse)
+            .then(resData => {
+                if (config.debug) console.log("DB Updated:", resData);
+            })
+            .catch(err => {
+                console.error("Save Failed:", err);
+                Swal.fire('Error', PARAF_CONFIG.MESSAGES.SAVE_FAILED, 'error');
+            });
     }
 
     /**
@@ -243,14 +243,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 halaman: null
             })
         })
-        .then(handleFetchResponse)
-        .then(resData => {
-            if (config.debug) console.log("DB Cleared:", resData);
-        })
-        .catch(err => {
-            console.error("Clear Failed:", err);
-            Swal.fire('Error', PARAF_CONFIG.MESSAGES.SAVE_FAILED, 'error');
-        });
+            .then(handleFetchResponse)
+            .then(resData => {
+                if (config.debug) console.log("DB Cleared:", resData);
+            })
+            .catch(err => {
+                console.error("Clear Failed:", err);
+                Swal.fire('Error', PARAF_CONFIG.MESSAGES.SAVE_FAILED, 'error');
+            });
     }
 
     /**
@@ -284,41 +284,47 @@ document.addEventListener('DOMContentLoaded', function () {
 
         fetch(config.uploadUrl, {
             method: "POST",
-            headers: { 
-                "X-CSRF-TOKEN": csrfToken, 
-                "Accept": "application/json" 
+            headers: {
+                "X-CSRF-TOKEN": csrfToken,
+                "Accept": "application/json"
             },
             body: formData
         })
-        .then(handleFetchResponse)
-        .then(data => {
-            Swal.close();
-            if (data.status === "success") {
-                // Update UI hanya setelah upload berhasil (fix race condition)
-                const objectUrl = URL.createObjectURL(file);
-                parafImage.src = objectUrl;
-                parafImage.style.display = "block";
-                parafBox.classList.add("has-image");
-                const t = parafBox.querySelector('.paraf-text');
-                if (t) t.style.display = 'none';
-                
-                // Cleanup object URL setelah load
-                parafImage.onload = () => URL.revokeObjectURL(objectUrl);
-                
-                Swal.fire('Sukses', PARAF_CONFIG.MESSAGES.UPLOAD_SUCCESS, 'success');
-            } else {
-                throw new Error(data.message || 'Upload gagal');
-            }
-        })
-        .catch(err => {
-            Swal.close();
-            console.error('Upload error:', err);
-            Swal.fire('Error', err.message || PARAF_CONFIG.MESSAGES.UPLOAD_FAILED, 'error');
-            fileInput.value = ""; // Reset input on error
-        })
-        .finally(() => {
-            isUploading = false;
-        });
+            .then(handleFetchResponse)
+            .then(data => {
+                Swal.close();
+                if (data.status === "success") {
+                    // Update UI hanya setelah upload berhasil (fix race condition)
+                    const objectUrl = URL.createObjectURL(file);
+                    parafImage.src = objectUrl;
+                    parafImage.style.display = "block";
+                    parafBox.classList.add("has-image");
+                    const t = parafBox.querySelector('.paraf-text');
+                    if (t) t.style.display = 'none';
+
+                    // Cleanup object URL setelah load
+                    parafImage.onload = () => URL.revokeObjectURL(objectUrl);
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil!',
+                        text: PARAF_CONFIG.MESSAGES.UPLOAD_SUCCESS,
+                        confirmButtonColor: '#10b981',
+                        confirmButtonText: 'OK'
+                    });
+                } else {
+                    throw new Error(data.message || 'Upload gagal');
+                }
+            })
+            .catch(err => {
+                Swal.close();
+                console.error('Upload error:', err);
+                Swal.fire('Error', err.message || PARAF_CONFIG.MESSAGES.UPLOAD_FAILED, 'error');
+                fileInput.value = ""; // Reset input on error
+            })
+            .finally(() => {
+                isUploading = false;
+            });
     }
 
     /**
@@ -336,6 +342,7 @@ document.addEventListener('DOMContentLoaded', function () {
             text: 'Paraf akan dihapus secara permanen.',
             icon: 'warning',
             showCancelButton: true,
+            showCloseButton: false,
             confirmButtonColor: '#d33',
             cancelButtonText: 'Batal',
             confirmButtonText: 'Ya, Hapus'
@@ -343,7 +350,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!result.isConfirmed) return;
 
             isDeleting = true;
-            
+
             // Simpan state UI untuk rollback jika gagal
             const previousState = {
                 src: parafImage.src,
@@ -361,42 +368,48 @@ document.addEventListener('DOMContentLoaded', function () {
                     'Content-Type': 'application/json'
                 }
             })
-            .then(handleFetchResponse)
-            .then(data => {
-                Swal.close();
-                if (data.status === 'success') {
-                    // Reset UI hanya setelah delete berhasil
-                    parafImage.src = "";
-                    parafImage.style.display = "none";
-                    fileInput.value = "";
-                    parafBox.classList.remove("has-image");
-                    const t = parafBox.querySelector('.paraf-text');
-                    if (t) t.style.display = "block";
+                .then(handleFetchResponse)
+                .then(data => {
+                    Swal.close();
+                    if (data.status === 'success') {
+                        // Reset UI hanya setelah delete berhasil
+                        parafImage.src = "";
+                        parafImage.style.display = "none";
+                        fileInput.value = "";
+                        parafBox.classList.remove("has-image");
+                        const t = parafBox.querySelector('.paraf-text');
+                        if (t) t.style.display = "block";
 
-                    // Remove from Canvas via Signer (Silent, no callback)
-                    signer.deletePosition(false);
-                    
-                    Swal.fire('Sukses', PARAF_CONFIG.MESSAGES.DELETE_SUCCESS, 'success');
-                } else {
-                    throw new Error(data.message || 'Delete gagal');
-                }
-            })
-            .catch(err => {
-                Swal.close();
-                console.error('Delete error:', err);
-                
-                // Rollback UI ke state sebelumnya
-                parafImage.src = previousState.src;
-                parafImage.style.display = previousState.display;
-                if (previousState.hasImage) {
-                    parafBox.classList.add("has-image");
-                }
-                
-                Swal.fire('Error', err.message || PARAF_CONFIG.MESSAGES.DELETE_FAILED, 'error');
-            })
-            .finally(() => {
-                isDeleting = false;
-            });
+                        // Remove from Canvas via Signer (Silent, no callback)
+                        signer.deletePosition(false);
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil!',
+                            text: PARAF_CONFIG.MESSAGES.DELETE_SUCCESS,
+                            confirmButtonColor: '#10b981',
+                            confirmButtonText: 'OK'
+                        });
+                    } else {
+                        throw new Error(data.message || 'Delete gagal');
+                    }
+                })
+                .catch(err => {
+                    Swal.close();
+                    console.error('Delete error:', err);
+
+                    // Rollback UI ke state sebelumnya
+                    parafImage.src = previousState.src;
+                    parafImage.style.display = previousState.display;
+                    if (previousState.hasImage) {
+                        parafBox.classList.add("has-image");
+                    }
+
+                    Swal.fire('Error', err.message || PARAF_CONFIG.MESSAGES.DELETE_FAILED, 'error');
+                })
+                .finally(() => {
+                    isDeleting = false;
+                });
         });
     }
 });

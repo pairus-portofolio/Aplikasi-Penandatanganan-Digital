@@ -38,11 +38,12 @@ class TableController extends Controller
         }
 
         if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('judul_surat', 'like', "%$search%")
-                  ->orWhereHas('uploader', function ($u) use ($search) {
-                      $u->where('nama_lengkap', 'like', "%$search%");
-                  });
+            $searchTerm = '%' . strtolower($search) . '%';
+            $query->where(function ($q) use ($searchTerm) {
+                $q->whereRaw('LOWER(judul_surat) LIKE ?', [$searchTerm])
+                    ->orWhereHas('uploader', function ($u) use ($searchTerm) {
+                        $u->whereRaw('LOWER(nama_lengkap) LIKE ?', [$searchTerm]);
+                    });
             });
         }
 
@@ -75,7 +76,7 @@ class TableController extends Controller
         return Document::with(['uploader', 'workflowSteps'])
             ->whereHas('workflowSteps', function ($q) use ($user) {
                 $q->where('user_id', $user->id)
-                  ->where('status', DocumentStatusEnum::DITINJAU);
+                    ->where('status', DocumentStatusEnum::DITINJAU);
             })
             ->get()
             ->filter(function ($doc) use ($user) {
@@ -122,12 +123,12 @@ class TableController extends Controller
         $paginator->through(function ($doc) use ($user, $isTU) {
 
             $statusClass = match ($doc->status) {
-                DocumentStatusEnum::DITINJAU       => 'kuning',
-                DocumentStatusEnum::DIPARAF        => 'biru',
+                DocumentStatusEnum::DITINJAU => 'kuning',
+                DocumentStatusEnum::DIPARAF => 'biru',
                 DocumentStatusEnum::DITANDATANGANI => 'hijau',
-                DocumentStatusEnum::PERLU_REVISI   => 'merah',
-                DocumentStatusEnum::FINAL          => 'abu',
-                default                            => 'abu',
+                DocumentStatusEnum::PERLU_REVISI => 'merah',
+                DocumentStatusEnum::FINAL => 'abu',
+                default => 'abu',
             };
 
             $revisionUrl = null;
@@ -150,15 +151,15 @@ class TableController extends Controller
             }
 
             return [
-                'id_raw'       => $doc->id,
-                'nama'         => $doc->judul_surat,
-                'pengunggah'   => $doc->uploader->nama_lengkap ?? 'Tidak Diketahui',
-                'tanggal'      => $tanggalTampil,
-                'status'       => ucfirst($doc->status),
+                'id_raw' => $doc->id,
+                'nama' => $doc->judul_surat,
+                'pengunggah' => $doc->uploader->nama_lengkap ?? 'Tidak Diketahui',
+                'tanggal' => $tanggalTampil,
+                'status' => ucfirst($doc->status),
                 'revision_url' => $revisionUrl,
                 'status_class' => $statusClass,
-                'action_type'  => $actionData['type'],
-                'action_url'   => $actionData['url'],
+                'action_type' => $actionData['type'],
+                'action_url' => $actionData['url'],
                 'action_label' => $actionData['label'],
                 'action_class' => $actionData['class']
             ];
@@ -177,7 +178,7 @@ class TableController extends Controller
         $isActive = self::isUserActiveInWorkflow($doc, $user->id);
 
         // Default
-        $type  = 'view';
+        $type = 'view';
         $label = 'Lihat';
         $class = 'btn-secondary';
 
@@ -197,14 +198,14 @@ class TableController extends Controller
 
         // Jika giliran user (active step) dan bukan TU → Kerjakan
         if ($isActive && !$isTU) {
-            $type  = 'work';
+            $type = 'work';
             $label = 'Kerjakan';
             $class = 'btn-primary';
         }
 
         return [
-            'type'  => $type,
-            'url'   => $baseUrl,
+            'type' => $type,
+            'url' => $baseUrl,
             'label' => $label,
             'class' => $class
         ];
