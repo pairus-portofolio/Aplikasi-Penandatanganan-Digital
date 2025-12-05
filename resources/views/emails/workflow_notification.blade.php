@@ -8,7 +8,7 @@
     {{-- KASUS 1: REVISI --}}
     @if($type == 'revision_request')
         <div style="background-color: #fff3cd; border: 1px solid #ffeeba; padding: 15px; border-radius: 5px; color: #856404;">
-            <h4 style="margin-top: 0;">⚠️ Permintaan Revisi Dokumen</h4>
+            <h4 style="margin-top: 0;">Permintaan Revisi Dokumen</h4>
             <p>Dokumen <strong>"{{ $document->judul_surat }}"</strong> dikembalikan karena memerlukan perbaikan.</p>
             
             <p><strong>Catatan Revisi:</strong><br>
@@ -40,7 +40,7 @@
     <br>
     <p>
         {{-- [FIX] Ganti route('auth.login') menjadi route('login') --}}
-        <a href="{{ route('login') }}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
+        <a href="{{ route('auth.login') }}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
             Masuk ke Aplikasi
         </a>
     </p>

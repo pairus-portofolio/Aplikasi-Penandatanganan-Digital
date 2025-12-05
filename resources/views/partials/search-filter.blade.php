@@ -5,11 +5,8 @@
             <span class="input-group-text bg-white border-end-0">
                 <i class="fas fa-search text-muted"></i>
             </span>
-            <input type="text" 
-                   name="search" 
-                   class="form-control border-start-0 ps-0" 
-                   placeholder="Cari surat atau pengunggah..." 
-                   value="{{ request('search') }}">
+            <input type="text" name="search" class="form-control border-start-0 ps-0"
+                placeholder="Cari surat atau pengunggah..." value="{{ request('search') }}">
         </div>
 
         <!-- Filter Status (Fixed width or auto) -->
@@ -17,14 +14,15 @@
             <option value="">Semua Status</option>
             <option value="Ditinjau" {{ request('status') == 'Ditinjau' ? 'selected' : '' }}>Ditinjau</option>
             <option value="Diparaf" {{ request('status') == 'Diparaf' ? 'selected' : '' }}>Diparaf</option>
-            <option value="Ditandatangani" {{ request('status') == 'Ditandatangani' ? 'selected' : '' }}>Ditandatangani</option>
+            <option value="Ditandatangani" {{ request('status') == 'Ditandatangani' ? 'selected' : '' }}>Ditandatangani
+            </option>
             <option value="Perlu Revisi" {{ request('status') == 'Perlu Revisi' ? 'selected' : '' }}>Perlu Revisi</option>
-            <option value="Selesai" {{ request('status') == 'Selesai' ? 'selected' : '' }}>Final</option>
+            <option value="Selesai" {{ request('status') == 'Selesai' ? 'selected' : '' }}>Selesai</option>
         </select>
 
         <!-- Submit Button -->
         <button type="submit" class="btn btn-primary">Cari</button>
-        
+
         @if(request('search') || request('status'))
             <a href="{{ url()->current() }}" class="btn btn-outline-secondary">Reset</a>
         @endif

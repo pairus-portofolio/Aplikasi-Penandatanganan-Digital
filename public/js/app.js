@@ -26,39 +26,8 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!isMobile()) document.body.classList.remove("show-sb");
     });
 
-    // Membuat sistem popup generik untuk membuka & menutup modal
-    function setupPopup(triggerId, popupId, closeBtnIds = []) {
-        const trigger = document.getElementById(triggerId);
-        const popup = document.getElementById(popupId);
-
-        if (trigger && popup) {
-            trigger.addEventListener("click", () =>
-                popup.classList.add("show")
-            );
-
-            closeBtnIds.forEach((btnId) => {
-                const btn = document.getElementById(btnId);
-                if (btn) {
-                    btn.addEventListener("click", () =>
-                        popup.classList.remove("show")
-                    );
-                }
-            });
-
-            popup.addEventListener("click", (e) => {
-                if (e.target === popup) popup.classList.remove("show");
-            });
-        }
-    }
-
-    // Mengaktifkan semua popup yang digunakan di sistem
-    setupPopup("logoutBtn", "logoutPopup", ["cancelLogout"]);
-    setupPopup("mintaRevisiBtn", "revisiPopup", ["batalBp", "kirimBp"]);
-    setupPopup("kirimNotifikasiBtn", "parafNotifPopup", [
-        "batalKirim",
-        "konfirmasiKirim",
-    ]);
-    setupPopup("btnSelesaiTtd", "ttdNotifPopup", ["batalTtd", "kirimTtd"]);
+    // Modal system sudah digantikan oleh modal-manager.js yang memakai Bootstrap
+    // dan data-modal attributes. Legacy setupPopup dihapus.
 
     // Mengambil elemen kontrol zoom dokumen
     const page = document.getElementById("previewPage");

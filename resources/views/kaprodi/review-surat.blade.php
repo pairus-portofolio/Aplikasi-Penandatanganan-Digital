@@ -8,8 +8,7 @@
     <link rel="stylesheet" href="{{ asset('css/kaprodi/preview-bottom.css') }}">
     <link rel="stylesheet" href="{{ asset('css/kaprodi/zoom-button.css') }}">
     <link rel="stylesheet" href="{{ asset('css/kaprodi/revision-button.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/kaprodi/popup.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/kaprodi/notif-button.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/kaprodi/notif-button.css') }}">'
     <link rel="stylesheet" href="{{ asset('css/kaprodi/preview-layout.css') }}">
 @endpush
 
@@ -33,7 +32,7 @@
 
 @section('popup')
     @include('partials.action-review')
-    @include('partials.logout-popup')
+    
 @endsection
 
 @push('scripts')

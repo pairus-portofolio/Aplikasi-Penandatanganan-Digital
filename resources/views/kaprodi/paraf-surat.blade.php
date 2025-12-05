@@ -11,9 +11,8 @@
     <link rel="stylesheet" href="{{ asset('css/kaprodi/preview-bottom.css') }}">
     <link rel="stylesheet" href="{{ asset('css/kaprodi/zoom-button.css') }}">
     <link rel="stylesheet" href="{{ asset('css/kaprodi/revision-button.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/kaprodi/paraf-layout.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/kaprodi/notif-button.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/kaprodi/popup.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/kaprodi/paraf-layout.css?v=4') }}">
+    <link rel="stylesheet" href="{{ asset('css/kaprodi/notif-button.css') }}">'
 @endpush
 
 @section('page-header')
@@ -74,7 +73,6 @@
 
 @section('popup')
     @include('partials.action-paraf')
-    @include('partials.logout-popup')
 @endsection
 
 @push('scripts')

@@ -114,6 +114,36 @@ class ApiDocumentController extends Controller
         }
     }
 
+    // LIST SEMUA DOKUMEN DASHBOARD TU
+    public function index(Request $request)
+    {
+        // Ambil semua dokumen, urutkan dari terbaru
+        $documents = Document::with('uploader:id,nama_lengkap') 
+            ->latest()
+            ->paginate(10);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'List semua dokumen berhasil diambil.',
+            'data' => $documents
+        ]);
+    }
+
+    // ARSIP SURAT
+    public function archive(Request $request)
+    {
+        $documents = Document::with('uploader:id,nama_lengkap')
+            ->whereIn('status', [DocumentStatusEnum::DITANDATANGANI, DocumentStatusEnum::FINAL])
+            ->latest()
+            ->paginate(10);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Data arsip surat berhasil diambil.',
+            'data' => $documents
+        ]);
+    }
+
     // CEK STATUS SURAT
     public function checkStatus($id)
     {

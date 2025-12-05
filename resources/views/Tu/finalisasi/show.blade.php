@@ -24,11 +24,12 @@
             </iframe>
         </div>
 
-        {{-- BUTTON FINALISASI --}}
+        {{-- BUTTON FINALISASI dengan ModalManager --}}
         <button
             type="button"
-            data-bs-toggle="modal"
-            data-bs-target="#modalFinalisasi"
+            data-modal="finalisasi-confirm"
+            data-finalize-url="{{ route('tu.finalisasi.store', $document->id) }}"
+            data-download-url="{{ route('tu.finalisasi.download', $document->id) }}"
             class="btn-final"
         >
             Finalisasi Surat
@@ -47,45 +48,9 @@
 
 @endsection
 
-{{-- ===================== MODAL ===================== --}}
-@section('popup')
-<div class="modal fade" id="modalFinalisasi" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-
-            <div class="modal-header">
-                <h5 class="modal-title">Finalisasi Dokumen</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-
-            <div class="modal-body">
-                <a href="{{ route('tu.finalisasi.download', $document->id) }}" class="btn btn-success w-100 mb-2">
-                    Download
-                </a>
-            </div>
-
-            <div class="modal-footer">
-                <form method="POST" action="{{ route('tu.finalisasi.store', $document->id) }}">
-                    @csrf
-                    <input type="hidden" name="aksi" value="final">
-                    <button type="submit" class="btn btn-danger">
-                        Ya, Finalisasi Sekarang
-                    </button>
-                </form>
-
-                <button class="btn btn-secondary" data-bs-dismiss="modal">
-                    Batalkan
-                </button>
-            </div>
-
-        </div>
-    </div>
-</div>
-
-@include('partials.logout-popup')
-@endsection
-
+{{-- Modal handled by ModalManager (modal-manager.js) --}}
 
 @push('scripts')
+
 <script src="{{ asset('js/tu/finalisasi.js') }}"></script>
 @endpush

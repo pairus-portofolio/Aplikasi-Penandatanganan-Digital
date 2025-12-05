@@ -3,7 +3,7 @@
 
     @include('partials.shared.zoom-controls')
 
-    <button type="button" class="pv-primary-btn btn-blue" data-bs-toggle="modal" data-bs-target="#ttdNotifPopup">
+    <button type="button" class="pv-primary-btn btn-blue" data-modal="ttd-confirm">
         Selesai
     </button>
 </div>
@@ -14,29 +14,37 @@
     <input type="hidden" name="send_notification" id="sendNotifTtd" value="0">
 </form>
 
-<!-- Modal Konfirmasi -->
-<div class="modal fade" id="ttdNotifPopup" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title text-center">Konfirmasi Tanda Tangan</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body text-center">
-                <p>Tanda tangan tidak bisa diubah lagi setelah Anda konfirmasi.</p>
-                <p class="fw-bold">Apakah Anda ingin mengirim email notifikasi ke orang selanjutnya?</p>
-            </div>
-            <div class="modal-footer justify-content-center">
-                <button type="button" class="btn btn-success" onclick="submitTtd(1)">Ya</button>
-                <button type="button" class="btn btn-danger" onclick="submitTtd(0)">Tidak</button>
-            </div>
-        </div>
-    </div>
-</div>
-
+{{-- Modal handled by ModalManager --}}
 <script>
-    function submitTtd(val) {
-        document.getElementById('sendNotifTtd').value = val;
-        document.getElementById('formTtd').submit();
-    }
+    document.addEventListener('DOMContentLoaded', function(){
+        document.addEventListener('click', function(e){
+            const btn = e.target.closest('[data-modal="ttd-confirm"]');
+            if(!btn || !window.ModalManager) return;
+            e.preventDefault();
+
+            ModalManager.confirm({
+                title: 'Konfirmasi Tanda Tangan',
+                message: 'Tanda tangan tidak bisa diubah lagi setelah Anda konfirmasi.<p class="fw-bold mt-3">Apakah Anda ingin mengirim email notifikasi ke orang selanjutnya?</p>',
+                okText: 'Ya',
+                cancelText: 'Tidak',
+                onOk: function(){
+                    document.getElementById('sendNotifTtd').value = '1';
+                    document.getElementById('formTtd').submit();
+                }
+            });
+
+            // Handle "Tidak" separately
+            setTimeout(()=>{
+                const cancelBtn = document.getElementById('modalCancelBtn');
+                if(cancelBtn){
+                    cancelBtn.removeEventListener('click', ModalManager.hide);
+                    cancelBtn.addEventListener('click', function(){
+                        document.getElementById('sendNotifTtd').value = '0';
+                        document.getElementById('formTtd').submit();
+                        ModalManager.hide();
+                    });
+                }
+            }, 100);
+        });
+    });
 </script>

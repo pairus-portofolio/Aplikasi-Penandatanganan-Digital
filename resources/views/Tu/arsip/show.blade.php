@@ -42,7 +42,7 @@
 @endsection
 
 @section('popup')
-    @include('partials.logout-popup')
+    
 @endsection
 
 @push('scripts')

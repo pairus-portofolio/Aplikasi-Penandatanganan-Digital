@@ -63,8 +63,8 @@
 
   <!-- Bagian footer sidebar: tombol logout -->
   <div class="sb-foot">
-      <!-- Trigger popup logout -->
-      <button type="button" id="logoutBtn" class="logout-btn">
+      <!-- Trigger modal via ModalManager (data-modal="logout") -->
+      <button type="button" class="logout-btn" data-modal="logout" data-modal-title="Konfirmasi Logout">
         <i class="fa-solid fa-arrow-right-from-bracket fa-fw"></i>
         <span>Logout</span>
       </button>
