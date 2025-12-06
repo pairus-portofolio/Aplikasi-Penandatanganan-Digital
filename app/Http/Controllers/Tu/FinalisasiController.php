@@ -73,7 +73,7 @@ class FinalisasiController extends Controller
     {
         $document = Document::findOrFail($id);
         $sourcePath = $this->findPhysicalPath($document->file_path);
-        $downloadName = $document->file_name ?? 'dokumen_final.pdf';
+        $downloadName = $document->judul_surat . '.pdf';
         
         // Batas ukuran 1 MB
         $oneMB = 1048576;

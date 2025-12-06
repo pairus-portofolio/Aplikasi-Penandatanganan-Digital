@@ -73,7 +73,7 @@ class ArsipController extends Controller
     {
         $document = Document::findOrFail($id);
         $sourcePath = $this->findPhysicalPath($document->file_path);
-        $downloadName = $document->file_name ?? 'dokumen_arsip.pdf';
+        $downloadName = $document->judul_surat . '.pdf';
 
         $oneMB = 1048576;
 

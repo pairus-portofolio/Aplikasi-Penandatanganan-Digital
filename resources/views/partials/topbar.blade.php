@@ -34,6 +34,10 @@
               Dashboard Sekjur
               @break
 
+          @case(6) 
+              Dashboard Admin
+              @break
+
           @default
               Dashboard
       @endswitch

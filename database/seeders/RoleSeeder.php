@@ -32,5 +32,9 @@ class RoleSeeder extends Seeder
         Role::firstOrCreate(
             ['nama_role' => 'Sekjur']
         );
+
+        Role::firstOrCreate(
+            ['nama_role' => 'Admin']
+        );
     }
 }
