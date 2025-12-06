@@ -18,19 +18,44 @@ use App\Mail\DocumentWorkflowNotification;
 use App\Enums\DocumentStatusEnum;
 use App\Services\WorkflowService;
 
+/**
+ * Controller untuk mengelola dokumen (upload dan revisi) oleh TU.
+ *
+ * Menangani proses upload dokumen baru dengan validasi alur workflow kustom,
+ * update revisi dokumen, dan view dokumen untuk TU.
+ *
+ * @package App\Http\Controllers\Tu
+ */
 class DocumentController extends Controller
 {
+    /**
+     * Service untuk mengelola workflow dokumen.
+     *
+     * @var WorkflowService
+     */
     protected $workflowService;
 
+    /**
+     * Inisialisasi controller dengan dependency injection.
+     *
+     * @param WorkflowService $workflowService Service untuk workflow
+     */
     public function __construct(WorkflowService $workflowService)
     {
         $this->workflowService = $workflowService;
     }
 
-    // CREATE (Menggabungkan Logika Baru untuk Dropdown + Logika Lama untuk Revisi)
+    /**
+     * Tampilkan form upload dokumen baru atau revisi.
+     *
+     * Jika ada ID dokumen, mode revisi akan diaktifkan dan data dokumen
+     * beserta workflow yang ada akan dimuat untuk diedit.
+     *
+     * @param int|null $id ID dokumen untuk mode revisi (opsional)
+     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
+     */
     public function create($id = null)
     {
-        // 1. Ambil data Kaprodi dan Kajur/Sekjur (Logika baru)
         $kaprodis = User::whereHas('role', function($query) {
             $query->whereIn('nama_role', RoleEnum::getKaprodiRoles());
         })->with('role')->get(['id', 'nama_lengkap', 'role_id']);
@@ -40,10 +65,9 @@ class DocumentController extends Controller
         })->with('role')->get(['id', 'nama_lengkap', 'role_id']);
 
         $document = null;
-        $users = null; // Fallback lama
+        $users = null;
         $existingAlurIds = [];
 
-        // 2. JIKA ADA ID (MODE REVISI - Logika lama)
         if ($id) {
             $document = Document::findOrFail($id);
             if ($document->status !== DocumentStatusEnum::PERLU_REVISI) {
@@ -65,7 +89,17 @@ class DocumentController extends Controller
         ]);
     }
 
-    // STORE (Menggunakan logika validasi alur yang ketat dari kode baru)
+    /**
+     * Simpan dokumen baru yang diupload oleh TU.
+     *
+     * Validasi alur workflow yang ketat:
+     * - Maksimal 2 pemaraf (Kaprodi)
+     * - Wajib 1 penandatangan (Kajur/Sekjur) di akhir
+     * - Tidak boleh ada duplikasi user
+     *
+     * @param Request $request HTTP request dengan data dokumen dan alur
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function store(Request $request)
     {
         // Validasi Alur Kustom
@@ -214,8 +248,16 @@ class DocumentController extends Controller
                 ->withErrors('Gagal mengupload dokumen. Silakan periksa kembali data Anda dan coba lagi.');
         }
     }
-    
-    // updateRevision - DITAHAN UNTUK REVISI (Fitur TU)
+    /**
+     * Update dokumen yang statusnya PERLU_REVISI.
+     *
+     * Mengganti file dokumen, update metadata, dan reset workflow
+     * untuk memulai alur dari awal.
+     *
+     * @param Request $request HTTP request dengan file dan data baru
+     * @param int $id ID dokumen yang akan direvisi
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function updateRevision(Request $request, $id)
     {
         $request->validate([
@@ -284,7 +326,14 @@ class DocumentController extends Controller
         }
     }
 
-    // show - Menampilkan dokumen untuk TU (View Only)
+    /**
+     * Tampilkan dokumen untuk TU (view-only mode).
+     *
+     * TU selalu bisa melihat semua dokumen dalam mode read-only.
+     *
+     * @param int $id ID dokumen
+     * @return \Illuminate\View\View
+     */
     public function show($id)
     {
         $document = Document::findOrFail($id);
@@ -296,7 +345,14 @@ class DocumentController extends Controller
         ]);
     }
     
-    // download - DITAHAN (Digunakan oleh Review & Paraf)
+    /**
+     * Download file PDF dokumen.
+     *
+     * Mencari file di berbagai lokasi storage (private, public, app).
+     *
+     * @param Document $document Instance dokumen
+     * @return \Illuminate\Http\Response
+     */
     public function download(Document $document)
     {
         $relativePath = $document->file_path;
@@ -316,7 +372,12 @@ class DocumentController extends Controller
         ]);
     }
 
-    // preview - DITAHAN (Digunakan oleh Finalisasi & Arsip)
+    /**
+     * Preview dokumen PDF di browser.
+     *
+     * @param int $id ID dokumen
+     * @return \Illuminate\Http\Response
+     */
     public function preview($id)
     {
         $document = Document::findOrFail($id); 
