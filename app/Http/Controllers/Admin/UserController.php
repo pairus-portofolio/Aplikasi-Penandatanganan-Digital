@@ -14,10 +14,26 @@ use Illuminate\Validation\Rule;
 class UserController extends Controller
 {
     /**
+     * Mengambil daftar Role yang dapat diassign ke user non-Admin.
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    private function getAssignableRoles()
+    {
+        return Role::whereIn('id', [
+            RoleEnum::ID_TU, 
+            RoleEnum::ID_KAPRODI_D3, 
+            RoleEnum::ID_KAPRODI_D4, 
+            RoleEnum::ID_KAJUR, 
+            RoleEnum::ID_SEKJUR
+        ])->get();
+    }
+
+    /**
      * Menampilkan daftar pengguna untuk di-manage.
      */
     public function index()
     {
+        // Check 1: User is Admin
         if (Auth::user()->role_id != RoleEnum::ID_ADMIN) {
              return redirect()->route('dashboard')->withErrors('Anda tidak memiliki akses Admin.');
         }
@@ -28,14 +44,7 @@ class UserController extends Controller
                       ->orderBy('nama_lengkap')
                       ->paginate(10);
         
-        // Ambil semua role yang bisa diganti (TU sampai Sekjur)
-        $rolesToAssign = Role::whereIn('id', [
-            RoleEnum::ID_TU, 
-            RoleEnum::ID_KAPRODI_D3, 
-            RoleEnum::ID_KAPRODI_D4, 
-            RoleEnum::ID_KAJUR, 
-            RoleEnum::ID_SEKJUR
-        ])->get();
+        $rolesToAssign = $this->getAssignableRoles();
 
         return view('admin.users.index', compact('users', 'rolesToAssign'));
     }
@@ -45,19 +54,20 @@ class UserController extends Controller
      */
     public function edit($id)
     {
+        // Check 1: User is Admin
         if (Auth::user()->role_id != RoleEnum::ID_ADMIN) {
              abort(403, 'Akses Ditolak.');
         }
 
         $user = User::findOrFail($id);
 
+        // Check 2: Cannot edit Admin role accounts
         if ($user->role_id == RoleEnum::ID_ADMIN) {
             abort(403, 'Tidak bisa mengedit pengguna Admin.');
         }
 
-        $rolesToAssign = Role::where('id', '!=', RoleEnum::ID_ADMIN)->get();
+        $rolesToAssign = $this->getAssignableRoles();
 
-        // Menggunakan compact untuk mengirim data ke partial view
         return view('admin.users.modal_edit', compact('user', 'rolesToAssign'));
     }
 
@@ -66,12 +76,14 @@ class UserController extends Controller
      */
     public function update(Request $request, $id)
     {
+        // Check 1: User is Admin
         if (Auth::user()->role_id != RoleEnum::ID_ADMIN) {
              return back()->withErrors('Anda tidak memiliki hak untuk melakukan aksi ini.');
         }
 
         $user = User::findOrFail($id);
 
+        // Check 2: Cannot change Admin data (including self)
         if ($user->role_id == RoleEnum::ID_ADMIN || $user->id == Auth::id()) {
             return back()->withErrors('Tidak bisa mengubah role/data Admin atau data Anda sendiri.');
         }
@@ -80,9 +92,9 @@ class UserController extends Controller
         $validated = $request->validate([
             'nama_lengkap' => 'required|string|max:255',
             'email'        => ['required', 'email', Rule::unique('users')->ignore($user->id)],
-            // Pastikan role bukan Admin
+            // Pastikan role yang di-submit bukan Admin
             'role_id'      => ['required', 'exists:roles,id', Rule::notIn([RoleEnum::ID_ADMIN])], 
-            'password'     => 'nullable|string|min:6', // Password opsional
+            'password'     => 'nullable|string|min:6', 
         ]);
 
         // 2. Persiapan Data Update

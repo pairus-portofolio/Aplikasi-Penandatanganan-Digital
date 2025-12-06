@@ -175,7 +175,7 @@
             modalSize = 'md';
         }
         
-        if (modalKey === 'logout') {
+            if (modalKey === 'logout') {
             const csrf = getCsrf();
             const form = `
                 <form method="POST" action="/logout" id="logoutForm">
@@ -183,14 +183,32 @@
                 </form>
             `;
             const footer = `
-                <div class="d-flex justify-content-end gap-2 w-100">
+                <div class="d-flex justify-content-center gap-2 w-100"> 
                     <button type="button" class="btn btn-secondary rounded-pill px-3" id="modalCancelBtn">Batal</button>
                     <button type="button" class="btn btn-danger rounded-pill px-3" id="modalLogoutConfirm">Logout</button>
                 </div>
             `;
-            // Force hide 'X'
-            show({ title: title || '<span class="fs-6 fw-bold">Konfirmasi Logout</span>', body: '<p class="mb-2">Apakah Anda yakin ingin logout?</p>' + form, footer, shouldShowCloseButton: false }); 
+            // SENTRALISASI TITLE
+            const titleContent = title || '<span class="fs-6 fw-bold">Konfirmasi Logout</span>';
+            const centeredBody = '<div class="text-center"><p class="mb-2">Apakah Anda yakin ingin logout?</p></div>' + form;
 
+            // Tambahkan class center ke elemen title sebelum ditampilkan
+            if (titleEl) {
+                // Gunakan w-100 agar elemen modal-title mengambil lebar penuh
+                titleEl.classList.add('text-center', 'w-100');
+            }
+
+            // Force hide 'X'
+            show({ title: titleContent, body: centeredBody, footer, shouldShowCloseButton: false }); 
+            
+            //Hapus class center saat modal ditutup
+            modalEl.addEventListener('hidden.bs.modal', function handler() {
+                if (titleEl) {
+                    titleEl.classList.remove('text-center', 'w-100');
+                }
+                modalEl.removeEventListener('hidden.bs.modal', handler);
+            }, { once: true });
+            
             setTimeout(() => {
                 const cancelBtn = document.getElementById('modalCancelBtn');
                 const logoutBtn = document.getElementById('modalLogoutConfirm');

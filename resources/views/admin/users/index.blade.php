@@ -6,33 +6,15 @@
 
   <h1 class="page-title">Manajemen Pengguna</h1>
 
-  @if(session('success'))
-    {{-- Menggunakan Toast untuk notifikasi sukses --}}
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            Swal.fire({ toast: true, icon: 'success', title: '{{ session('success') }}', position: 'top-end', timer: 2500, showConfirmButton: false });
-        });
-    </script>
-  @endif
-
-  @if ($errors->any())
-    {{-- Menggunakan Swal Fire untuk notifikasi error --}}
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            Swal.fire({ icon: 'error', title: 'Aksi Gagal', html: `{!! implode('<br>', $errors->all()) !!}` });
-        });
-    </script>
-  @endif
+  {{-- Skrip notifikasi di sini dihapus karena sudah ditangani oleh layouts/app.blade.php --}}
   
-  {{-- ALERT UNTUK INFORMASI TELAH DIHAPUS --}}
-
   <div class="table-shell">
     <table>
       <thead>
         <tr>
           <th>Nama Lengkap</th>
           <th>Email</th>
-          <th>Role Saat Ini</th>
+          <th>Role</th>
           <th>Aksi</th>
         </tr>
       </thead>
@@ -50,7 +32,7 @@
                       class="btn-action btn-primary"
                       data-modal-url="{{ route('admin.users.edit', $user->id) }}"
                       data-modal-title="Edit Pengguna: {{ $user->nama_lengkap }}" 
-                      data-modal="edit-user"> {{-- Gunakan kunci 'edit-user' --}}
+                      data-modal="edit-user">
                 Edit
               </button>
             </td>
@@ -77,7 +59,7 @@
 @endpush
 
 @push('styles')
-    {{-- Custom styles untuk override agar form select tampil rapi --}}
+    {{-- Custom styles tetap dipertahankan untuk styling yang spesifik --}}
     <style>
         .page-title { margin-bottom: 25px; }
         .form-select-sm {
@@ -92,9 +74,29 @@
         .form-select-sm:focus {
             border-color: #2563eb;
         }
-        .btn-action.btn-primary {
-             padding: 6px 12px;
-             font-size: 13px;
-        }
+       
+      .btn-action.btn-primary,
+      .btn-action.btn-primary:focus,
+      .btn-action.btn-primary:focus-visible,
+      .btn-action.btn-primary:focus-within,
+      .btn-action.btn-primary:active {
+          outline: none !important;
+          box-shadow: none !important;
+          border: none !important;
+      }
+
+      /* Hilangkan Chrome default focus ring */
+      .btn-action.btn-primary::-moz-focus-inner {
+          border: 0 !important;
+      }
+
+      .btn-action.btn-primary:focus-visible {
+          outline: none !important;
+      }
+
+      /* Menghilangkan default focus ring Chrome */
+      :focus-visible {
+          outline: none !important;
+      }
     </style>
 @endpush

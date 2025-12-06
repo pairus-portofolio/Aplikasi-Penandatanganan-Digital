@@ -308,11 +308,9 @@ class ParafController extends Controller
                 'error'       => $e->getMessage()
             ]);
 
-            // Tetap 1 return
-            return back()->withErrors('Gagal memproses PDF: ' . $e->getMessage());
+            return back()->withErrors($e->getMessage());
         }
     }
-
     /**
      * Simpan posisi paraf yang ditempatkan user pada PDF.
      * * Dipanggil via AJAX saat user drag & drop paraf.

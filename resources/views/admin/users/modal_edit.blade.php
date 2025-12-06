@@ -22,12 +22,10 @@
         <label for="role_id" class="form-label fw-bold">Peran (Role)</label>
         <select name="role_id" id="role_id" class="form-select form-select-sm" required>
             @foreach($rolesToAssign as $role)
-                {{-- Pastikan hanya role non-admin yang bisa dipilih --}}
-                @if($role->id != \App\Enums\RoleEnum::ID_ADMIN) 
-                    <option value="{{ $role->id }}" {{ $user->role_id == $role->id ? 'selected' : '' }}>
-                        {{ $role->nama_role }}
-                    </option>
-                @endif
+                {{-- Pengecekan role Admin dihapus, karena sudah difilter di Controller --}}
+                <option value="{{ $role->id }}" {{ $user->role_id == $role->id ? 'selected' : '' }}>
+                    {{ $role->nama_role }}
+                </option>
             @endforeach
         </select>
     </div>
