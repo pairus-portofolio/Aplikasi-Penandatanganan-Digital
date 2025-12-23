@@ -7,33 +7,46 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use App\Enums\RoleEnum;
 
+/**
+ * Controller untuk mengelola autentikasi user.
+ *
+ * Menangani login, logout, dan migrasi otomatis password plaintext ke hash.
+ *
+ * @package App\Http\Controllers
+ */
 class AuthController extends Controller
 {
-    // Menampilkan halaman login
+    /**
+     * Tampilkan halaman login.
+     *
+     * @return \Illuminate\View\View
+     */
     public function showLogin()
     {
         return view('auth.login');
     }
-
-    // Memproses login pengguna
+    /**
+     * Proses login pengguna dengan kredensial email dan password.
+     *
+     * Mendukung migrasi otomatis password plaintext ke hash.
+     *
+     * @param Request $request HTTP request dengan email dan password
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function login(Request $request)
     {
-        // Validasi input login
         $credentials = $request->validate([
             'email' => ['required', 'string'],
             'password' => ['required'],
         ]);
 
-        // Menentukan field login (Hanya Email)
         $loginField = 'email';
 
-        // Mencoba login dengan kredensial yang dimasukkan
         $attempt = Auth::attempt(
             ['email' => $credentials['email'], 'password' => $credentials['password']],
             $request->filled('remember')
         );
 
-        // Jika login berhasil
         if ($attempt) {
             $request->session()->regenerate();
             if (Auth::user()->role_id == RoleEnum::ID_ADMIN) {
@@ -41,23 +54,17 @@ class AuthController extends Controller
             }
             return redirect()->intended(route('dashboard'));
         }
-
-        // Mencari user untuk kemungkinan password yang masih plaintext
         $user = User::where('email', $credentials['email'])->first();
 
-        // Validasi login untuk user yang menyimpan password plaintext
         if ($user && $user->password === $credentials['password']) {
-            // Mengubah plaintext password menjadi hash
             $user->password = $credentials['password'];
             $user->save();
 
-            // Mencoba login ulang setelah password diperbaiki
             $attempt = Auth::attempt(
                 ['email' => $credentials['email'], 'password' => $credentials['password']],
                 $request->filled('remember')
             );
 
-            // Jika berhasil setelah diperbaiki
             if ($attempt) {
                 $request->session()->regenerate();
                 if (Auth::user()->role_id == RoleEnum::ID_ADMIN) {
@@ -66,8 +73,6 @@ class AuthController extends Controller
                 return redirect()->intended(route('dashboard'));
             }
         }
-        
-        // Jika login gagal, kirim pesan error
         if (!$user) {
             $error = 'Email tidak terdaftar';
         } else {
@@ -79,15 +84,18 @@ class AuthController extends Controller
             ->with('error', $error);
     }
 
-    // Logout pengguna dan mengakhiri sesi
+    /**
+     * Logout pengguna dan mengakhiri sesi.
+     *
+     * @param Request $request HTTP request
+     * @return \\Illuminate\\Http\\RedirectResponse
+     */
     public function logout(Request $request)
     {
-        // Logout dan menghapus sesi user
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        // Arahkan kembali ke halaman login
         return redirect()->route('auth.login');
     }
 }

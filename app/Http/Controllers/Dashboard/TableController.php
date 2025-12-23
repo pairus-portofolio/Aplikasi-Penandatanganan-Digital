@@ -10,11 +10,23 @@ use App\Enums\DocumentStatusEnum;
 use App\Enums\RoleEnum;
 use Carbon\Carbon;
 
+/**
+ * Controller untuk mengelola data tabel dokumen di dashboard.
+ *
+ * Menyediakan query dan format data untuk tabel dokumen berdasarkan role user,
+ * termasuk filtering, search, dan penentuan action button.
+ *
+ * @package App\Http\Controllers\Dashboard
+ */
 class TableController extends Controller
 {
     /**
-     * Query untuk tabel - menampilkan semua surat yang user ada di workflow-nya.
-     * Tidak memandang status atau urutan.
+     * Dapatkan query dasar untuk tabel dokumen berdasarkan role user.
+     *
+     * Menampilkan semua dokumen yang user terlibat dalam workflow-nya,
+     * dengan fitur search dan filter status.
+     *
+     * @return \Illuminate\Pagination\LengthAwarePaginator
      */
     public static function getBaseQueryByRole()
     {
@@ -57,7 +69,11 @@ class TableController extends Controller
     }
 
     /**
-     * Query untuk card - menampilkan surat yang harus dikerjakan user saat ini.
+     * Dapatkan query untuk dokumen yang harus dikerjakan user (active tasks).
+     *
+     * Hanya menampilkan dokumen yang sedang dalam giliran user untuk dikerjakan.
+     *
+     * @return \Illuminate\Pagination\LengthAwarePaginator|\Illuminate\Support\Collection
      */
     public static function getActiveTasksQueryByRole()
     {
@@ -85,7 +101,14 @@ class TableController extends Controller
     }
 
     /**
-     * Menentukan apakah user adalah active step.
+     * Cek apakah user adalah active step dalam workflow dokumen.
+     *
+     * User dianggap active jika memiliki step dengan status DITINJAU
+     * dan berada di urutan paling kecil (giliran pertama yang pending).
+     *
+     * @param \App\Models\Document $document Dokumen yang dicek
+     * @param int $userId ID user yang dicek
+     * @return bool True jika user adalah active step
      */
     public static function isUserActiveInWorkflow($document, $userId)
     {
@@ -107,7 +130,9 @@ class TableController extends Controller
     }
 
     /**
-     * Return data untuk tabel.
+     * Dapatkan data yang sudah diformat untuk ditampilkan di tabel.
+     *
+     * @return \Illuminate\Pagination\LengthAwarePaginator
      */
     public static function getData()
     {
@@ -115,6 +140,14 @@ class TableController extends Controller
         return self::formatSuratForTable($documents);
     }
 
+    /**
+     * Format data dokumen untuk ditampilkan di tabel.
+     *
+     * Menambahkan informasi status, action button, dan format tanggal.
+     *
+     * @param \Illuminate\Pagination\LengthAwarePaginator $paginator Data dokumen
+     * @return \Illuminate\Pagination\LengthAwarePaginator Data yang sudah diformat
+     */
     private static function formatSuratForTable($paginator)
     {
         $user = Auth::user();
@@ -139,14 +172,13 @@ class TableController extends Controller
 
             $actionData = self::determineActionType($doc, $user);
 
-            // format tanggal
             $tanggalTampil = $doc->created_at->format('d/m/Y');
 
             if ($doc->tanggal_surat) {
                 try {
                     $tanggalTampil = Carbon::parse($doc->tanggal_surat)->format('d/m/Y');
                 } catch (\Exception $e) {
-                    // tanggal_surat invalid → fallback ke created_at
+                    // Fallback ke created_at jika tanggal_surat invalid
                 }
             }
 
@@ -169,7 +201,11 @@ class TableController extends Controller
     }
 
     /**
-     * Menentukan action berdasarkan role & workflow.
+     * Tentukan tipe action button berdasarkan role dan status workflow.
+     *
+     * @param \App\Models\Document $doc Dokumen yang dicek
+     * @param \App\Models\User $user User yang sedang login
+     * @return array Array berisi type, url, label, dan class untuk action button
      */
     private static function determineActionType($doc, $user)
     {
@@ -177,12 +213,9 @@ class TableController extends Controller
         $isTU = $role === RoleEnum::TU;
         $isActive = self::isUserActiveInWorkflow($doc, $user->id);
 
-        // Default
         $type = 'view';
         $label = 'Lihat';
         $class = 'btn-secondary';
-
-        // Tentukan base URL tanpa useless assignment
         if (in_array($role, RoleEnum::getKaprodiRoles())) {
 
             $baseUrl = route('kaprodi.paraf.show', $doc->id);
@@ -195,8 +228,6 @@ class TableController extends Controller
 
             $baseUrl = route('tu.document.show', $doc->id);
         }
-
-        // Jika giliran user (active step) dan bukan TU → Kerjakan
         if ($isActive && !$isTU) {
             $type = 'work';
             $label = 'Kerjakan';

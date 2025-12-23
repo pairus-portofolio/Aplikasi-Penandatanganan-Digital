@@ -9,8 +9,26 @@ use App\Models\WorkflowStep;
 use App\Enums\DocumentStatusEnum;
 use App\Enums\RoleEnum;
 
+/**
+ * Controller untuk mengelola cards dan statistik di dashboard.
+ *
+ * Menghitung jumlah dokumen yang perlu dikerjakan berdasarkan role user
+ * dan menampilkan statistik dalam bentuk cards di halaman dashboard.
+ *
+ * @package App\Http\Controllers\Dashboard
+ */
 class CardsController extends Controller
 {
+    /**
+     * Tampilkan halaman dashboard dengan data cards dan tabel dokumen.
+     *
+     * Menghitung statistik dokumen berdasarkan role:
+     * - TU: Total surat keluar
+     * - Kaprodi: Surat perlu paraf dan review
+     * - Kajur/Sekjur: Surat perlu tanda tangan
+     *
+     * @return \Illuminate\View\View
+     */
     public function index()
     {
         $user = Auth::user();
@@ -20,23 +38,12 @@ class CardsController extends Controller
         }
         $roleName = $user->role->nama_role ?? '';
 
-        // Ambil dokumen yang harus dikerjakan user (urutan aktif)
         $docs = TableController::getActiveTasksQueryByRole();
 
-        // =============================
-        // CARD UNTUK ROLE TU
-        // =============================
-        // Fix: Gunakan total() karena $docs untuk TU adalah Paginator
         $suratKeluarCount = ($roleName === RoleEnum::TU)
             ? $docs->total()
             : 0;
 
-        // =============================
-        // CARD UNTUK KAPRODI (role 2, 3)
-        // Dokumen hanya dihitung jika: 
-        // - dia urutan aktif
-        // - status step = Ditinjau
-        // =============================
         if (in_array($roleName, RoleEnum::getKaprodiRoles())) {
 
             $suratPerluParaf = $docs->filter(function ($doc) use ($user) {
@@ -50,7 +57,6 @@ class CardsController extends Controller
 
             })->count();
 
-            // REVIEW = sama dengan paraf (kaprodi review == kaprodi paraf)
             $suratPerluReview = $suratPerluParaf;
 
         } else {
@@ -58,17 +64,10 @@ class CardsController extends Controller
             $suratPerluReview = 0;
         }
 
-        // =============================
-        // CARD UNTUK KAJUR / SEKJUR
-        // Dokumen dihitung jika:
-        // - status dokumen = Diparaf
-        // - dia adalah urutan aktif
-        // =============================
         if (in_array($roleName, RoleEnum::getKajurSekjurRoles())) {
 
             $suratPerluTtd = $docs->filter(function ($doc) use ($user) {
 
-                // Ambil step aktif
                 $activeStep = WorkflowStep::where('document_id', $doc->id)
                     ->where('status', DocumentStatusEnum::DITINJAU)
                     ->orderBy('urutan')
@@ -82,7 +81,6 @@ class CardsController extends Controller
             $suratPerluTtd = 0;
         }
 
-        // Data tabel utama
         $daftarSurat = TableController::getData();
 
         return view('dashboard.index', compact(
