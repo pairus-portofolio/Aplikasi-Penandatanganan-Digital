@@ -9,18 +9,17 @@ use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        $roleTu      = Role::where('nama_role', 'TU')->firstOrFail();
-        $roleKaprodiD3 = Role::where('nama_role', 'Kaprodi D3')->firstOrFail();
-        $roleKaprodiD4 = Role::where('nama_role', 'Kaprodi D4')->firstOrFail();
-        $roleKajur   = Role::where('nama_role', 'Kajur')->firstOrFail();
-        $roleSekjur   = Role::where('nama_role', 'Sekjur')->firstOrFail();
-        $roleAdmin   = Role::where('nama_role', 'Admin')->firstOrFail();
+        // Ambil data role berdasarkan nama barunya
+        $roleTu          = Role::where('nama_role', 'Tata Usaha')->firstOrFail();
+        $roleKoordinator = Role::where('nama_role', 'Koordinator Program Studi')->firstOrFail();
+        $roleDosen       = Role::where('nama_role', 'Dosen')->firstOrFail();
+        $roleKajur       = Role::where('nama_role', 'Kajur')->firstOrFail();
+        $roleSekjur      = Role::where('nama_role', 'Sekjur')->firstOrFail();
+        $roleAdmin       = Role::where('nama_role', 'Admin')->firstOrFail();
 
+        // 1. TU
         User::firstOrCreate(
             ['email' => 'siti.soviyyah.tif24@polban.ac.id'],
             [
@@ -31,26 +30,29 @@ class UserSeeder extends Seeder
             ]
         );
 
+        // 2. Koordinator Program Studi (Fairuz)
         User::firstOrCreate(
             ['email' => 'fairuz.sheva.tif24@polban.ac.id'],
             [
                 'nama_lengkap' => 'Fairuz Sheva Muhammad',
                 'google_id'    => 'GOOGLE_ID_FAIRUZ_654321', 
                 'password'     => 'password123', 
-                'role_id'      => $roleKaprodiD3->id
+                'role_id'      => $roleKoordinator->id
             ]
         );
 
+        // 3. Dosen (Qlio) - Hanya Dashboard
         User::firstOrCreate(
             ['email' => 'qlio.amanda.tif24@polban.ac.id'],
             [
                 'nama_lengkap' => 'Qlio Amanda Febriany',
                 'google_id'    => 'GOOGLE_ID_QLIO_987654', 
                 'password'     => 'password123', 
-                'role_id'      => $roleKaprodiD4->id
+                'role_id'      => $roleDosen->id
             ]
         );
 
+        // 4. Kajur
         User::firstOrCreate(
             ['email' => 'helga.athifa.tif24@polban.ac.id'],
             [
@@ -61,6 +63,7 @@ class UserSeeder extends Seeder
             ]
         );
 
+        // 5. Sekjur
         User::firstOrCreate(
             ['email' => 'nike.kustiane.tif24@polban.ac.id'],
             [
@@ -71,7 +74,7 @@ class UserSeeder extends Seeder
             ]
         );
 
-        // ADDED ADMIN USER with HASHED PASSWORD
+        // 6. Admin
         User::firstOrCreate(
             ['email' => 'qlioamanda@gmail.com'],
             [

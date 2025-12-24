@@ -16,36 +16,44 @@
 
 /* Header sidebar (logo + nama role) */
 .sb-head {
-  display:flex;
-  align-items:center;
-  gap:14px;
-  margin-bottom:24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 30px; /* Tambah jarak ke menu di bawahnya biar lebih lega */
+  padding-right: 10px; /* Beri sedikit napas di kanan */
+  width: 100%;
 }
 
-/* Kotak logo */
+/* Kotak logo - Pastikan ukurannya tetap fix */
 .logo {
-  width:48px;
-  height:48px;
-  border-radius:12px;
-  overflow:hidden;
-  background:#0a2b59;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;     /* PENTING: Mencegah logo gepeng saat teks panjang */
+  border-radius: 12px;
+  background: #0a2b59;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); /* Tambah bayangan halus biar elegan */
 }
 
 /* Gambar logo */
 .logo img {
-  width:100%;
-  height:100%;
-  object-fit:contain;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
-/* Nama role */
+/* Nama role - Desain Baru */
 .brand {
-  font-weight:800;
-  font-size:18px;
-  white-space:nowrap;
+  font-weight: 700;      /* Tebal tapi tidak "bold" banget (800) biar ga sumpek */
+  font-size: 15px;       /* Ukuran diperbesar (sebelumnya 13px) */
+  line-height: 1.25;     /* Jarak antar baris diatur biar enak dilihat */
+  color: #f1f5f9;        /* Warna putih sedikit soft (slate-100) biar mahal */
+  white-space: normal;   /* Izinkan teks turun ke baris baru */
+  word-wrap: break-word; /* Potong kata jika kepanjangan */
+  flex: 1;               /* Mengisi ruang kosong */
+  letter-spacing: 0.3px; /* Tambah sedikit jarak antar huruf biar lega */
 }
 
 /* Wrapper menu navigasi */

@@ -10,24 +10,8 @@ use App\Enums\DocumentStatusEnum;
 use App\Enums\RoleEnum;
 use Carbon\Carbon;
 
-/**
- * Controller untuk mengelola data tabel dokumen di dashboard.
- *
- * Menyediakan query dan format data untuk tabel dokumen berdasarkan role user,
- * termasuk filtering, search, dan penentuan action button.
- *
- * @package App\Http\Controllers\Dashboard
- */
 class TableController extends Controller
 {
-    /**
-     * Dapatkan query dasar untuk tabel dokumen berdasarkan role user.
-     *
-     * Menampilkan semua dokumen yang user terlibat dalam workflow-nya,
-     * dengan fitur search dan filter status.
-     *
-     * @return \Illuminate\Pagination\LengthAwarePaginator
-     */
     public static function getBaseQueryByRole()
     {
         $user = Auth::user();
@@ -68,13 +52,6 @@ class TableController extends Controller
             ->withQueryString();
     }
 
-    /**
-     * Dapatkan query untuk dokumen yang harus dikerjakan user (active tasks).
-     *
-     * Hanya menampilkan dokumen yang sedang dalam giliran user untuk dikerjakan.
-     *
-     * @return \Illuminate\Pagination\LengthAwarePaginator|\Illuminate\Support\Collection
-     */
     public static function getActiveTasksQueryByRole()
     {
         $user = Auth::user();
@@ -100,16 +77,6 @@ class TableController extends Controller
             });
     }
 
-    /**
-     * Cek apakah user adalah active step dalam workflow dokumen.
-     *
-     * User dianggap active jika memiliki step dengan status DITINJAU
-     * dan berada di urutan paling kecil (giliran pertama yang pending).
-     *
-     * @param \App\Models\Document $document Dokumen yang dicek
-     * @param int $userId ID user yang dicek
-     * @return bool True jika user adalah active step
-     */
     public static function isUserActiveInWorkflow($document, $userId)
     {
         if ($document->status === DocumentStatusEnum::PERLU_REVISI) {
@@ -129,25 +96,12 @@ class TableController extends Controller
         return $userStep && $userStep->urutan === $minUrutan;
     }
 
-    /**
-     * Dapatkan data yang sudah diformat untuk ditampilkan di tabel.
-     *
-     * @return \Illuminate\Pagination\LengthAwarePaginator
-     */
     public static function getData()
     {
         $documents = self::getBaseQueryByRole();
         return self::formatSuratForTable($documents);
     }
 
-    /**
-     * Format data dokumen untuk ditampilkan di tabel.
-     *
-     * Menambahkan informasi status, action button, dan format tanggal.
-     *
-     * @param \Illuminate\Pagination\LengthAwarePaginator $paginator Data dokumen
-     * @return \Illuminate\Pagination\LengthAwarePaginator Data yang sudah diformat
-     */
     private static function formatSuratForTable($paginator)
     {
         $user = Auth::user();
@@ -178,7 +132,6 @@ class TableController extends Controller
                 try {
                     $tanggalTampil = Carbon::parse($doc->tanggal_surat)->format('d/m/Y');
                 } catch (\Exception $e) {
-                    // Fallback ke created_at jika tanggal_surat invalid
                 }
             }
 
@@ -200,13 +153,6 @@ class TableController extends Controller
         return $paginator;
     }
 
-    /**
-     * Tentukan tipe action button berdasarkan role dan status workflow.
-     *
-     * @param \App\Models\Document $doc Dokumen yang dicek
-     * @param \App\Models\User $user User yang sedang login
-     * @return array Array berisi type, url, label, dan class untuk action button
-     */
     private static function determineActionType($doc, $user)
     {
         $role = $user->role->nama_role;
@@ -216,7 +162,9 @@ class TableController extends Controller
         $type = 'view';
         $label = 'Lihat';
         $class = 'btn-secondary';
-        if (in_array($role, RoleEnum::getKaprodiRoles())) {
+
+        // PERBAIKAN: Gunakan getKoordinatorRoles()
+        if (in_array($role, RoleEnum::getKoordinatorRoles())) {
 
             $baseUrl = route('kaprodi.paraf.show', $doc->id);
 
