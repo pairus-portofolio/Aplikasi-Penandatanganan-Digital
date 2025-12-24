@@ -73,28 +73,21 @@ class ParafController extends Controller
         // 1. Cek apakah user adalah giliran aktif (Mode Kerjakan)
         $isCurrentTurn = $this->workflowService->checkAccess($document->id);
         
-        // 2. Cek apakah user ada di history workflow (Mode Lihat-Saja)
         $isInWorkflow = WorkflowStep::where('document_id', $id)->where('user_id', Auth::id())->exists();
 
-        // Jika user tidak aktif dan tidak ada di history, tolak akses
         if (!$isCurrentTurn && !$isInWorkflow) {
             return redirect()->route('kaprodi.paraf.index')
                 ->withErrors('Anda tidak memiliki akses ke dokumen ini.');
         }
 
-        // Jika user ada di workflow tapi bukan giliran aktif, set view-only mode
         $isViewOnly = !$isCurrentTurn;
 
-        // [PERBAIKAN UTAMA] Jika View Only, gunakan tampilan shared view-document
         if ($isViewOnly) {
-            // Karena ini mode Lihat-Saja, tombol Revisi juga disembunyikan
             return view('shared.view-document', [
                 'document' => $document,
                 'showRevisionButton' => false
             ]);
         }
-        
-        // --- LANJUT KE MODE KERJAKAN (GILIRAN AKTIF) ---
 
         $activeStep = WorkflowStep::where('document_id', $id)
             ->where('user_id', Auth::id())
@@ -109,7 +102,6 @@ class ParafController extends Controller
             ];
         }
 
-        // Prepare paraf data for view (no logic in Blade)
         $user = Auth::user();
         $parafData = [
             'hasImage' => !empty($user->img_paraf_path),
@@ -129,90 +121,80 @@ class ParafController extends Controller
      */
     public function uploadParaf(Request $request)
     {
-                // Validasi standarpublic function uploadParaf(Request $request)
-        {
-            $errorResponse = null;
+        $errorResponse = null;
 
-            // Validasi standar
-            $request->validate([
-                'image' => 'required|image|mimes:png,jpg,jpeg|max:2048',
-            ]);
+        $request->validate([
+            'image' => 'required|image|mimes:png,jpg,jpeg|max:2048',
+        ]);
 
-            if (!$request->hasFile('image')) {
-                $errorResponse = [
-                    'status'  => 'error',
-                    'message' => 'File tidak terbaca oleh sistem.',
-                    'code'    => 400
-                ];
-            }
+        if (!$request->hasFile('image')) {
+            $errorResponse = [
+                'status'  => 'error',
+                'message' => 'File tidak terbaca oleh sistem.',
+                'code'    => 400
+            ];
+        }
 
-            if (!$errorResponse && !$request->file('image')->isValid()) {
-                $errorResponse = [
-                    'status'  => 'error',
-                    'message' => 'File corrupt. Error Code: ' . $request->file('image')->getError(),
-                    'code'    => 400
-                ];
-            }
+        if (!$errorResponse && !$request->file('image')->isValid()) {
+            $errorResponse = [
+                'status'  => 'error',
+                'message' => 'File corrupt. Error Code: ' . $request->file('image')->getError(),
+                'code'    => 400
+            ];
+        }
 
-            // Jika ada error validasi manual → return satu kali
-            if ($errorResponse) {
-                return response()->json([
-                    'status'  => $errorResponse['status'],
-                    'message' => $errorResponse['message']
-                ], $errorResponse['code']);
-            }
+        if ($errorResponse) {
+            return response()->json([
+                'status'  => $errorResponse['status'],
+                'message' => $errorResponse['message']
+            ], $errorResponse['code']);
+        }
 
-            // Proses utama
+        try {
+            $user = Auth::user();
+
             try {
-                $user = Auth::user();
-
-                // Hapus paraf lama
-                try {
-                    if ($user->img_paraf_path && Storage::disk('public')->exists($user->img_paraf_path)) {
-                        Storage::disk('public')->delete($user->img_paraf_path);
-                        Log::info('Old paraf deleted', [
-                            'user_id' => $user->id,
-                            'path'    => $user->img_paraf_path
-                        ]);
-                    }
-                } catch (\Exception $e) {
-                    Log::warning('Failed to delete old paraf', [
+                if ($user->img_paraf_path && Storage::disk('public')->exists($user->img_paraf_path)) {
+                    Storage::disk('public')->delete($user->img_paraf_path);
+                    Log::info('Old paraf deleted', [
                         'user_id' => $user->id,
-                        'path'    => $user->img_paraf_path,
-                        'error'   => $e->getMessage()
+                        'path'    => $user->img_paraf_path
                     ]);
                 }
-
-                // Simpan file baru
-                $path = $request->file('image')->store('paraf', 'public');
-
-                // Update DB
-                $user->update(['img_paraf_path' => $path]);
-
-                Log::info('Paraf uploaded successfully', [
-                    'user_id' => $user->id,
-                    'path'    => $path
-                ]);
-
-                return response()->json([
-                    'status'  => 'success',
-                    'path'    => asset('storage/' . $path),
-                    'message' => 'Paraf berhasil disimpan!'
-                ]);
-
             } catch (\Exception $e) {
-
-                Log::error('Paraf upload failed', [
-                    'user_id' => Auth::id(),
+                Log::warning('Failed to delete old paraf', [
+                    'user_id' => $user->id,
+                    'path'    => $user->img_paraf_path,
                     'error'   => $e->getMessage()
                 ]);
-
-                // Return catch → 1 kali saja
-                return response()->json([
-                    'status'  => 'error',
-                    'message' => 'Server Error: ' . $e->getMessage()
-                ], 500);
             }
+
+            $path = $request->file('image')->store('paraf', 'public');
+
+            $user->update(['img_paraf_path' => $path]);
+
+            Log::info('Paraf uploaded successfully', [
+                'user_id' => $user->id,
+                'path'    => $path
+            ]);
+
+            return response()->json([
+                'status'  => 'success',
+                'path'    => asset('storage/' . $path),
+                'message' => 'Paraf berhasil disimpan!'
+            ]);
+
+        } catch (\Exception $e) {
+
+            Log::error('Paraf upload failed', [
+                'user_id' => Auth::id(),
+                'error'   => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Server Error: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -278,12 +260,9 @@ class ParafController extends Controller
             $error = 'Anda belum menempatkan paraf pada dokumen.';
         }
 
-        // Jika ada error → return satu kali saja
         if ($error) {
             return back()->withErrors($error);
         }
-
-        // 3. Proses PDF & Workflow
         try {
             $this->pdfService->stampPdf($documentId, Auth::id(), 'paraf');
 
@@ -308,7 +287,7 @@ class ParafController extends Controller
                 'error'       => $e->getMessage()
             ]);
 
-            return back()->withErrors($e->getMessage());
+            return back()->withErrors('Gagal memproses PDF: ' . $e->getMessage());
         }
     }
     /**

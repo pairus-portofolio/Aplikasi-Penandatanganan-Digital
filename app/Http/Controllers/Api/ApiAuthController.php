@@ -7,9 +7,25 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
+/**
+ * API Controller untuk autentikasi menggunakan Laravel Sanctum.
+ *
+ * Menyediakan endpoint untuk login, logout, dan mendapatkan profil user
+ * yang terautentikasi menggunakan token bearer.
+ *
+ * @package App\Http\Controllers\Api
+ */
 class ApiAuthController extends Controller
 {
-    // LOGIN
+    /**
+     * Login user dan generate access token.
+     *
+     * Validasi kredensial email dan password, kemudian generate
+     * Sanctum token untuk autentikasi API.
+     *
+     * @param Request $request HTTP request dengan email dan password
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function login(Request $request)
     {
         $request->validate([
@@ -19,7 +35,6 @@ class ApiAuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        // Cek Password
         if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json([
                 'status' => 'error',
@@ -27,10 +42,8 @@ class ApiAuthController extends Controller
             ], 401);
         }
 
-        // Hapus token lama (opsional, biar bersih)
         $user->tokens()->delete();
 
-        // Buat Token Baru
         $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([
@@ -46,7 +59,12 @@ class ApiAuthController extends Controller
         ], 200);
     }
 
-    // LOGOUT
+    /**
+     * Logout user dan hapus access token saat ini.
+     *
+     * @param Request $request HTTP request dengan bearer token
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
@@ -57,7 +75,12 @@ class ApiAuthController extends Controller
         ]);
     }
 
-    // ME (Cek Profile)
+    /**
+     * Dapatkan profil user yang sedang login.
+     *
+     * @param Request $request HTTP request dengan bearer token
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function me(Request $request)
     {
         return response()->json([
