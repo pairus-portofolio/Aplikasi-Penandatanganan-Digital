@@ -26,11 +26,11 @@ class RoleSeeder extends Seeder
         );
 
         Role::firstOrCreate(
-            ['nama_role' => 'Kajur']
+            ['nama_role' => 'Ketua Jurusan']
         );
 
         Role::firstOrCreate(
-            ['nama_role' => 'Sekjur']
+            ['nama_role' => 'Sekretaris Jurusan']
         );
 
         Role::firstOrCreate(

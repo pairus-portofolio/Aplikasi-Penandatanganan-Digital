@@ -83,7 +83,7 @@
                             </option>
                         @endforeach
                     </select>
-                    {{-- PERBAIKAN: Teks maksimal dihapus sesuai permintaan --}}
+                    <small class="text-muted" style="font-size:0.8rem; margin-top:4px; display:block;">*Opsional</small>
                     
                     <div id="selectedParafContainer" class="alur-list" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
                     </div>
@@ -91,7 +91,7 @@
 
                 {{-- 2. Pemilihan Penandatangan (Kajur/Sekjur) --}}
                 <div class="detail-field-box">
-                    <label for="ttdSelect">2. Pilih Penandatangan (Kajur/Sekjur):</label>
+                    <label for="ttdSelect">2. Pilih Penandatangan (Ketua Jurusan/Sekretaris Jurusan):</label>
                     <select id="ttdSelect" class="detail-input-inner">
                         <option value="" disabled selected hidden>Pilih untuk Tanda Tangan...</option>
                         @foreach($penandatangan as $user)

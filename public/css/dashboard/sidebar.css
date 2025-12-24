@@ -44,16 +44,16 @@
   object-fit: contain;
 }
 
-/* Nama role - Desain Baru */
+/* Nama role */
 .brand {
-  font-weight: 700;      /* Tebal tapi tidak "bold" banget (800) biar ga sumpek */
-  font-size: 15px;       /* Ukuran diperbesar (sebelumnya 13px) */
-  line-height: 1.25;     /* Jarak antar baris diatur biar enak dilihat */
-  color: #f1f5f9;        /* Warna putih sedikit soft (slate-100) biar mahal */
-  white-space: normal;   /* Izinkan teks turun ke baris baru */
-  word-wrap: break-word; /* Potong kata jika kepanjangan */
-  flex: 1;               /* Mengisi ruang kosong */
-  letter-spacing: 0.3px; /* Tambah sedikit jarak antar huruf biar lega */
+  font-weight: 700;      
+  font-size: 17px;      
+  line-height: 1.25;     
+  color: #f1f5f9;        
+  white-space: normal;   
+  word-wrap: break-word; 
+  flex: 1;               
+  letter-spacing: 0.3px; 
 }
 
 /* Wrapper menu navigasi */

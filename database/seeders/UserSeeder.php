@@ -15,8 +15,8 @@ class UserSeeder extends Seeder
         $roleTu          = Role::where('nama_role', 'Tata Usaha')->firstOrFail();
         $roleKoordinator = Role::where('nama_role', 'Koordinator Program Studi')->firstOrFail();
         $roleDosen       = Role::where('nama_role', 'Dosen')->firstOrFail();
-        $roleKajur       = Role::where('nama_role', 'Kajur')->firstOrFail();
-        $roleSekjur      = Role::where('nama_role', 'Sekjur')->firstOrFail();
+        $roleKajur       = Role::where('nama_role', 'Ketua Jurusan')->firstOrFail();
+        $roleSekjur      = Role::where('nama_role', 'Sekretaris Jurusan')->firstOrFail();
         $roleAdmin       = Role::where('nama_role', 'Admin')->firstOrFail();
 
         // 1. TU
@@ -30,7 +30,7 @@ class UserSeeder extends Seeder
             ]
         );
 
-        // 2. Koordinator Program Studi (Fairuz)
+        // 2. Koordinator Program Studi 
         User::firstOrCreate(
             ['email' => 'fairuz.sheva.tif24@polban.ac.id'],
             [
@@ -41,7 +41,7 @@ class UserSeeder extends Seeder
             ]
         );
 
-        // 3. Dosen (Qlio) - Hanya Dashboard
+        // 3. Dosen
         User::firstOrCreate(
             ['email' => 'qlio.amanda.tif24@polban.ac.id'],
             [

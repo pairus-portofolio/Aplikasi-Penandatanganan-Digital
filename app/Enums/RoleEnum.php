@@ -4,13 +4,13 @@ namespace App\Enums;
 
 class RoleEnum
 {
-    // Ubah TU menjadi Tata Usaha (tidak disingkat)
     const TU = 'Tata Usaha';
-    
     const KOORDINATOR_PRODI = 'Koordinator Program Studi';
     const DOSEN = 'Dosen';
-    const KAJUR = 'Kajur';
-    const SEKJUR = 'Sekjur';
+    
+    const KAJUR = 'Ketua Jurusan';
+    const SEKJUR = 'Sekretaris Jurusan';
+    
     const ADMIN = 'Admin';
 
     // ID Constants
@@ -21,19 +21,11 @@ class RoleEnum
     const ID_SEKJUR = 5;
     const ID_ADMIN = 6;
 
-    /**
-     * Get Koordinator roles
-     */
     public static function getKoordinatorRoles(): array
     {
-        return [
-            self::KOORDINATOR_PRODI,
-        ];
+        return [self::KOORDINATOR_PRODI];
     }
 
-    /**
-     * Get all Kajur/Sekjur roles
-     */
     public static function getKajurSekjurRoles(): array
     {
         return [
@@ -42,9 +34,6 @@ class RoleEnum
         ];
     }
 
-    /**
-     * Get all roles
-     */
     public static function getAllRoles(): array
     {
         return [

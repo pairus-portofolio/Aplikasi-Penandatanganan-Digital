@@ -28,11 +28,11 @@
               @break
 
           @case(4)
-              Dashboard Kajur
+              Dashboard Ketua Jurusan
               @break
 
           @case(5)
-              Dashboard Sekjur
+              Dashboard Sekretaris Jurusan
               @break
 
           @case(6) 
