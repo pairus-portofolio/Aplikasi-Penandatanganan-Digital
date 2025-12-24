@@ -80,8 +80,7 @@ class FinalisasiController extends Controller
 
         return redirect()
             ->route('tu.finalisasi.index')
-            ->with('success', 'Dokumen berhasil difinalisasi.')
-            ->with('download_doc_id', $document->id);
+            ->with('success', 'Dokumen berhasil difinalisasi.');
     }
     /**
      * Download file PDF dengan kompresi otomatis untuk file > 1MB.
