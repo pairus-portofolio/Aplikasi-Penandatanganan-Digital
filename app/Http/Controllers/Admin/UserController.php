@@ -13,45 +13,67 @@ use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
+    // Helper untuk dropdown filter (kecuali admin)
     private function getAssignableRoles()
     {
-        return Role::whereIn('id', [
-            RoleEnum::ID_TU, 
-            RoleEnum::ID_KOORDINATOR_PRODI, // PERBAIKAN: Gunakan ID baru
-            RoleEnum::ID_DOSEN,             // PERBAIKAN: Tambahkan ID Dosen
-            RoleEnum::ID_KAJUR, 
-            RoleEnum::ID_SEKJUR
-        ])->get();
+        return Role::where('id', '!=', RoleEnum::ID_ADMIN)->get();
     }
 
-    public function index()
+    public function index(Request $request)
     {
         if (Auth::user()->role_id != RoleEnum::ID_ADMIN) {
-             return redirect()->route('dashboard')->withErrors('Anda tidak memiliki akses Admin.');
+             return redirect()->route('dashboard')->withErrors('Akses ditolak.');
         }
 
-        $users = User::with('role')
-                      ->where('role_id', '!=', RoleEnum::ID_ADMIN)
-                      ->orderBy('nama_lengkap')
-                      ->paginate(10);
-        
-        $rolesToAssign = $this->getAssignableRoles();
+        $query = User::with('role')->where('role_id', '!=', RoleEnum::ID_ADMIN);
 
-        return view('admin.users.index', compact('users', 'rolesToAssign'));
+        // Filter: Pencarian Nama
+        if ($request->has('search') && $request->search != '') {
+            $query->where('nama_lengkap', 'ilike', '%' . $request->search . '%');
+        }
+
+        // Filter: Role
+        if ($request->has('role_id') && $request->role_id != '') {
+            $query->where('role_id', $request->role_id);
+        }
+
+        $users = $query->orderBy('nama_lengkap')->paginate(10)->withQueryString();
+        
+        $roles = $this->getAssignableRoles();
+
+        return view('admin.users.index', compact('users', 'roles'));
+    }
+
+    // PERBAIKAN: Tambahkan fungsi store ini
+    public function store(Request $request)
+    {
+        if (Auth::user()->role_id != RoleEnum::ID_ADMIN) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'nama_lengkap' => 'required|string|max:255',
+            'email'        => 'required|email|unique:users,email',
+            'password'     => 'required|string|min:6',
+        ]);
+
+        // Logic: Tambah user baru, role otomatis diset jadi ID_DOSEN (3)
+        User::create([
+            'nama_lengkap' => $validated['nama_lengkap'],
+            'email'        => $validated['email'],
+            'password'     => Hash::make($validated['password']),
+            'role_id'      => RoleEnum::ID_DOSEN, 
+        ]);
+
+        return back()->with('success', 'Anggota baru berhasil ditambahkan sebagai Dosen.');
     }
 
     public function edit($id)
     {
         if (Auth::user()->role_id != RoleEnum::ID_ADMIN) {
-             abort(403, 'Akses Ditolak.');
+             abort(403);
         }
-
         $user = User::findOrFail($id);
-
-        if ($user->role_id == RoleEnum::ID_ADMIN) {
-            abort(403, 'Tidak bisa mengedit pengguna Admin.');
-        }
-
         $rolesToAssign = $this->getAssignableRoles();
 
         return view('admin.users.modal_edit', compact('user', 'rolesToAssign'));
@@ -60,13 +82,13 @@ class UserController extends Controller
     public function update(Request $request, $id)
     {
         if (Auth::user()->role_id != RoleEnum::ID_ADMIN) {
-             return back()->withErrors('Anda tidak memiliki hak untuk melakukan aksi ini.');
+             return back()->withErrors('Akses ditolak.');
         }
 
         $user = User::findOrFail($id);
 
-        if ($user->role_id == RoleEnum::ID_ADMIN || $user->id == Auth::id()) {
-            return back()->withErrors('Tidak bisa mengubah role/data Admin atau data Anda sendiri.');
+        if ($user->role_id == RoleEnum::ID_ADMIN) {
+            return back()->withErrors('Tidak bisa mengubah data Administrasi.');
         }
 
         $validated = $request->validate([
@@ -88,6 +110,6 @@ class UserController extends Controller
         
         $user->update($data);
 
-        return back()->with('success', "Data pengguna {$user->nama_lengkap} berhasil diperbarui.");
+        return back()->with('success', "Data {$user->nama_lengkap} berhasil diperbarui.");
     }
 }

@@ -11,7 +11,7 @@ class RoleEnum
     const KAJUR = 'Ketua Jurusan';
     const SEKJUR = 'Sekretaris Jurusan';
     
-    const ADMIN = 'Admin';
+    const ADMIN = 'Administrasi';
 
     // ID Constants
     const ID_TU = 1;

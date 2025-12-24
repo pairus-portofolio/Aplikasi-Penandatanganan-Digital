@@ -34,7 +34,7 @@ class RoleSeeder extends Seeder
         );
 
         Role::firstOrCreate(
-            ['nama_role' => 'Admin']
+            ['nama_role' => 'Administrasi']
         );
     }
 }

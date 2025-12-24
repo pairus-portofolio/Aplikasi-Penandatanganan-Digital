@@ -17,7 +17,7 @@ class UserSeeder extends Seeder
         $roleDosen       = Role::where('nama_role', 'Dosen')->firstOrFail();
         $roleKajur       = Role::where('nama_role', 'Ketua Jurusan')->firstOrFail();
         $roleSekjur      = Role::where('nama_role', 'Sekretaris Jurusan')->firstOrFail();
-        $roleAdmin       = Role::where('nama_role', 'Admin')->firstOrFail();
+        $roleAdmin       = Role::where('nama_role', 'Administrasi')->firstOrFail();
 
         // 1. TU
         User::firstOrCreate(

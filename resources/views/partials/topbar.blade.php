@@ -36,7 +36,7 @@
               @break
 
           @case(6) 
-              Dashboard Admin
+              Dashboard Administrasi
               @break
 
           @default

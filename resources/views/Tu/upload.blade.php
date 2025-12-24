@@ -71,7 +71,7 @@
 
                 {{-- 1. Pemilihan Pemaraf (Koordinator) --}}
                 <div class="detail-field-box">
-                    <label for="parafSelect">1. Pilih Pemaraf (Koordinator):</label>
+                    <label for="parafSelect">1. Pilih Pemaraf (Koordinator Program Studi):</label>
                     <select id="parafSelect" class="detail-input-inner">
                         <option value="" disabled selected hidden>Pilih untuk Paraf...</option>
                         @foreach($kaprodis as $user)
