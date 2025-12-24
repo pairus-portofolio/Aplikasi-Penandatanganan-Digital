@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <!-- Judul halaman login -->
-  <title>LetSign | Login</title>
+  <title>TTDJ | Login</title>
 
   <!-- Import font utama -->
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -35,7 +35,7 @@
 
   <!-- Logo pojok kiri atas -->
   <div class="absolute top-4 left-4">
-    <img src="{{ asset('images/logo-letsign.png') }}" alt="LetSign Logo" class="w-16 md:w-20 h-auto object-contain">
+    <img src="{{ asset('images/logo-TTDJ.png') }}" alt="TTDJ Logo" class="w-16 md:w-20 h-auto object-contain">
   </div>
 
   <!-- Container utama layout login -->
@@ -51,7 +51,7 @@
         <div class="absolute bg-[#2146C7] rounded-[30%] w-[80%] h-[80%] -z-0"></div>
 
         <!-- Gambar ilustrasi laptop -->
-        <img src="{{ asset('images/laptop-letsign.png') }}" alt="Laptop Illustration" class="relative z-10 w-[85%] max-w-[350px] drop-shadow-xl translate-y-2">
+        <img src="{{ asset('images/laptop-TTDJ.png') }}" alt="Laptop Illustration" class="relative z-10 w-[85%] max-w-[350px] drop-shadow-xl translate-y-2">
       </div>
     </div>
 
@@ -62,7 +62,7 @@
       <div class="bg-white shadow-xl rounded-2xl p-6 sm:p-8 md:p-10 w-full max-w-[380px] sm:max-w-[400px]">
 
         <!-- Judul aplikasi -->
-        <h1 class="text-3xl font-bold text-center text-black mb-6">LET SIGN</h1>
+        <h1 class="text-3xl font-bold text-center text-black mb-6">TTDJ</h1>
 
         <!-- Menampilkan error login jika ada -->
         @if (session('error'))

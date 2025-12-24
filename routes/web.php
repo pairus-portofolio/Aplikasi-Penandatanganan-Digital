@@ -149,13 +149,9 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('admin')->name('admin.')->group(function() {
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
         
-        // NEW: Endpoint untuk menampilkan modal edit
+        Route::post('/users', [UserController::class, 'store'])->name('users.store');
+
         Route::get('/users/{id}/edit', [UserController::class, 'edit'])->name('users.edit');
-        
-        // NEW: Endpoint untuk menyimpan pembaruan
         Route::put('/users/{id}', [UserController::class, 'update'])->name('users.update');
-        
-        // Old route: Dihapus atau diganti
-        Route::post('/users/{id}/update-role', [UserController::class, 'updateRole'])->name('users.update-role');
     });
 });

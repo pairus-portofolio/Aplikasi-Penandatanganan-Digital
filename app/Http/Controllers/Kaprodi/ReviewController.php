@@ -5,44 +5,64 @@ namespace App\Http\Controllers\Kaprodi;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Document;
-use App\Models\WorkflowStep; 
+use App\Models\WorkflowStep;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Dashboard\TableController;
 use App\Enums\DocumentStatusEnum;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\DocumentWorkflowNotification;
 
+/**
+ * Controller untuk mengelola review dokumen oleh Kaprodi.
+ *
+ * Menangani proses review dokumen, termasuk melihat detail dokumen
+ * dan meminta revisi ke TU dengan mengirimkan notifikasi email.
+ *
+ * @package App\Http\Controllers\Kaprodi
+ */
 class ReviewController extends Controller
 {
-    // 1. Halaman LIST
+    /**
+     * Tampilkan halaman daftar dokumen untuk review.
+     *
+     * @return \Illuminate\View\View
+     */
     public function index()
     {
         $daftarSurat = TableController::getData();
         return view('kaprodi.review.index', compact('daftarSurat'));
     }
-
-    // 2. Halaman DETAIL (lihat dokumen)
+    /**
+     * Tampilkan detail dokumen untuk review.
+     *
+     * Tombol "Minta Revisi" hanya muncul jika status dokumen DITINJAU
+     * dan user adalah giliran aktif dalam workflow.
+     *
+     * @param int $id ID dokumen
+     * @return \Illuminate\View\View
+     */
     public function show($id)
     {
         $document = Document::findOrFail($id);
         
-        // Cek apakah user adalah giliran aktif
-        // Kita gunakan helper dari TableController agar logic konsisten
         $isActive = TableController::isUserActiveInWorkflow($document, Auth::id());
 
-        // Tombol "Minta Revisi" hanya muncul jika:
-        // 1. Status dokumen = DITINJAU
-        // 2. User adalah giliran aktif
         $showRevisionButton = ($document->status === DocumentStatusEnum::DITINJAU) && $isActive;
         
-        // Gunakan shared view
         return view('shared.view-document', compact('document', 'showRevisionButton'));
     }
-
-    // 3. PROSES REVISI (Action dari Pop-up)
+    /**
+     * Proses permintaan revisi dokumen.
+     *
+     * Mengubah status dokumen menjadi PERLU_REVISI dan mengirim
+     * notifikasi email ke TU dengan catatan revisi.
+     *
+     * @param Request $request HTTP request dengan catatan dan subjek
+     * @param int $id ID dokumen
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function revise(Request $request, $id)
     {
-        // Validasi input dari modal
         $request->validate([
             'catatan' => 'required|string',
             'subjek'  => 'required|string', 
@@ -50,24 +70,20 @@ class ReviewController extends Controller
 
         $document = Document::findOrFail($id);
 
-        // 1. Ubah Status Dokumen jadi 'Perlu Revisi'
         $document->status = DocumentStatusEnum::PERLU_REVISI; 
         $document->save();
 
-        // 2. Kirim Email Otomatis ke TU
         if ($document->uploader && $document->uploader->email) {
             try {
-                // Kita kirim parameter tambahan: tipe 'revision_request', catatan, dan subjek
                 Mail::to($document->uploader->email)
                     ->send(new DocumentWorkflowNotification(
                         $document, 
                         $document->uploader, 
-                        'revision_request', // Tipe Notifikasi
-                        $request->catatan,  // Isi Catatan
-                        $request->subjek    // Subjek Custom
+                        'revision_request',
+                        $request->catatan,
+                        $request->subjek
                     ));
             } catch (\Exception $e) {
-                // Log error tapi jangan gagalkan proses redirect
                 \Log::error("Gagal kirim email revisi: " . $e->getMessage());
             }
         }

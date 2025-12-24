@@ -447,20 +447,16 @@
             const downloadUrl = btn.getAttribute('data-download-url');
             const csrf = getCsrf();
 
-            const body = `
-                <div class="mb-3">
-                    <a href="${downloadUrl}" class="btn btn-success w-100 mb-2 rounded-pill">Download Dokumen</a>
-                </div>
-            `;
+            const body = '<p>Dokumen akan difinalisasi dan tidak dapat diubah lagi.</p><p class="fw-bold mt-3">Apakah Anda yakin ingin melanjutkan?</p>';
 
             const footer = `
-                <div class="d-flex justify-content-end gap-2 w-100">
-                    <button type="button" class="btn btn-secondary rounded-pill px-3" id="modalCancelBtn">Batalkan</button>
-                    <button type="button" class="btn btn-danger rounded-pill px-3" id="modalFinalizeBtn">Ya, Finalisasi Sekarang</button>
+                <div class="d-flex justify-content-center gap-2 w-100">
+                    <button type="button" class="btn btn-secondary rounded-pill px-3" id="modalCancelBtn">Batal</button>
+                    <button type="button" class="btn btn-danger rounded-pill px-3" id="modalFinalizeBtn">Ya, Finalisasi</button>
                 </div>
             `;
 
-            show({ title: '<span class="fs-6 fw-bold">Finalisasi Dokumen</span>', body, footer, modalSize: 'md', shouldShowCloseButton: false });
+            show({ title: '<span class="fs-6 fw-bold">Konfirmasi Finalisasi</span>', body, footer, modalSize: 'sm', shouldShowCloseButton: false });
             
             setTimeout(() => {
                 const cancelBtn = document.getElementById('modalCancelBtn');

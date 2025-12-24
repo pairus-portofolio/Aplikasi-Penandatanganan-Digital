@@ -3,100 +3,241 @@
 @section('title', 'Manajemen Pengguna')
 
 @section('content')
+<div class="container-fluid px-4">
 
-  <h1 class="page-title">Manajemen Pengguna</h1>
+    {{-- CSS Tambahan --}}
+    <style>
+        /* Pagination custom */
+        .pagination { margin-bottom: 0; justify-content: end; }
+    </style>
+    
+    {{-- 1. SAPAAN --}}
+    <div class="mt-4 mb-4">
+        <h2 class="fw-bold text-dark">Selamat Datang, {{ Auth::user()->nama_lengkap }}</h2>
+        <p class="text-muted">
+            Anda login sebagai <strong>{{ Auth::user()->role->nama_role }}</strong>. 
+            Kelola data pengguna aplikasi di sini.
+        </p>
+    </div>
 
-  {{-- Skrip notifikasi di sini dihapus karena sudah ditangani oleh layouts/app.blade.php --}}
-  
-  <div class="table-shell">
-    <table>
-      <thead>
-        <tr>
-          <th>Nama Lengkap</th>
-          <th>Email</th>
-          <th>Role</th>
-          <th>Aksi</th>
-        </tr>
-      </thead>
-      <tbody>
-        @forelse($users as $user)
-          <tr>
-            <td>{{ $user->nama_lengkap }}</td>
-            <td>{{ $user->email }}</td>
-            <td>
-                <span class="pill abu">{{ $user->role->nama_role ?? 'Tidak Ada Role' }}</span>
-            </td>
-            <td>
-              {{-- Tombol Edit yang memicu ModalManager --}}
-              <button type="button" 
-                      class="btn-action btn-primary"
-                      data-modal-url="{{ route('admin.users.edit', $user->id) }}"
-                      data-modal-title="Edit Pengguna: {{ $user->nama_lengkap }}" 
-                      data-modal="edit-user">
-                Edit
-              </button>
-            </td>
-          </tr>
-        @empty
-          <tr>
-            <td colspan="4" style="text-align:center;color:#94a3b8;padding:22px">
-              Tidak ada pengguna yang perlu diatur.
-            </td>
-          </tr>
-        @endforelse
-      </tbody>
-    </table>
-  </div>
+    <div class="row">
+        {{-- KOLOM KIRI: Tambah Anggota --}}
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white py-3">
+                    <h6 class="mb-0 fw-bold"><i class="fa-solid fa-user-plus me-2"></i>Tambah Anggota Baru</h6>
+                </div>
+                <div class="card-body">
+                    <form action="{{ route('admin.users.store') }}" method="POST">
+                        @csrf
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">Nama Lengkap</label>
+                            <input type="text" name="nama_lengkap" class="form-control" placeholder="Nama Lengkap..." required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">Email</label>
+                            <input type="email" name="email" class="form-control" placeholder="email@polban.ac.id" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="fa-solid fa-lock"></i></span>
+                                <input type="password" name="password" class="form-control" placeholder="Minimal 6 karakter" required>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-light border-start border-4 border-info py-2 small text-muted">
+                            <i class="fa-solid fa-circle-info me-1 text-info"></i> Role otomatis: <strong>Dosen</strong>.
+                        </div>
 
-  <div style="margin-top: 20px;">
-      {{ $users->links('partials.pagination') }}
-  </div>
+                        <button type="submit" class="btn btn-primary w-100 fw-bold">
+                            <i class="fa-solid fa-save me-1"></i> Simpan Anggota
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {{-- KOLOM KANAN: Tabel & Filter --}}
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 fw-bold text-dark">Daftar Pengguna</h6>
+                    <span class="badge bg-light text-dark border">{{ $users->total() }} User</span>
+                </div>
+                <div class="card-body p-0">
+                    
+                    {{-- Filter & Search --}}
+                    <div class="px-3 py-2 bg-light border-bottom">
+                        <form method="GET" action="{{ route('admin.users.index') }}" class="row g-2 align-items-center">
+                            <div class="col-md-5">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                                    <input type="text" name="search" class="form-control border-start-0" placeholder="Cari nama..." value="{{ request('search') }}">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <select name="role_id" class="form-select form-select-sm">
+                                    <option value="">Semua Role</option>
+                                    @foreach($roles as $role)
+                                        <option value="{{ $role->id }}" {{ request('role_id') == $role->id ? 'selected' : '' }}>
+                                            {{ $role->nama_role }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-3 d-flex gap-1">
+                                <button type="submit" class="btn btn-primary flex-fill btn-sm">Cari</button>
+                                
+                                @if(request('search') || request('role_id'))
+                                    <a href="{{ route('admin.users.index') }}" class="btn btn-secondary btn-sm" style="min-width: 60px;">
+                                        Reset
+                                    </a>
+                                @endif
+                            </div>
+                        </form>
+                    </div>
+
+                    @if($users->count() > 0)
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" style="table-layout: fixed; width: 100%;">
+                                <thead class="bg-light text-muted small text-uppercase">
+                                    <tr>
+                                        <th class="ps-4" style="width: 35%;">Nama Lengkap</th>
+                                        <th style="width: 30%;">Email</th>
+                                        <th style="width: 25%;">Role</th>
+                                        <th class="text-center" style="width: 10%;">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($users as $user)
+                                    <tr>
+                                        <td class="ps-4 fw-bold text-dark text-truncate" title="{{ $user->nama_lengkap }}">
+                                            {{ $user->nama_lengkap }}
+                                        </td>
+                                        <td class="text-muted small text-truncate" title="{{ $user->email }}">
+                                            {{ $user->email }}
+                                        </td>
+                                        <td>
+                                            @php
+                                                $roleColor = match($user->role->nama_role ?? '') {
+                                                    'Tata Usaha' => 'bg-danger', // PERBAIKAN: TU Jadi Merah (Danger)
+                                                    'Koordinator Program Studi' => 'bg-primary',
+                                                    'Dosen' => 'bg-success',
+                                                    'Ketua Jurusan' => 'bg-warning text-dark',
+                                                    'Sekretaris Jurusan' => 'bg-warning text-dark',
+                                                    'Administrasi' => 'bg-dark',
+                                                    default => 'bg-secondary'
+                                                };
+                                            @endphp
+                                            <span class="badge {{ $roleColor }} rounded-pill fw-normal px-3">
+                                                {{ $user->role->nama_role ?? '-' }}
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-outline-warning btn-edit-user rounded-circle"
+                                                    data-id="{{ $user->id }}"
+                                                    data-url="{{ route('admin.users.edit', $user->id) }}"
+                                                    title="Edit User">
+                                                <i class="fa-solid fa-pen"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        {{-- Pagination --}}
+                        <div class="p-3 border-top">
+                            {{ $users->links('partials.pagination') }}
+                        </div>
+                    @else
+                        {{-- Tampilan Kosong --}}
+                        <div class="text-center py-5">
+                            <div class="mb-3 text-muted">
+                                <i class="fa-regular fa-folder-open fa-3x"></i>
+                            </div>
+                            <h6 class="fw-bold text-dark">Data Tidak Ditemukan</h6>
+                            <p class="text-muted small mb-0">Silakan gunakan kata kunci lain atau reset filter pencarian.</p>
+                        </div>
+                    @endif
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- PERBAIKAN: Footer Tulisan Abu-Abu --}}
+    <div class="mt-5 mb-4 text-center">
+        <p class="text-muted small fw-bold" style="letter-spacing: 0.5px;">
+            Sistem Manajemen Surat - Politeknik Negeri Bandung
+        </p>
+    </div>
+
+</div>
+
+{{-- Placeholder Modal Edit --}}
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4" id="editUserModalContent">
+            {{-- Content loaded via JS --}}
+        </div>
+    </div>
+</div>
 
 @endsection
 
 @push('scripts')
-    {{-- Menghapus script manual sebelumnya karena logika sudah dipindahkan ke modal-manager.js --}}
-@endpush
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    @if(session('success'))
+        Swal.fire({
+            toast: true,
+            icon: 'success',
+            title: "{{ session('success') }}",
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+        });
+    @endif
 
-@push('styles')
-    {{-- Custom styles tetap dipertahankan untuk styling yang spesifik --}}
-    <style>
-        .page-title { margin-bottom: 25px; }
-        .form-select-sm {
-            height: calc(1.5em + 0.75rem + 2px);
-            padding: 0.25rem 0.5rem;
-            font-size: 0.875rem;
-            line-height: 1.5;
-            border-radius: 0.2rem;
-            box-shadow: none !important;
-            border-color: #e5e7eb;
-        }
-        .form-select-sm:focus {
-            border-color: #2563eb;
-        }
-       
-      .btn-action.btn-primary,
-      .btn-action.btn-primary:focus,
-      .btn-action.btn-primary:focus-visible,
-      .btn-action.btn-primary:focus-within,
-      .btn-action.btn-primary:active {
-          outline: none !important;
-          box-shadow: none !important;
-          border: none !important;
-      }
+    @if($errors->any())
+        Swal.fire({
+            toast: true,
+            icon: 'error',
+            title: "Terdapat Kesalahan Input",
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 4000
+        });
+    @endif
 
-      /* Hilangkan Chrome default focus ring */
-      .btn-action.btn-primary::-moz-focus-inner {
-          border: 0 !important;
-      }
-
-      .btn-action.btn-primary:focus-visible {
-          outline: none !important;
-      }
-
-      /* Menghilangkan default focus ring Chrome */
-      :focus-visible {
-          outline: none !important;
-      }
-    </style>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.body.addEventListener('click', function(e) {
+            if (e.target.closest('.btn-edit-user')) {
+                const btn = e.target.closest('.btn-edit-user');
+                const url = btn.dataset.url;
+                
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                
+                fetch(url)
+                    .then(response => response.text())
+                    .then(html => {
+                        document.getElementById('editUserModalContent').innerHTML = html;
+                        const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+                        modal.show();
+                        btn.innerHTML = '<i class="fa-solid fa-pen"></i>';
+                    })
+                    .catch(err => {
+                        console.error('Error:', err);
+                        btn.innerHTML = '<i class="fa-solid fa-pen"></i>';
+                        Swal.fire('Error', 'Gagal memuat data edit.', 'error');
+                    });
+            }
+        });
+    });
+</script>
 @endpush

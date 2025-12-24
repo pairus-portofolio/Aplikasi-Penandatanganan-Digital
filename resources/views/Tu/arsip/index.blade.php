@@ -21,6 +21,7 @@
           <th>Tanggal Finalisasi</th>
           <th>Status</th>
           <th>Aksi</th>
+          <th>File</th>
         </tr>
       </thead>
 
@@ -50,6 +51,13 @@
           <td>
             <a href="{{ route('tu.arsip.show', $d->id) }}" class="btn-action abu">
                 Lihat
+            </a>
+          </td>
+
+          {{-- File --}}
+          <td>
+            <a href="{{ route('tu.arsip.download', $d->id) }}" class="btn-action biru" title="Download">
+                <i class="fas fa-download"></i>
             </a>
           </td>
 
