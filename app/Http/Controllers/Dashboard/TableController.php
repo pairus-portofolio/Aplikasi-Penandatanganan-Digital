@@ -230,7 +230,7 @@ class TableController extends Controller
         }
         if ($isActive && !$isTU) {
             $type = 'work';
-            $label = 'Kerjakan';
+            $label = 'Lihat';
             $class = 'btn-primary';
         }
 
