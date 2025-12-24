@@ -9,26 +9,8 @@ use App\Models\WorkflowStep;
 use App\Enums\DocumentStatusEnum;
 use App\Enums\RoleEnum;
 
-/**
- * Controller untuk mengelola cards dan statistik di dashboard.
- *
- * Menghitung jumlah dokumen yang perlu dikerjakan berdasarkan role user
- * dan menampilkan statistik dalam bentuk cards di halaman dashboard.
- *
- * @package App\Http\Controllers\Dashboard
- */
 class CardsController extends Controller
 {
-    /**
-     * Tampilkan halaman dashboard dengan data cards dan tabel dokumen.
-     *
-     * Menghitung statistik dokumen berdasarkan role:
-     * - TU: Total surat keluar
-     * - Kaprodi: Surat perlu paraf dan review
-     * - Kajur/Sekjur: Surat perlu tanda tangan
-     *
-     * @return \Illuminate\View\View
-     */
     public function index()
     {
         $user = Auth::user();
@@ -44,7 +26,8 @@ class CardsController extends Controller
             ? $docs->total()
             : 0;
 
-        if (in_array($roleName, RoleEnum::getKaprodiRoles())) {
+        // PERBAIKAN: Gunakan getKoordinatorRoles()
+        if (in_array($roleName, RoleEnum::getKoordinatorRoles())) {
 
             $suratPerluParaf = $docs->filter(function ($doc) use ($user) {
 
