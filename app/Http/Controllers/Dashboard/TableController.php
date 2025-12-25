@@ -183,7 +183,7 @@ class TableController extends Controller
         // Dosen tidak akan pernah masuk ke sini karena isActive pasti false
         if ($isActive && $role !== RoleEnum::TU) {
             $type = 'work';
-            $label = 'Proses';
+            $label = 'Lihat';
             $class = 'btn-primary';
         }
 

@@ -5,13 +5,10 @@
 @section('content')
 <div class="container-fluid px-4">
 
-    {{-- CSS Tambahan --}}
-    <style>
-        /* Pagination custom */
-        .pagination { margin-bottom: 0; justify-content: end; }
-    </style>
+    {{-- PANGGIL CSS EKSTERNAL --}}
+    <link rel="stylesheet" href="{{ asset('css/admin/index.css') }}">
     
-    {{-- 1. SAPAAN --}}
+    {{-- SAPAAN --}}
     <div class="mt-4 mb-4">
         <h2 class="fw-bold text-dark">Selamat Datang, {{ Auth::user()->nama_lengkap }}</h2>
         <p class="text-muted">
@@ -21,11 +18,11 @@
     </div>
 
     <div class="row">
-        {{-- KOLOM KIRI: Tambah Anggota --}}
-        <div class="col-lg-4 mb-4">
+        {{-- KOLOM KIRI: DIPERKECIL (Jadi col-lg-3) --}}
+        <div class="col-lg-3 mb-4">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-primary text-white py-3">
-                    <h6 class="mb-0 fw-bold"><i class="fa-solid fa-user-plus me-2"></i>Tambah Anggota Baru</h6>
+                    <h6 class="mb-0 fw-bold"><i class="fa-solid fa-user-plus me-2"></i>Tambah Anggota</h6>
                 </div>
                 <div class="card-body">
                     <form action="{{ route('admin.users.store') }}" method="POST">
@@ -42,24 +39,24 @@
                             <label class="form-label fw-semibold small">Password</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light"><i class="fa-solid fa-lock"></i></span>
-                                <input type="password" name="password" class="form-control" placeholder="Minimal 6 karakter" required>
+                                <input type="password" name="password" class="form-control" placeholder="Min 6 karakter" required>
                             </div>
                         </div>
                         
                         <div class="alert alert-light border-start border-4 border-info py-2 small text-muted">
-                            <i class="fa-solid fa-circle-info me-1 text-info"></i> Role otomatis: <strong>Dosen</strong>.
+                            <i class="fa-solid fa-circle-info me-1 text-info"></i> Role: <strong>Dosen</strong>.
                         </div>
 
                         <button type="submit" class="btn btn-primary w-100 fw-bold">
-                            <i class="fa-solid fa-save me-1"></i> Simpan Anggota
+                            <i class="fa-solid fa-save me-1"></i> Simpan
                         </button>
                     </form>
                 </div>
             </div>
         </div>
 
-        {{-- KOLOM KANAN: Tabel & Filter --}}
-        <div class="col-lg-8">
+        {{-- KOLOM KANAN: DIPERBESAR (Jadi col-lg-9) --}}
+        <div class="col-lg-9">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                     <h6 class="mb-0 fw-bold text-dark">Daftar Pengguna</h6>
@@ -68,16 +65,16 @@
                 <div class="card-body p-0">
                     
                     {{-- Filter & Search --}}
-                    <div class="px-3 py-2 bg-light border-bottom">
+                    <div class="px-3 py-3 bg-light border-bottom">
                         <form method="GET" action="{{ route('admin.users.index') }}" class="row g-2 align-items-center">
                             <div class="col-md-5">
-                                <div class="input-group input-group-sm">
+                                <div class="input-group">
                                     <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
                                     <input type="text" name="search" class="form-control border-start-0" placeholder="Cari nama..." value="{{ request('search') }}">
                                 </div>
                             </div>
                             <div class="col-md-4">
-                                <select name="role_id" class="form-select form-select-sm">
+                                <select name="role_id" class="form-select">
                                     <option value="">Semua Role</option>
                                     @foreach($roles as $role)
                                         <option value="{{ $role->id }}" {{ request('role_id') == $role->id ? 'selected' : '' }}>
@@ -87,10 +84,10 @@
                                 </select>
                             </div>
                             <div class="col-md-3 d-flex gap-1">
-                                <button type="submit" class="btn btn-primary flex-fill btn-sm">Cari</button>
+                                <button type="submit" class="btn btn-primary flex-fill">Cari</button>
                                 
                                 @if(request('search') || request('role_id'))
-                                    <a href="{{ route('admin.users.index') }}" class="btn btn-secondary btn-sm" style="min-width: 60px;">
+                                    <a href="{{ route('admin.users.index') }}" class="btn btn-secondary" style="min-width: 70px;">
                                         Reset
                                     </a>
                                 @endif
@@ -100,13 +97,14 @@
 
                     @if($users->count() > 0)
                         <div class="table-responsive">
-                            <table class="table table-hover mb-0" style="table-layout: fixed; width: 100%;">
+                            {{-- Perhatikan class 'table-fixed' dan 'table-spacious' --}}
+                            <table class="table table-hover mb-0 table-fixed table-spacious">
                                 <thead class="bg-light text-muted small text-uppercase">
                                     <tr>
-                                        <th class="ps-4" style="width: 35%;">Nama Lengkap</th>
+                                        <th class="ps-4" style="width: 30%;">Nama Lengkap</th>
                                         <th style="width: 30%;">Email</th>
                                         <th style="width: 25%;">Role</th>
-                                        <th class="text-center" style="width: 10%;">Aksi</th>
+                                        <th class="text-center" style="width: 15%;">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -121,7 +119,7 @@
                                         <td>
                                             @php
                                                 $roleColor = match($user->role->nama_role ?? '') {
-                                                    'Tata Usaha' => 'bg-danger', // PERBAIKAN: TU Jadi Merah (Danger)
+                                                    'Tata Usaha' => 'bg-danger',
                                                     'Koordinator Program Studi' => 'bg-primary',
                                                     'Dosen' => 'bg-success',
                                                     'Ketua Jurusan' => 'bg-warning text-dark',
@@ -135,13 +133,25 @@
                                             </span>
                                         </td>
                                         <td class="text-center">
-                                            <button type="button" 
-                                                    class="btn btn-sm btn-outline-warning btn-edit-user rounded-circle"
-                                                    data-id="{{ $user->id }}"
-                                                    data-url="{{ route('admin.users.edit', $user->id) }}"
-                                                    title="Edit User">
-                                                <i class="fa-solid fa-pen"></i>
-                                            </button>
+                                            <div class="d-flex justify-content-center gap-2">
+                                                <button type="button" 
+                                                        class="btn btn-sm btn-outline-warning btn-edit-user rounded-circle"
+                                                        data-id="{{ $user->id }}"
+                                                        data-url="{{ route('admin.users.edit', $user->id) }}"
+                                                        title="Edit User">
+                                                    <i class="fa-solid fa-pen"></i>
+                                                </button>
+                                                
+                                                <form action="{{ route('admin.users.destroy', $user->id) }}" method="POST" class="d-inline form-delete">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="button" 
+                                                            class="btn btn-sm btn-outline-danger btn-delete-user rounded-circle"
+                                                            title="Hapus User">
+                                                        <i class="fa-solid fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
                                         </td>
                                     </tr>
                                     @endforeach
@@ -149,7 +159,6 @@
                             </table>
                         </div>
                         
-                        {{-- Pagination --}}
                         <div class="p-3 border-top">
                             {{ $users->links('partials.pagination') }}
                         </div>
@@ -169,7 +178,7 @@
         </div>
     </div>
 
-    {{-- PERBAIKAN: Footer Tulisan Abu-Abu --}}
+    {{-- Footer --}}
     <div class="mt-5 mb-4 text-center">
         <p class="text-muted small fw-bold" style="letter-spacing: 0.5px;">
             Sistem Manajemen Surat - Politeknik Negeri Bandung
@@ -216,6 +225,7 @@
     @endif
 
     document.addEventListener('DOMContentLoaded', function() {
+        // Handler Edit
         document.body.addEventListener('click', function(e) {
             if (e.target.closest('.btn-edit-user')) {
                 const btn = e.target.closest('.btn-edit-user');
@@ -236,6 +246,29 @@
                         btn.innerHTML = '<i class="fa-solid fa-pen"></i>';
                         Swal.fire('Error', 'Gagal memuat data edit.', 'error');
                     });
+            }
+        });
+
+        // Handler Hapus
+        document.body.addEventListener('click', function(e) {
+            if (e.target.closest('.btn-delete-user')) {
+                e.preventDefault();
+                const form = e.target.closest('.form-delete');
+                
+                Swal.fire({
+                    title: 'Hapus Pengguna?',
+                    text: "Data yang dihapus tidak dapat dikembalikan!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Ya, Hapus!',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
             }
         });
     });
