@@ -100,7 +100,9 @@ class TandatanganController extends Controller
             $savedSignature = [
                 'x' => $activeStep->posisi_x,
                 'y' => $activeStep->posisi_y,
-                'page' => $activeStep->halaman
+                'page' => $activeStep->halaman,
+                'width' => $activeStep->width ?? 200,
+                'height' => $activeStep->height ?? 100
             ];
         }
 
@@ -213,7 +215,9 @@ class TandatanganController extends Controller
         $request->validate([
             'posisi_x' => 'nullable|numeric|min:0|max:2000',
             'posisi_y' => 'nullable|numeric|min:0|max:3000',
-            'halaman'  => 'nullable|integer|min:1'
+            'halaman'  => 'nullable|integer|min:1',
+            'width'    => 'nullable|numeric',
+            'height'   => 'nullable|numeric'
         ]);
 
         $workflowStep = WorkflowStep::where('document_id', $id)
@@ -229,6 +233,8 @@ class TandatanganController extends Controller
                 'posisi_x' => $request->posisi_x,
                 'posisi_y' => $request->posisi_y,
                 'halaman'  => $request->halaman,
+                'width'    => $request->width,
+                'height'   => $request->height,
                 'tanggal_aksi' => now()
             ]);
         } catch (\Exception $e) {
