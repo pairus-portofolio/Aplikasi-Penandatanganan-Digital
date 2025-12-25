@@ -54,6 +54,19 @@
                 </div>
             </div>
 
+            {{-- SLIDER RESIZE --}}
+            <div class="paraf-resize-control" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px;">
+                <label for="parafSize" style="font-size: 0.9rem; font-weight: 600; color: #333; display:block; margin-bottom:5px;">
+                    Ukuran Paraf: <span id="sizeLabel">100</span>
+                </label>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <i class="fa-solid fa-image" style="font-size: 0.8rem; color: #666;"></i>
+                    {{-- Range 50 sampai 200 (satuan point untuk PDF) --}}
+                    <input type="range" id="parafSize" min="25" max="200" value="100" style="width: 100%; cursor: pointer;">
+                    <i class="fa-solid fa-image" style="font-size: 1.2rem; color: #666;"></i>
+                </div>
+            </div>
+
             {{-- Hidden File Input --}}
             <input type="file"
                    id="parafImageUpload"

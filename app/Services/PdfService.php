@@ -81,7 +81,6 @@ class PdfService
 
         // 4. Process FPDI
         try {
-            // Use 'pt' (points) for consistency with frontend coordinates
             $pdf = new Fpdi('P', 'pt');
             $pageCount = $pdf->setSourceFile($sourcePath);
 
@@ -97,14 +96,12 @@ class PdfService
                     $x = $workflow->posisi_x;
                     $y = $workflow->posisi_y;
                     
-                    // Default width 100pt (same as frontend 100px assumption)
-                    $width = 100;
+                    $width = $workflow->width ? $workflow->width : 100;
 
                     $pdf->Image($fullImagePath, $x, $y, $width);
                 }
             }
 
-            // Overwrite original file
             $pdf->Output($sourcePath, 'F');
 
         } catch (\Exception $e) {
