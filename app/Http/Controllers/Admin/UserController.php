@@ -13,10 +13,10 @@ use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
-    // Helper untuk dropdown filter (kecuali admin)
+    // Helper untuk mengambil role selain Admin
     private function getAssignableRoles()
     {
-        return Role::where('id', '!=', RoleEnum::ID_ADMIN)->get();
+        return Role::where('nama_role', '!=', RoleEnum::ADMIN)->get();
     }
 
     public function index(Request $request)
@@ -27,12 +27,12 @@ class UserController extends Controller
 
         $query = User::with('role')->where('role_id', '!=', RoleEnum::ID_ADMIN);
 
-        // Filter: Pencarian Nama
+        // Filter Search
         if ($request->has('search') && $request->search != '') {
             $query->where('nama_lengkap', 'ilike', '%' . $request->search . '%');
         }
 
-        // Filter: Role
+        // Filter Role
         if ($request->has('role_id') && $request->role_id != '') {
             $query->where('role_id', $request->role_id);
         }
@@ -44,28 +44,53 @@ class UserController extends Controller
         return view('admin.users.index', compact('users', 'roles'));
     }
 
-    // PERBAIKAN: Tambahkan fungsi store ini
     public function store(Request $request)
     {
         if (Auth::user()->role_id != RoleEnum::ID_ADMIN) {
             abort(403);
         }
 
+        // 1. Validasi (Tetap Sama)
         $validated = $request->validate([
             'nama_lengkap' => 'required|string|max:255',
-            'email'        => 'required|email|unique:users,email',
+            'email' => [
+                'required',
+                'email',
+                // Rule ini membolehkan email yang sudah di-soft delete untuk dipakai lagi
+                \Illuminate\Validation\Rule::unique('users')->whereNull('deleted_at')
+            ],
             'password'     => 'required|string|min:6',
         ]);
 
-        // Logic: Tambah user baru, role otomatis diset jadi ID_DOSEN (3)
-        User::create([
-            'nama_lengkap' => $validated['nama_lengkap'],
-            'email'        => $validated['email'],
-            'password'     => Hash::make($validated['password']),
-            'role_id'      => RoleEnum::ID_DOSEN, 
-        ]);
+        // 2. CEK: Apakah email ini ada di tong sampah?
+        $existingUser = User::withTrashed() // Sertakan user yang dihapus
+                            ->where('email', $validated['email'])
+                            ->first();
 
-        return back()->with('success', 'Anggota baru berhasil ditambahkan sebagai Dosen.');
+        // 3. LOGIKA: Restore atau Create Baru
+        if ($existingUser && $existingUser->trashed()) {
+            // SKENARIO A: User Lama Kembali -> Kita Restore
+            $existingUser->restore(); 
+            
+            // Update data lama dengan input baru (Nama & Password baru)
+            $existingUser->update([
+                'nama_lengkap' => $validated['nama_lengkap'],
+                'password'     => Hash::make($validated['password']),
+                'role_id'      => RoleEnum::ID_DOSEN, // Pastikan role diset
+            ]);
+
+            return back()->with('success', 'Anggota lama berhasil diaktifkan kembali.');
+        } else {
+            // SKENARIO B: User Benar-Benar Baru -> Create
+            User::create([
+                'nama_lengkap' => $validated['nama_lengkap'],
+                'email'        => $validated['email'],
+                'password'     => Hash::make($validated['password']),
+                'role_id'      => RoleEnum::ID_DOSEN, 
+            ]);
+
+            return back()->with('success', 'Anggota baru berhasil ditambahkan sebagai Dosen.');
+        }
     }
 
     public function edit($id)
@@ -74,6 +99,12 @@ class UserController extends Controller
              abort(403);
         }
         $user = User::findOrFail($id);
+        
+        // Cegah edit sesama admin
+        if ($user->role_id == RoleEnum::ID_ADMIN) {
+            return '<div class="alert alert-danger">Tidak dapat mengedit akun Administrasi.</div>';
+        }
+
         $rolesToAssign = $this->getAssignableRoles();
 
         return view('admin.users.modal_edit', compact('user', 'rolesToAssign'));
@@ -111,5 +142,30 @@ class UserController extends Controller
         $user->update($data);
 
         return back()->with('success', "Data {$user->nama_lengkap} berhasil diperbarui.");
+    }
+
+    // --- BAGIAN PENTING YANG TADI HILANG ---
+    public function destroy($id)
+    {
+        if (Auth::user()->role_id != RoleEnum::ID_ADMIN) {
+             return back()->withErrors('Akses ditolak.');
+        }
+
+        $user = User::findOrFail($id);
+
+        // Validasi: Tidak boleh menghapus diri sendiri
+        if ($user->id == Auth::id()) {
+            return back()->withErrors('Anda tidak dapat menghapus akun Anda sendiri.');
+        }
+
+        // Validasi: Tidak boleh menghapus sesama Admin
+        if ($user->role_id == RoleEnum::ID_ADMIN) {
+            return back()->withErrors('Tidak dapat menghapus akun Administrasi.');
+        }
+
+        // Hapus (Soft Delete)
+        $user->delete();
+
+        return back()->with('success', 'Pengguna berhasil dihapus.');
     }
 }

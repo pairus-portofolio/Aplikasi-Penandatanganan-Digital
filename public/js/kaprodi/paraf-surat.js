@@ -152,6 +152,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const fileInput = document.getElementById("parafImageUpload");
     const gantiBtn = document.getElementById("parafGantiBtn");
     const hapusBtn = document.getElementById("parafHapusBtn");
+    const slider = document.getElementById('parafSize');
+    const sizeLabel = document.getElementById('sizeLabel');
 
     // ==========================================
     // EVENT LISTENERS
@@ -191,6 +193,38 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    if (slider && sizeLabel) {
+        // Set nilai awal dari database (jika ada)
+        if (config.savedData && config.savedData.width) {
+            slider.value = config.savedData.width;
+            sizeLabel.innerText = config.savedData.width + '%';
+            if(parafImage) parafImage.style.width = config.savedData.width + 'px';
+        }
+
+        slider.addEventListener('input', function() {
+            const val = this.value;
+            sizeLabel.innerText = val + '%';
+            
+            // 1. Resize gambar di sidebar (Preview)
+            if(parafImage) {
+                parafImage.style.width = val + 'px';
+                parafImage.style.height = 'auto';
+            }
+
+            // 2. Resize paraf yang SUDAH ada di atas PDF (Real-time)
+            const pdfContainer = document.getElementById('pdf-render-container');
+            if (pdfContainer) {
+                // Hanya cari IMG (Paraf) agar tidak merusak elemen lain
+                const droppedItems = Array.from(pdfContainer.querySelectorAll('img')); 
+                
+                droppedItems.forEach(item => {
+                    item.style.width = val + 'px';
+                    item.style.height = 'auto'; 
+                });
+            }
+        });
+    }
+
     // ==========================================
     // API FUNCTIONS
     // ==========================================
@@ -205,17 +239,16 @@ document.addEventListener('DOMContentLoaded', function () {
     function saveParafToDB(data) {
         // Menggunakan const csrfToken yang sudah diinisialisasi
         if (!csrfToken) return;
+        const currentWidth = document.getElementById('parafSize').value;
 
         // [REVISI]: Menggunakan operator ?? null untuk memastikan nilai adalah null jika 0 atau falsy lainnya.
         const payload = {
             posisi_x: data.x ?? null, 
             posisi_y: data.y ?? null,
-            halaman: data.page ?? null
+            halaman: data.page ?? null,
+            width: currentWidth, // Kirim width
+            height: 0
         };
-        
-        // Cek jika data.x, data.y, atau data.page adalah 0 (nol).
-        // Pada JS, 0 || null akan menghasilkan null, yang kita inginkan agar validasi Laravel lolos.
-        // Namun, jika nilai asli adalah 0 (koordinat), kita harus mengirim 0.
 
         // Perbaiki payload agar 0 tetap 0 (koordinat valid)
         payload.posisi_x = data.x !== undefined && data.x !== null ? data.x : null;
@@ -319,10 +352,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     parafBox.classList.add("has-image");
                     const t = parafBox.querySelector('.paraf-text');
                     if (t) t.style.display = 'none';
-
-                    // Cleanup object URL setelah load
-                    //parafImage.onload = () => URL.revokeObjectURL(objectUrl);
-
 
                     Swal.fire({
                         icon: 'success',
@@ -430,5 +459,32 @@ document.addEventListener('DOMContentLoaded', function () {
                     isDeleting = false;
                 });
         });
+    }
+
+    const pdfContainer = document.getElementById('pdf-render-container');
+    
+    if (pdfContainer) {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    // Cek nodeType 1 (Element)
+                    if (node.nodeType === 1) {
+                        
+                        if (node.tagName === 'IMG') {
+                            
+                            // Ambil nilai slider saat ini
+                            const currentSize = document.getElementById('parafSize') ? document.getElementById('parafSize').value : 100;
+                            
+                            // Terapkan ukuran
+                            node.style.width = currentSize + 'px';
+                            node.style.height = 'auto';
+                        }
+                    }
+                });
+            });
+        });
+
+        // Mulai mengawasi container PDF
+        observer.observe(pdfContainer, { childList: true, subtree: true });
     }
 });

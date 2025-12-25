@@ -98,7 +98,9 @@ class ParafController extends Controller
             $savedParaf = [
                 'x' => $activeStep->posisi_x,
                 'y' => $activeStep->posisi_y,
-                'page' => $activeStep->halaman
+                'page' => $activeStep->halaman,
+                'width' => $activeStep->width ?? 100,
+                'height' => $activeStep->height
             ];
         }
 
@@ -304,7 +306,9 @@ class ParafController extends Controller
         $request->validate([
             'posisi_x' => 'nullable|numeric|min:0|max:2000',
             'posisi_y' => 'nullable|numeric|min:0|max:3000',
-            'halaman'  => 'nullable|integer|min:1'
+            'halaman'  => 'nullable|integer|min:1',
+            'width'    => 'nullable|numeric|min:20|max:500',
+            'height'   => 'nullable|numeric'
         ]);
 
         $workflowStep = WorkflowStep::where('document_id', $id)
@@ -318,6 +322,8 @@ class ParafController extends Controller
             'posisi_x' => $request->posisi_x,
             'posisi_y' => $request->posisi_y,
             'halaman'  => $request->halaman,
+            'width'    => $request->width,
+            'height'   => $request->height,
             'tanggal_aksi' => now()
         ];
 

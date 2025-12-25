@@ -1,0 +1,24 @@
+/* public/css/admin/index.css */
+
+.bg-purple { 
+    background-color: #8e44ad !important; 
+    color: white !important; 
+}
+
+.pagination { 
+    margin-bottom: 0; 
+    justify-content: end; 
+}
+
+.table-fixed {
+    table-layout: fixed;
+    width: 100%;
+}
+
+/* TAMBAHAN: Agar baris tabel lebih lega (tidak mepet atas-bawah) */
+.table-spacious th, 
+.table-spacious td {
+    padding-top: 15px;
+    padding-bottom: 15px;
+    padding-left: 20px; /* Jarak kiri biar ga mepet garis */
+}
