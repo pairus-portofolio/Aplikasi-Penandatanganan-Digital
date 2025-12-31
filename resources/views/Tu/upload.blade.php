@@ -69,9 +69,9 @@
                            required>
                 </div>
 
-                {{-- 1. Pemilihan Pemaraf (Koordinator) --}}
+                {{-- 1. Pemilihan Pemaraf --}}
                 <div class="detail-field-box">
-                    <label for="parafSelect">1. Pilih Pemaraf (Koordinator Program Studi):</label>
+                    <label for="parafSelect">1. Pilih Pemaraf:</label>
                     <select id="parafSelect" class="detail-input-inner">
                         <option value="" disabled selected hidden>Pilih untuk Paraf...</option>
                         @foreach($kaprodis as $user)
@@ -89,9 +89,9 @@
                     </div>
                 </div>
 
-                {{-- 2. Pemilihan Penandatangan (Kajur/Sekjur) --}}
+                {{-- 2. Pemilihan Penandatangan --}}
                 <div class="detail-field-box">
-                    <label for="ttdSelect">2. Pilih Penandatangan (Ketua Jurusan/Sekretaris Jurusan):</label>
+                    <label for="ttdSelect">2. Pilih Penandatangan:</label>
                     <select id="ttdSelect" class="detail-input-inner">
                         <option value="" disabled selected hidden>Pilih untuk Tanda Tangan...</option>
                         @foreach($penandatangan as $user)
