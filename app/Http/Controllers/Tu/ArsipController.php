@@ -10,19 +10,28 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\File;
 use Ilovepdf\Ilovepdf;
 
+/**
+ * Controller untuk mengelola arsip dokumen final oleh TU.
+ *
+ * Menangani daftar arsip, preview, dan download dokumen dengan
+ * fitur kompresi otomatis untuk file besar menggunakan iLovePDF.
+ *
+ * @package App\Http\Controllers\Tu
+ */
 class ArsipController extends Controller
 {
     /**
-     * Menampilkan daftar arsip final dengan pencarian & pagination.
+     * Tampilkan daftar arsip dokumen final dengan fitur pencarian.
+     *
+     * @param Request $request HTTP request dengan parameter pencarian
+     * @return \Illuminate\View\View
      */
     public function index(Request $request)
     {
-        // Query dasar
         $documents = Document::query()
             ->where('status', DocumentStatusEnum::FINAL)
             ->with('uploader');
 
-        // Logika pencarian (judul surat atau nama pengunggah)
         $documents->when($request->filled('search'), function ($query) use ($request) {
         $searchTerm = '%' . strtolower($request->search) . '%';
 
@@ -34,7 +43,6 @@ class ArsipController extends Controller
         });
     });
 
-        // Sorting & pagination
         $documents = $documents->orderBy('updated_at', 'desc')
             ->paginate(10)
             ->withQueryString();
@@ -43,7 +51,10 @@ class ArsipController extends Controller
     }
 
     /**
-     * Menampilkan halaman detail arsip (full page).
+     * Tampilkan halaman detail arsip dokumen.
+     *
+     * @param int $id ID dokumen
+     * @return \Illuminate\View\View
      */
     public function show($id)
     {
@@ -52,7 +63,10 @@ class ArsipController extends Controller
     }
 
     /**
-     * Menampilkan preview file PDF secara inline.
+     * Preview file PDF secara inline di browser.
+     *
+     * @param int $id ID dokumen
+     * @return \Illuminate\Http\Response
      */
     public function preview($id)
     {
@@ -66,14 +80,16 @@ class ArsipController extends Controller
     }
 
     /**
-     * Mengunduh file PDF.
-     * Jika ukuran > 1MB, otomatis dikompres menggunakan iLovePDF.
+     * Download file PDF dengan kompresi otomatis untuk file > 1MB.
+     *
+     * @param int $id ID dokumen
+     * @return \Symfony\Component\HttpFoundation\BinaryFileResponse
      */
     public function download($id)
     {
         $document = Document::findOrFail($id);
         $sourcePath = $this->findPhysicalPath($document->file_path);
-        $downloadName = $document->file_name ?? 'dokumen_arsip.pdf';
+        $downloadName = $document->judul_surat . '.pdf';
 
         $oneMB = 1048576;
 

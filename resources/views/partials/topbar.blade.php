@@ -1,16 +1,15 @@
-<!-- Topbar utama yang berisi tombol sidebar dan informasi pengguna -->
 <header class="topbar">
   <div class="tleft">
 
-    <!-- Tombol untuk membuka/menutup sidebar -->
     <button id="hb" class="hamb" aria-label="Toggle sidebar">
       <i class="fa-solid fa-bars"></i>
     </button>
 
-    <!-- Menampilkan judul dashboard sesuai role pengguna -->
     <h2 style="font-size:20px;font-weight:700;margin:0;">
       @php
         $roleId = Auth::user()->role_id ?? null;
+        // Ambil ID dari Enum agar lebih aman (opsional, tapi disarankan)
+        // atau pakai angka langsung sesuai database.
       @endphp
 
       @switch($roleId)
@@ -19,19 +18,25 @@
               @break
 
           @case(2)
-              Dashboard Kaprodi D3
+              {{-- ID 2 sekarang adalah Koordinator Program Studi --}}
+              Dashboard Koordinator Program Studi
               @break
 
           @case(3)
-              Dashboard Kaprodi D4
+              {{-- ID 3 sekarang adalah Dosen --}}
+              Dashboard Dosen
               @break
 
           @case(4)
-              Dashboard Kajur
+              Dashboard Ketua Jurusan
               @break
 
           @case(5)
-              Dashboard Sekjur
+              Dashboard Sekretaris Jurusan
+              @break
+
+          @case(6) 
+              Dashboard Administrasi
               @break
 
           @default
@@ -40,11 +45,9 @@
     </h2>
   </div>
 
-  <!-- Bagian kanan topbar yang menampilkan nama & avatar user -->
   <div class="user-wrap">
     <span>{{ Auth::user()->nama_lengkap ?? 'Nama Pengguna' }}</span>
 
-    <!-- Avatar user (ikon profil) -->
     <button class="avatar" title="{{ Auth::user()->role->nama_role ?? '' }}">
       <i class="fa-solid fa-user"></i>
     </button>

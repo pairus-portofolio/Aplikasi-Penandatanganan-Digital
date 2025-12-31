@@ -152,6 +152,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const fileInput = document.getElementById("parafImageUpload");
     const gantiBtn = document.getElementById("parafGantiBtn");
     const hapusBtn = document.getElementById("parafHapusBtn");
+    const slider = document.getElementById('parafSize');
+    const sizeLabel = document.getElementById('sizeLabel');
 
     // ==========================================
     // EVENT LISTENERS
@@ -191,30 +193,80 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    if (slider && sizeLabel) {
+        // Set nilai awal dari database (jika ada)
+        if (config.savedData && config.savedData.width) {
+            slider.value = config.savedData.width;
+            sizeLabel.innerText = config.savedData.width + '%';
+            if(parafImage) parafImage.style.width = config.savedData.width + 'px';
+        }
+
+        slider.addEventListener('input', function() {
+            const val = this.value;
+            sizeLabel.innerText = val + '%';
+            
+            // 1. Resize gambar di sidebar (Preview)
+            if(parafImage) {
+                parafImage.style.width = val + 'px';
+                parafImage.style.height = 'auto';
+            }
+
+            // 2. Resize paraf yang SUDAH ada di atas PDF (Real-time)
+            const pdfContainer = document.getElementById('pdf-render-container');
+            if (pdfContainer) {
+                // Hanya cari IMG (Paraf) agar tidak merusak elemen lain
+                const droppedItems = Array.from(pdfContainer.querySelectorAll('img')); 
+                
+                droppedItems.forEach(item => {
+                    item.style.width = val + 'px';
+                    item.style.height = 'auto'; 
+                });
+            }
+        });
+    }
+
     // ==========================================
     // API FUNCTIONS
     // ==========================================
 
-    /**
+   /**
      * Menyimpan posisi paraf ke database
      * @param {Object} data - Data posisi paraf
-     * @param {number} data.x - Koordinat X
-     * @param {number} data.y - Koordinat Y
-     * @param {number} data.page - Nomor halaman
+     * @param {number|null} data.x - Koordinat X
+     * @param {number|null} data.y - Koordinat Y
+     * @param {number|null} data.page - Nomor halaman
      */
     function saveParafToDB(data) {
+        // Menggunakan const csrfToken yang sudah diinisialisasi
+        if (!csrfToken) return;
+        const currentWidth = document.getElementById('parafSize').value;
+
+        // [REVISI]: Menggunakan operator ?? null untuk memastikan nilai adalah null jika 0 atau falsy lainnya.
+        const payload = {
+            posisi_x: data.x ?? null, 
+            posisi_y: data.y ?? null,
+            halaman: data.page ?? null,
+            width: currentWidth, // Kirim width
+            height: 0
+        };
+
+        // Perbaiki payload agar 0 tetap 0 (koordinat valid)
+        payload.posisi_x = data.x !== undefined && data.x !== null ? data.x : null;
+        payload.posisi_y = data.y !== undefined && data.y !== null ? data.y : null;
+        payload.halaman = data.page !== undefined && data.page !== null ? data.page : null;
+        
+        if (payload.posisi_x === 0) payload.posisi_x = 0; // Pastikan 0 tidak jadi null
+        if (payload.posisi_y === 0) payload.posisi_y = 0;
+        if (payload.halaman === 0) payload.halaman = 1; // Halaman minimal 1
+
         fetch(config.saveUrl, {
             method: "POST",
             headers: {
                 "X-CSRF-TOKEN": csrfToken,
-                "Content-Type": "application/json",
+                "Content-Type": "application/json", 
                 "Accept": "application/json"
             },
-            body: JSON.stringify({
-                posisi_x: data.x,
-                posisi_y: data.y,
-                halaman: data.page
-            })
+            body: JSON.stringify(payload) // Menggunakan payload yang sudah dipastikan tipenya
         })
             .then(handleFetchResponse)
             .then(resData => {
@@ -225,7 +277,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 Swal.fire('Error', PARAF_CONFIG.MESSAGES.SAVE_FAILED, 'error');
             });
     }
-
     /**
      * Menghapus posisi paraf dari database
      */
@@ -301,9 +352,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     parafBox.classList.add("has-image");
                     const t = parafBox.querySelector('.paraf-text');
                     if (t) t.style.display = 'none';
-
-                    // Cleanup object URL setelah load
-                    parafImage.onload = () => URL.revokeObjectURL(objectUrl);
 
                     Swal.fire({
                         icon: 'success',
@@ -411,5 +459,32 @@ document.addEventListener('DOMContentLoaded', function () {
                     isDeleting = false;
                 });
         });
+    }
+
+    const pdfContainer = document.getElementById('pdf-render-container');
+    
+    if (pdfContainer) {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    // Cek nodeType 1 (Element)
+                    if (node.nodeType === 1) {
+                        
+                        if (node.tagName === 'IMG') {
+                            
+                            // Ambil nilai slider saat ini
+                            const currentSize = document.getElementById('parafSize') ? document.getElementById('parafSize').value : 100;
+                            
+                            // Terapkan ukuran
+                            node.style.width = currentSize + 'px';
+                            node.style.height = 'auto';
+                        }
+                    }
+                });
+            });
+        });
+
+        // Mulai mengawasi container PDF
+        observer.observe(pdfContainer, { childList: true, subtree: true });
     }
 });

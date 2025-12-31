@@ -75,9 +75,6 @@ class TandatanganController extends Controller
     {
         $document = Document::findOrFail($id);
 
-        // Cek akses:
-        // 1. Jika giliran user (checkAccess = true) -> OK
-        // 2. Jika bukan giliran, cek apakah user ada di workflow history (untuk view only) -> OK
         $isCurrentTurn = $this->workflowService->checkAccess($document->id);
         $isInWorkflow = WorkflowStep::where('document_id', $id)->where('user_id', Auth::id())->exists();
 
@@ -86,10 +83,7 @@ class TandatanganController extends Controller
                 ->withErrors('Anda tidak memiliki akses ke dokumen ini.');
         }
 
-        // Jika bukan giliran tapi ada di workflow, kita set flag view-only
         $isViewOnly = !$isCurrentTurn;
-
-        // [MODIFIED] Jika View Only, gunakan tampilan shared yang bersih
         if ($isViewOnly) {
             return view('shared.view-document', [
                 'document' => $document,
@@ -106,7 +100,9 @@ class TandatanganController extends Controller
             $savedSignature = [
                 'x' => $activeStep->posisi_x,
                 'y' => $activeStep->posisi_y,
-                'page' => $activeStep->halaman
+                'page' => $activeStep->halaman,
+                'width' => $activeStep->width ?? 200,
+                'height' => $activeStep->height ?? 100
             ];
         }
 
@@ -130,7 +126,6 @@ class TandatanganController extends Controller
             'g-recaptcha-response' => 'required',
         ]);
 
-        // VERIFIKASI RECAPTCHA KE GOOGLE
         $response = Http::asForm()->post('https://www.google.com/recaptcha/api/siteverify', [
             'secret' => env('RECAPTCHA_SECRET_KEY'),
             'response' => $request->input('g-recaptcha-response'),
@@ -148,7 +143,6 @@ class TandatanganController extends Controller
         try {
             $user = Auth::user();
 
-            // Hapus file lama jika ada
             try {
                 if ($user->img_ttd_path && Storage::disk('public')->exists($user->img_ttd_path)) {
                     Storage::disk('public')->delete($user->img_ttd_path);
@@ -162,7 +156,6 @@ class TandatanganController extends Controller
                 ]);
             }
 
-            // Simpan file baru
             $path = $request->file('image')->store('tandatangan', 'public');
             $user->update(['img_ttd_path' => $path]);
 
@@ -222,7 +215,9 @@ class TandatanganController extends Controller
         $request->validate([
             'posisi_x' => 'nullable|numeric|min:0|max:2000',
             'posisi_y' => 'nullable|numeric|min:0|max:3000',
-            'halaman'  => 'nullable|integer|min:1'
+            'halaman'  => 'nullable|integer|min:1',
+            'width'    => 'nullable|numeric',
+            'height'   => 'nullable|numeric'
         ]);
 
         $workflowStep = WorkflowStep::where('document_id', $id)
@@ -238,6 +233,8 @@ class TandatanganController extends Controller
                 'posisi_x' => $request->posisi_x,
                 'posisi_y' => $request->posisi_y,
                 'halaman'  => $request->halaman,
+                'width'    => $request->width,
+                'height'   => $request->height,
                 'tanggal_aksi' => now()
             ]);
         } catch (\Exception $e) {
@@ -266,7 +263,6 @@ class TandatanganController extends Controller
             return back()->withErrors('Bukan giliran Anda untuk menandatangani dokumen ini.');
         }
 
-        // VALIDASI
         $activeStep = WorkflowStep::where('document_id', $documentId)
             ->where('user_id', Auth::id())
             ->first();
@@ -276,17 +272,12 @@ class TandatanganController extends Controller
         }
 
         try {
-            // 1. PROSES PDF
             $this->pdfService->stampPdf($documentId, Auth::id(), 'tandatangan');
 
-            // 2. UPDATE STEP
             $this->workflowService->completeStep($documentId, DocumentStatusEnum::DITANDATANGANI);
             
-            // --- PERBAIKAN DISINI ---
-            // Tangkap input dari Modal (1 = Ya, 0 = Tidak)
             $sendNotification = $request->input('send_notification') == '1';
 
-            // Kirim status notifikasi ke service
             $this->workflowService->processNextStep($documentId, $sendNotification);
 
             Log::info('Document tandatangan submitted', ['document_id' => $documentId, 'user_id' => Auth::id()]);

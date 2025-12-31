@@ -12,22 +12,25 @@ use App\Http\Controllers\Api\ApiDocumentController;
 | URL Base: http://127.0.0.1:8000/api/...
 */
 
-// 1. Login (Langsung di root api)
-// URL JADI: POST /api/login
+// 1. Login
 Route::post('/login', [ApiAuthController::class, 'login']);
 
 // 2. Protected Routes
 Route::middleware('auth:sanctum')->group(function () {
     
-    // URL JADI: POST /api/logout
+    // Logout
     Route::post('/logout', [ApiAuthController::class, 'logout']);
 
-    // URL JADI: GET /api/user
     Route::get('/user', [ApiAuthController::class, 'me']);
 
-    // URL JADI: POST /api/upload-surat
+    // Dashboard - List Semua Surat
+    Route::get('/documents', [ApiDocumentController::class, 'index']);
+
+    // Upload-surat
     Route::post('/upload-surat', [ApiDocumentController::class, 'store']);
 
-    // URL JADI: GET /api/documents/{id}/status
+    // Arsip Surat (List yang sudah selesai)
+    Route::get('/documents/archive', [ApiDocumentController::class, 'archive']);
+
     Route::get('/documents/{id}/status', [ApiDocumentController::class, 'checkStatus']);
 });

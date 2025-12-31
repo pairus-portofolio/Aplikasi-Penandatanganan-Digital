@@ -12,10 +12,6 @@ use Carbon\Carbon;
 
 class TableController extends Controller
 {
-    /**
-     * Query untuk tabel - menampilkan semua surat yang user ada di workflow-nya.
-     * Tidak memandang status atau urutan.
-     */
     public static function getBaseQueryByRole()
     {
         $user = Auth::user();
@@ -31,9 +27,15 @@ class TableController extends Controller
 
         $query = Document::with(['uploader', 'workflowSteps.user']);
 
-        if ($roleName !== RoleEnum::TU) {
-            $query->whereHas('workflowSteps', function ($q) use ($user) {
-                $q->where('user_id', $user->id);
+        // LOGIKA PERBAIKAN:
+        // Jika user BUKAN TU dan BUKAN DOSEN, maka batasi hak aksesnya.
+        // Artinya: Role TU dan DOSEN diperbolehkan melihat SEMUA surat di tabel.
+        if ($roleName !== RoleEnum::TU && $roleName !== RoleEnum::DOSEN) {
+            $query->where(function ($q) use ($user) {
+                $q->whereHas('workflowSteps', function ($subQ) use ($user) {
+                    $subQ->where('user_id', $user->id);
+                })
+                ->orWhere('id_user_uploader', $user->id);
             });
         }
 
@@ -56,9 +58,6 @@ class TableController extends Controller
             ->withQueryString();
     }
 
-    /**
-     * Query untuk card - menampilkan surat yang harus dikerjakan user saat ini.
-     */
     public static function getActiveTasksQueryByRole()
     {
         $user = Auth::user();
@@ -84,9 +83,6 @@ class TableController extends Controller
             });
     }
 
-    /**
-     * Menentukan apakah user adalah active step.
-     */
     public static function isUserActiveInWorkflow($document, $userId)
     {
         if ($document->status === DocumentStatusEnum::PERLU_REVISI) {
@@ -106,9 +102,6 @@ class TableController extends Controller
         return $userStep && $userStep->urutan === $minUrutan;
     }
 
-    /**
-     * Return data untuk tabel.
-     */
     public static function getData()
     {
         $documents = self::getBaseQueryByRole();
@@ -118,9 +111,10 @@ class TableController extends Controller
     private static function formatSuratForTable($paginator)
     {
         $user = Auth::user();
-        $isTU = $user->role->nama_role === RoleEnum::TU;
-
-        $paginator->through(function ($doc) use ($user, $isTU) {
+        $roleName = $user->role->nama_role ?? '';
+        $isTU = $roleName === RoleEnum::TU;
+        
+        $paginator->through(function ($doc) use ($user, $isTU, $roleName) {
 
             $statusClass = match ($doc->status) {
                 DocumentStatusEnum::DITINJAU => 'kuning',
@@ -131,23 +125,21 @@ class TableController extends Controller
                 default => 'abu',
             };
 
+            $isUploader = $doc->id_user_uploader == $user->id;
             $revisionUrl = null;
 
-            if ($isTU && $doc->status === DocumentStatusEnum::PERLU_REVISI) {
+            // Revisi hanya untuk TU atau Pengunggah asli
+            if (($isTU || $isUploader) && $doc->status === DocumentStatusEnum::PERLU_REVISI) {
                 $revisionUrl = route('tu.upload.create', ['id' => $doc->id]);
             }
 
             $actionData = self::determineActionType($doc, $user);
 
-            // format tanggal
             $tanggalTampil = $doc->created_at->format('d/m/Y');
-
             if ($doc->tanggal_surat) {
                 try {
                     $tanggalTampil = Carbon::parse($doc->tanggal_surat)->format('d/m/Y');
-                } catch (\Exception $e) {
-                    // tanggal_surat invalid → fallback ke created_at
-                }
+                } catch (\Exception $e) {}
             }
 
             return [
@@ -168,38 +160,30 @@ class TableController extends Controller
         return $paginator;
     }
 
-    /**
-     * Menentukan action berdasarkan role & workflow.
-     */
     private static function determineActionType($doc, $user)
     {
         $role = $user->role->nama_role;
-        $isTU = $role === RoleEnum::TU;
         $isActive = self::isUserActiveInWorkflow($doc, $user->id);
 
-        // Default
         $type = 'view';
         $label = 'Lihat';
         $class = 'btn-secondary';
 
-        // Tentukan base URL tanpa useless assignment
-        if (in_array($role, RoleEnum::getKaprodiRoles())) {
-
+        // Routing URL dasar berdasarkan Role
+        if (in_array($role, RoleEnum::getKoordinatorRoles())) {
             $baseUrl = route('kaprodi.paraf.show', $doc->id);
-
         } elseif (in_array($role, RoleEnum::getKajurSekjurRoles())) {
-
             $baseUrl = route('kajur.tandatangan.show', $doc->id);
-
         } else {
-
+            // Default untuk TU dan Dosen (Hanya Melihat)
             $baseUrl = route('tu.document.show', $doc->id);
         }
 
-        // Jika giliran user (active step) dan bukan TU → Kerjakan
-        if ($isActive && !$isTU) {
+        // Jika giliran user ini untuk memproses (Paraf/TTD)
+        // Dosen tidak akan pernah masuk ke sini karena isActive pasti false
+        if ($isActive && $role !== RoleEnum::TU) {
             $type = 'work';
-            $label = 'Kerjakan';
+            $label = 'Lihat';
             $class = 'btn-primary';
         }
 

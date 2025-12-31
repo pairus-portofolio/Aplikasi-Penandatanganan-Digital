@@ -13,18 +13,15 @@ use App\Mail\DocumentWorkflowNotification;
 
 /**
  * Service untuk mengelola workflow dokumen.
- * 
- * Menangani validasi akses, update status workflow step,
+ * * Menangani validasi akses, update status workflow step,
  * update status dokumen, dan pengiriman notifikasi email.
- * 
- * @package App\Services
+ * * @package App\Services
  */
 class WorkflowService
 {
     /**
      * Cek apakah user yang sedang login memiliki akses untuk memproses dokumen.
-     * 
-     * User memiliki akses jika workflow step yang aktif (status 'Ditinjau')
+     * * User memiliki akses jika workflow step yang aktif (status 'Ditinjau')
      * dengan urutan terkecil adalah milik user tersebut.
      *
      * @param int $documentId ID dokumen
@@ -46,8 +43,7 @@ class WorkflowService
 
     /**
      * Tandai workflow step saat ini sebagai selesai.
-     * 
-     * Update status step menjadi 'Diparaf' atau 'Ditandatangani'
+     * * Update status step menjadi 'Diparaf' atau 'Ditandatangani'
      * dan set tanggal aksi.
      *
      * @param int $documentId ID dokumen
@@ -82,10 +78,9 @@ class WorkflowService
 
     /**
      * Update status dokumen berdasarkan progress workflow steps.
-     * 
-     * Logika:
-     * - Jika masih ada Kaprodi yang pending -> status 'Ditinjau'
-     * - Jika Kaprodi selesai tapi Kajur/Sekjur pending -> status 'Diparaf'
+     * * Logika:
+     * - Jika masih ada Koordinator yang pending -> status 'Ditinjau'
+     * - Jika Koordinator selesai tapi Kajur/Sekjur pending -> status 'Diparaf'
      * - Jika semua selesai -> status 'Ditandatangani'
      *
      * @param int $documentId ID dokumen
@@ -95,11 +90,11 @@ class WorkflowService
     {
         $document = Document::findOrFail($documentId);
 
-        // Check if there are any pending steps for Kaprodi (Paraf)
-        $pendingKaprodi = WorkflowStep::where('document_id', $documentId)
+        // PERBAIKAN: Ganti getKaprodiRoles() menjadi getKoordinatorRoles()
+        $pendingKoordinator = WorkflowStep::where('document_id', $documentId)
             ->where('status', DocumentStatusEnum::DITINJAU)
             ->whereHas('user.role', function ($q) {
-                $q->whereIn('nama_role', RoleEnum::getKaprodiRoles());
+                $q->whereIn('nama_role', RoleEnum::getKoordinatorRoles());
             })
             ->exists();
 
@@ -111,14 +106,14 @@ class WorkflowService
             })
             ->exists();
 
-        if ($pendingKaprodi) {
-            // If Kaprodi still needs to action, status remains Ditinjau
+        if ($pendingKoordinator) {
+            // Jika Koordinator masih ada yang belum paraf, status tetap Ditinjau
             $document->status = DocumentStatusEnum::DITINJAU;
         } elseif ($pendingKajurSekjur) {
-            // If Kaprodi done but Kajur/Sekjur pending, status becomes Diparaf
+            // Jika Koordinator selesai tapi Kajur/Sekjur belum, status jadi Diparaf
             $document->status = DocumentStatusEnum::DIPARAF;
         } else {
-            // If all done
+            // Jika semua selesai
             $document->status = DocumentStatusEnum::DITANDATANGANI;
         }
 
@@ -138,8 +133,7 @@ class WorkflowService
 
     /**
      * Proses step berikutnya dalam workflow setelah step saat ini selesai.
-     * 
-     * Menangani:
+     * * Menangani:
      * 1. Update status dokumen berdasarkan step yang tersisa
      * 2. Kirim email notifikasi ke user berikutnya (jika ada)
      * 3. Kirim email completion ke uploader (jika workflow selesai)
@@ -160,7 +154,7 @@ class WorkflowService
             ->orderBy('urutan')
             ->first();
 
-        // 3. LOGIKA PENGIRIMAN EMAIL (HANYA JIKA $sendNotification == true)
+        // 3. LOGIKA PENGIRIMAN EMAIL
         if ($sendNotification) {
             
             if ($nextStep && $nextStep->user) {

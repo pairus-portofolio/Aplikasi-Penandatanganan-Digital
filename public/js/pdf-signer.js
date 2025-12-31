@@ -173,6 +173,7 @@ class PdfSigner {
         newEl.id = "dropped-saved";
         newEl.classList.remove("paraf-image-preview");
         newEl.classList.add("paraf-dropped");
+        newEl.src = original.src;
 
         const left = data.x * this.scale;
         const top = data.y * this.scale;

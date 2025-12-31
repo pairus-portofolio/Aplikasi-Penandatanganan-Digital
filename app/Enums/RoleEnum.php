@@ -4,33 +4,28 @@ namespace App\Enums;
 
 class RoleEnum
 {
-    const TU = 'TU';
-    const KAPRODI_D3 = 'Kaprodi D3';
-    const KAPRODI_D4 = 'Kaprodi D4';
-    const KAJUR = 'Kajur';
-    const SEKJUR = 'Sekjur';
+    const TU = 'Tata Usaha';
+    const KOORDINATOR_PRODI = 'Koordinator Program Studi';
+    const DOSEN = 'Dosen';
+    
+    const KAJUR = 'Ketua Jurusan';
+    const SEKJUR = 'Sekretaris Jurusan';
+    
+    const ADMIN = 'Administrasi';
 
     // ID Constants
     const ID_TU = 1;
-    const ID_KAPRODI_D3 = 2;
-    const ID_KAPRODI_D4 = 3;
+    const ID_KOORDINATOR_PRODI = 2;
+    const ID_DOSEN = 3;
     const ID_KAJUR = 4;
     const ID_SEKJUR = 5;
+    const ID_ADMIN = 6;
 
-    /**
-     * Get all Kaprodi roles
-     */
-    public static function getKaprodiRoles(): array
+    public static function getKoordinatorRoles(): array
     {
-        return [
-            self::KAPRODI_D3,
-            self::KAPRODI_D4,
-        ];
+        return [self::KOORDINATOR_PRODI];
     }
 
-    /**
-     * Get all Kajur/Sekjur roles
-     */
     public static function getKajurSekjurRoles(): array
     {
         return [
@@ -39,17 +34,15 @@ class RoleEnum
         ];
     }
 
-    /**
-     * Get all roles
-     */
     public static function getAllRoles(): array
     {
         return [
             self::TU,
-            self::KAPRODI_D3,
-            self::KAPRODI_D4,
+            self::KOORDINATOR_PRODI,
+            self::DOSEN,
             self::KAJUR,
             self::SEKJUR,
+            self::ADMIN,
         ];
     }
 }

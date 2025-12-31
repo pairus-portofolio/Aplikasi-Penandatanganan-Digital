@@ -8,51 +8,67 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Exception;
 use Illuminate\Support\Carbon;
+use App\Enums\RoleEnum;
 
+/**
+ * Controller untuk mengelola autentikasi menggunakan Google OAuth.
+ *
+ * Menangani redirect ke Google, callback setelah login, dan verifikasi email otomatis.
+ *
+ * @package App\Http\Controllers
+ */
 class GoogleLoginController extends Controller
 {
-    // Mengarahkan user ke halaman login Google
+    /**
+     * Redirect user ke halaman login Google.
+     *
+     * @return \Symfony\Component\HttpFoundation\RedirectResponse
+     */
     public function redirectToGoogle()
     {
         return Socialite::driver('google')->redirect();
     }
 
-    // Menangani callback setelah user login melalui Google
+    /**
+     * Tangani callback setelah user login melalui Google.
+     *
+     * Proses:
+     * 1. Ambil data user dari Google
+     * 2. Cari user berdasarkan email
+     * 3. Simpan google_id dan verifikasi email
+     * 4. Login user ke sistem
+     *
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function handleGoogleCallback()
     {
         try {
-            // Mengambil data pengguna dari Google
             $googleUser = Socialite::driver('google')->user();
 
-            // Mencari user berdasarkan email yang diberikan Google
             $user = User::where('email', $googleUser->getEmail())->first();
 
-            // Login jika user ditemukan
             if ($user) {
 
-                // Simpan google_id untuk menyambungkan akun
                 $user->google_id = $googleUser->getId();
 
-                // Verifikasi email jika belum diverifikasi
                 if (empty($user->email_verified_at)) {
                     $user->email_verified_at = Carbon::now();
                 }
 
-                // Simpan perubahan user
                 $user->save();
 
-                // Login user ke sistem
                 Auth::login($user);
+                if ($user->role_id == RoleEnum::ID_ADMIN) {
+                    return redirect()->intended(route('admin.users.index')); // Redirect ke Manajemen Pengguna
+                }
                 return redirect()->intended('/dashboard');
             } else {
 
-                // Email Google tidak terdaftar di sistem
                 return redirect('/')->with('error', 'Email tidak valid');
             }
 
         } catch (Exception $e) {
 
-            // Menangani error ketika proses login Google gagal
             return redirect('/')->with('error', 'Gagal login dengan Google. Coba lagi.');
         }
     }

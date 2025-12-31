@@ -10,10 +10,20 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\File;
 use Ilovepdf\Ilovepdf;
 
+/**
+ * Controller untuk mengelola finalisasi dokumen yang sudah ditandatangani.
+ *
+ * Menangani proses finalisasi dokumen dari status DITANDATANGANI menjadi FINAL,
+ * dengan fitur preview dan download dengan kompresi otomatis.
+ *
+ * @package App\Http\Controllers\Tu
+ */
 class FinalisasiController extends Controller
 {
     /**
-     * Halaman daftar dokumen yang siap difinalisasi
+     * Tampilkan daftar dokumen yang siap difinalisasi.
+     *
+     * @return \Illuminate\View\View
      */
     public function index()
     {
@@ -26,7 +36,10 @@ class FinalisasiController extends Controller
     }
 
     /**
-     * Halaman preview dokumen sebelum finalisasi
+     * Tampilkan halaman preview dokumen sebelum finalisasi.
+     *
+     * @param int $id ID dokumen
+     * @return \Illuminate\View\View
      */
     public function show($id)
     {
@@ -34,9 +47,11 @@ class FinalisasiController extends Controller
 
         return view('Tu.finalisasi.show', compact('document'));
     }
-
     /**
-     * PREVIEW PDF (Versi "Pencarian File Pintar")
+     * Preview PDF secara inline di browser.
+     *
+     * @param int $id ID dokumen
+     * @return \Illuminate\Http\Response
      */
     public function preview($id)
     {
@@ -49,9 +64,12 @@ class FinalisasiController extends Controller
             'Content-Disposition' => 'inline; filename="'.$document->file_name.'"'
         ]);
     }
-
     /**
-     * Finalisasi dokumen & Trigger Popup
+     * Ubah status dokumen menjadi FINAL.
+     *
+     * @param Request $request HTTP request
+     * @param int $id ID dokumen
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function store(Request $request, $id)
     {
@@ -62,40 +80,33 @@ class FinalisasiController extends Controller
 
         return redirect()
             ->route('tu.finalisasi.index')
-            ->with('success', 'Dokumen berhasil difinalisasi.')
-            ->with('download_doc_id', $document->id);
+            ->with('success', 'Dokumen berhasil difinalisasi.');
     }
-
     /**
-     * DOWNLOAD PDF (Dengan Kompresi Jika Perlu)
+     * Download file PDF dengan kompresi otomatis untuk file > 1MB.
+     *
+     * @param int $id ID dokumen
+     * @return \Symfony\Component\HttpFoundation\BinaryFileResponse
      */
     public function download($id)
     {
         $document = Document::findOrFail($id);
         $sourcePath = $this->findPhysicalPath($document->file_path);
-        $downloadName = $document->file_name ?? 'dokumen_final.pdf';
+        $downloadName = $document->judul_surat . '.pdf';
         
-        // Batas ukuran 1 MB
         $oneMB = 1048576;
 
-        // Jika file besar, coba kompres dulu
         if (filesize($sourcePath) > $oneMB) {
             
             $compressedPath = $this->attemptCompression($sourcePath, $downloadName);
 
-            // Jika kompresi sukses, download file kompresi
             if ($compressedPath) {
                 return response()->download($compressedPath, $downloadName)->deleteFileAfterSend(true);
             }
         }
 
-        // Fallback ke download asli jika tidak perlu atau gagal kompresi
         return response()->download($sourcePath, $downloadName);
     }
-
-    /**
-     * PRIVATE HELPER: Logika Kompresi iLovePDF
-     */
     private function attemptCompression($sourcePath, $downloadName)
     {
         try {
