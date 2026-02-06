@@ -32,12 +32,7 @@
 
         {{-- Zoom buttons --}}
         @include('partials.shared.zoom-controls')
-        {{-- Tombol utama tengah: Download --}}
-    <form action="{{ route('tu.arsip.download', $document->id) }}" method="GET">
-        <button type="submit" class="pv-primary-btn btn btn-primary">
-            <i class="fa-solid fa-download"></i> Download
-        </button>
-    </form>
+        {{-- Download button removed --}}
     </div>
 @endsection
 

@@ -14,8 +14,8 @@
     </div>
   @endif
 
-  <!-- Kartu untuk Kaprodi D3 & D4: jumlah surat untuk review & paraf -->
-  @if (Auth::check() && in_array(Auth::user()->role->nama_role, ['Kaprodi D3', 'Kaprodi D4']))
+  <!-- Kartu untuk Koordinator Prodi: jumlah surat untuk review & paraf -->
+  @if (Auth::check() && Auth::user()->role->nama_role === 'Koordinator Program Studi')
     <div class="card">
       <div class="cap">
         <i class="fa-solid fa-file-signature"></i> Surat Perlu Direview
